@@ -428,7 +428,7 @@ import { useAuthStore } from '@/stores/auth'
 import { useToast } from '@/composables/useToast'
 import { lastNotification } from '@/composables/useNotificaciones'
 import { mba3ConsultasService } from '../services/mba3ConsultasApi'
-import type { PedidoCompleto, InfoArchivoPlantillaResponse, DetalleDiferenciaProduccion, HijoDiferenciaPayload, IntegracionSAPDetalle, SolicitudesTransferencia } from '../types'
+import type { PedidoCompleto, InfoArchivoPlantillaResponse, DetalleDiferenciaProduccion, HijoDiferenciaPayload } from '../types'
 // Utilidades extraídas
 import {
   formatDate,
@@ -469,6 +469,7 @@ import { descargarBlobComoArchivo } from '../utils/downloadHelpers'
 import { useRedistribucion } from '../composables/useRedistribucion'
 import { useProduccionPospuestaActions } from '../composables/useProduccionPospuestaActions'
 import { useProductosPedidoColumnas } from '../composables/useProductosPedidoColumnas'
+import { useVerDetalleSapModal } from '../composables/useVerDetalleSapModal'
 // Componentes
 import PedidoHeaderActions from '../components/PedidoHeaderActions.vue'
 import ProduccionPospuestaActions from '../components/ProduccionPospuestaActions.vue'
@@ -526,19 +527,13 @@ const procesandoDiferencia = ref(false)
 
 // Modal de integración SAP: al hacer clic en un "Número OC SAP" de la cabecera
 // (pedidos con más de una ODC muestran un botón por cada una, ver PedidoCabecera.vue).
-const showIntegracionSAPModal = ref(false)
-const integracionSAPDetalle = ref<IntegracionSAPDetalle | null>(null)
-const integracionSAPSolicitudes = ref<SolicitudesTransferencia | null>(null)
-
-// Título/ícono del modal (IntegracionSAPModal.vue::tituloModal) exige estadoGeneral
-// explícito -- sin esto siempre cae en "❌ Error" aunque el envío haya sido exitoso.
-const integracionSAPEstadoGeneral = computed<'success' | 'partial' | 'error'>(() => {
-  const detalle = integracionSAPDetalle.value
-  if (!detalle || !detalle.success) return 'error'
-  const st = integracionSAPSolicitudes.value
-  if (st && st.transferencias_errores > 0) return 'partial'
-  return 'success'
-})
+const {
+  showIntegracionSAPModal,
+  integracionSAPDetalle,
+  integracionSAPSolicitudes,
+  integracionSAPEstadoGeneral,
+  handleVerDetalleSap
+} = useVerDetalleSapModal()
 
 // ⭐ Set para rastrear columnas modificadas (formato: "detalleId:columnKey")
 const columnasModificadas = ref<Set<string>>(new Set())
@@ -1086,58 +1081,6 @@ function handleCerrarModalConfirmacion() {
   showConfirmacionModal.value = false
   // El usuario permanece en la misma página (Detalle del Pedido)
   // No se realiza redirección
-}
-
-/** Detalle mínimo para mostrar el modal cuando no hay integración SAP registrada para la ODC (404) o falla el fetch. */
-function construirDetalleSapMinimo(oc: { oc_id: string | null; numero_oc_sap: string | null; doc_entry: number | null }): IntegracionSAPDetalle {
-  return {
-    oc_id: oc.oc_id ?? '',
-    success: true,
-    doc_entry: oc.doc_entry ?? null,
-    doc_num: null,
-    numero_oc_sap: oc.numero_oc_sap ?? null,
-    message: 'Enviada exitosamente',
-    error: null,
-    error_message: null,
-    error_code: null,
-    error_source: null
-  }
-}
-
-// Al hacer clic en un "Número OC SAP" de la cabecera (PedidoCabecera.vue): abre el
-// mismo modal "Integración con SAP Completada" que usa la interfaz "ODC a SAP"
-// (ver ProcesoCompletoView.vue::handleVerDetalleSAP), una ODC a la vez.
-async function handleVerDetalleSap(oc: { oc_id: string | null; numero_oc_sap: string | null; doc_entry: number | null }) {
-  if (!oc.oc_id) return
-
-  try {
-    const response = await mba3ConsultasService.getIntegracionSAP(oc.oc_id)
-    const envio = response.envio_sap
-    if (!envio) throw new Error('Respuesta sin envio_sap')
-
-    integracionSAPDetalle.value = {
-      oc_id: envio.oc_id,
-      success: envio.success,
-      doc_entry: envio.doc_entry ?? null,
-      doc_num: envio.doc_num ?? null,
-      numero_oc_sap: envio.numero_oc_sap ?? oc.numero_oc_sap ?? null,
-      message: envio.message ?? 'Enviada exitosamente',
-      error: envio.error ?? null,
-      error_message: envio.error ?? null,
-      error_code: envio.error_code ?? null,
-      error_source: null
-    }
-    integracionSAPSolicitudes.value = response.solicitudes_transferencia ?? envio.solicitudes_transferencia ?? null
-  } catch (err: any) {
-    if (err?.response?.status !== 404) {
-      console.warn('[handleVerDetalleSap] Error al obtener integración SAP:', err)
-      toast.warning('No se pudo cargar el detalle de integración', err?.response?.data?.detail ?? err?.message ?? 'Error desconocido')
-    }
-    integracionSAPDetalle.value = construirDetalleSapMinimo(oc)
-    integracionSAPSolicitudes.value = null
-  }
-
-  showIntegracionSAPModal.value = true
 }
 
 // Confirmar Producción (req. 1.8): exclusivo de produccion-elrayo.view, Gestionar Pedido -> Confirmado por Producción

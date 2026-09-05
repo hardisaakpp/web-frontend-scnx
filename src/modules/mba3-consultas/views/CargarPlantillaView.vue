@@ -405,6 +405,7 @@
           @copy-to-clipboard="copyToClipboard"
           @update-fecha-pedido="handleUpdateFechaPedido"
           @update-fecha-entrega="handleUpdateFechaEntrega"
+          @ver-detalle-sap="handleVerDetalleSap"
         />
 
         <!-- Job SAP async aún en Celery (p. ej. tras timeout del navegador) -->
@@ -619,6 +620,15 @@
       @apply-corrections="aplicarCorreccionesYContinuar"
     />
 
+    <!-- Modal de integración SAP: al hacer clic en un "Número OC SAP" de la cabecera -->
+    <IntegracionSAPModal
+      :is-open="showIntegracionSAPModal"
+      :detalle="integracionSAPDetalle"
+      :solicitudes-transferencia="integracionSAPSolicitudes"
+      :estado-general="integracionSAPEstadoGeneral"
+      @close="showIntegracionSAPModal = false"
+    />
+
   </div>
 </template>
 
@@ -674,6 +684,7 @@ import {
 } from '../composables/ejecutarProcesoCompletoSap'
 import { useSapProcessProgress } from '../composables/useSapProcessProgress'
 import { useProduccionPospuestaActions } from '../composables/useProduccionPospuestaActions'
+import { useVerDetalleSapModal } from '../composables/useVerDetalleSapModal'
 import {
   isTransientClientError,
   SAP_MAY_STILL_PROCESSING_MESSAGE,
@@ -687,6 +698,7 @@ import ProduccionPospuestaActions from '../components/ProduccionPospuestaActions
 import PedidoCabecera from '../components/PedidoCabecera.vue'
 import RedistribucionTiendas from '../components/RedistribucionTiendas.vue'
 import UploadErrorModal from '../components/UploadErrorModal.vue'
+import IntegracionSAPModal from '../components/IntegracionSAPModal.vue'
 import LoadingSpinner from '../components/LoadingSpinner.vue'
 import ColumnSelectorDropdown from '../components/ColumnSelectorDropdown.vue'
 
@@ -1305,6 +1317,16 @@ async function guardarEdicion() {
 // ⭐ HU-06: Funciones para actualizar cabecera del pedido
 const { handleUpdateFechaPedido, handleUpdateFechaEntrega, guardandoFechaPedido, guardandoFechaEntrega } =
   useFechaPedidoHandlers(pedido, toast, loadPedido)
+
+// Modal de integración SAP: al hacer clic en un "Número OC SAP" de la cabecera
+// (pedidos con más de una ODC muestran un botón por cada una, ver PedidoCabecera.vue).
+const {
+  showIntegracionSAPModal,
+  integracionSAPDetalle,
+  integracionSAPSolicitudes,
+  integracionSAPEstadoGeneral,
+  handleVerDetalleSap
+} = useVerDetalleSapModal()
 
 // Pese al nombre del botón/función, esto NO es una confirmación real del pedido (req.
 // 1.2/1.8): es el paso "Fase 3" de Mabel Trading -- guarda cambios y crea la respuesta del
