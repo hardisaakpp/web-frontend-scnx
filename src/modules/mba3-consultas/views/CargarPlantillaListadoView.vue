@@ -121,42 +121,42 @@
               @toggle="filtroSoloPendientes = !filtroSoloPendientes; aplicarFiltroPendientes()"
             />
           </div>
-        </div>
-        <div class="flex w-full flex-wrap items-center justify-end gap-3">
-          <!-- Temporalmente oculto: Crear pedido -->
-          <button
-            v-if="false"
-            @click="router.push('/mba3-consultas/pedidos/crear')"
-            class="px-4 py-2 bg-emerald-600 dark:bg-emerald-500 text-white rounded-lg hover:bg-emerald-700 dark:hover:bg-emerald-600 transition-colors text-sm font-medium flex items-center gap-2"
-          >
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-            </svg>
-            Crear pedido
-          </button>
-          <button
-            @click="openFileSelector"
-            :disabled="uploading"
-            class="px-4 py-2 bg-emerald-600 dark:bg-emerald-500 text-white rounded-lg hover:bg-emerald-700 dark:hover:bg-emerald-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium flex items-center gap-2"
-            title="Cargar plantilla Excel"
-          >
-            <svg v-if="!uploading" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-            </svg>
-            <LoadingSpinner v-else layout="inline" size="md" color="current" aria-label="Cargando plantilla Excel" />
-            {{ uploading ? 'Cargando...' : 'Cargar Plantillas Excel' }}
-          </button>
-          <button
-            @click="cargarPedidos"
-            class="px-4 py-2 bg-indigo-600 dark:bg-indigo-500 text-white rounded-lg hover:bg-indigo-700 dark:hover:bg-indigo-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 text-sm"
-            :disabled="loading"
-          >
-            <svg v-if="!loading" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-            </svg>
-            <LoadingSpinner v-else layout="inline" size="md" color="current" aria-label="Cargando pedidos" />
-            {{ loading ? 'Cargando...' : 'Actualizar' }}
-          </button>
+          <div class="flex flex-wrap items-center gap-3">
+            <!-- Temporalmente oculto: Crear pedido -->
+            <button
+              v-if="false"
+              @click="router.push('/mba3-consultas/pedidos/crear')"
+              class="px-4 py-2 bg-emerald-600 dark:bg-emerald-500 text-white rounded-lg hover:bg-emerald-700 dark:hover:bg-emerald-600 transition-colors text-sm font-medium flex items-center gap-2"
+            >
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+              </svg>
+              Crear pedido
+            </button>
+            <button
+              @click="openFileSelector"
+              :disabled="uploading"
+              class="px-4 py-2 bg-emerald-600 dark:bg-emerald-500 text-white rounded-lg hover:bg-emerald-700 dark:hover:bg-emerald-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium flex items-center gap-2"
+              title="Cargar plantilla Excel"
+            >
+              <svg v-if="!uploading" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+              </svg>
+              <LoadingSpinner v-else layout="inline" size="md" color="current" aria-label="Cargando plantilla Excel" />
+              {{ uploading ? 'Cargando...' : 'Cargar Plantillas Excel' }}
+            </button>
+            <button
+              @click="cargarPedidos"
+              class="px-4 py-2 bg-indigo-600 dark:bg-indigo-500 text-white rounded-lg hover:bg-indigo-700 dark:hover:bg-indigo-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 text-sm"
+              :disabled="loading"
+            >
+              <svg v-if="!loading" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+              <LoadingSpinner v-else layout="inline" size="md" color="current" aria-label="Cargando pedidos" />
+              {{ loading ? 'Cargando...' : 'Actualizar' }}
+            </button>
+          </div>
         </div>
       </div>
 
