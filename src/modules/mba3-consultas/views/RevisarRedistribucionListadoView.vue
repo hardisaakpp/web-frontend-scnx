@@ -327,6 +327,44 @@ const { sortColumn, sortDirection, toggleSort, resetSort, sortedItems: sortedPed
   storageKey: 'revisar-redistribucion-listado'
 })
 
+/** Mapea PedidoCompleto -> PedidoResumido para reutilizar la tabla actual (extraído de
+ * obtenerPedidos para reducir su complejidad cognitiva). */
+function mapPedidoCompletoToPedidoResumido(p: PedidoCompleto): PedidoResumido {
+  const c = p.cabecera
+  const root: any = p as any
+
+  // Algunos campos (como modificado_fecha / modificado_por) no vienen en este endpoint.
+  // Usar creado_en / creado_por como fallback razonable.
+  const modificadoFecha =
+    root.modificado_fecha ?? c.modificado_fecha ?? c.creado_en ?? null
+  const modificadoPor =
+    root.modificado_por ?? c.modificado_por ?? c.creado_por ?? null
+
+  // Backend expone comprador como comprador_nombre y también como comprador (alias).
+  const compradorNombre =
+    c.comprador_nombre ?? (c as any).comprador ?? root.comprador_nombre ?? root.comprador ?? null
+
+  return {
+    pedido_id: c.pedido_id,
+    numero_pedido: c.numero_pedido ?? '',
+    fecha_pedido: c.fecha_pedido,
+    fecha_entrega: c.fecha_entrega,
+    forma_pago: c.forma_pago,
+    mensaje: c.mensaje,
+    proveedor_nombre: c.proveedor_nombre,
+    comprador_nombre: compradorNombre,
+    comprador_codigo: c.comprador_codigo,
+    origen_traslado: c.origen_traslado,
+    serie: c.serie,
+    archivo_nombre: c.archivo_nombre,
+    creado_por: c.creado_por,
+    estado: c.estado ?? root.estado ?? '',
+    creado_en: c.creado_en ?? '',
+    modificado_fecha: modificadoFecha,
+    modificado_por: modificadoPor,
+  }
+}
+
 async function obtenerPedidos() {
   error.value = null
   try {
@@ -345,41 +383,7 @@ async function obtenerPedidos() {
     })
 
     // Mapear PedidoCompleto → PedidoResumido para reutilizar la tabla actual
-    pedidos.value = (response.data || []).map((p: PedidoCompleto): PedidoResumido => {
-      const c = p.cabecera
-      const root: any = p as any
-
-      // Algunos campos (como modificado_fecha / modificado_por) no vienen en este endpoint.
-      // Usar creado_en / creado_por como fallback razonable.
-      const modificadoFecha =
-        root.modificado_fecha ?? c.modificado_fecha ?? c.creado_en ?? null
-      const modificadoPor =
-        root.modificado_por ?? c.modificado_por ?? c.creado_por ?? null
-
-      // Backend expone comprador como comprador_nombre y también como comprador (alias).
-      const compradorNombre =
-        c.comprador_nombre ?? (c as any).comprador ?? root.comprador_nombre ?? root.comprador ?? null
-
-      return {
-        pedido_id: c.pedido_id,
-        numero_pedido: c.numero_pedido ?? '',
-        fecha_pedido: c.fecha_pedido,
-        fecha_entrega: c.fecha_entrega,
-        forma_pago: c.forma_pago,
-        mensaje: c.mensaje,
-        proveedor_nombre: c.proveedor_nombre,
-        comprador_nombre: compradorNombre,
-        comprador_codigo: c.comprador_codigo,
-        origen_traslado: c.origen_traslado,
-        serie: c.serie,
-        archivo_nombre: c.archivo_nombre,
-        creado_por: c.creado_por,
-        estado: c.estado ?? root.estado ?? '',
-        creado_en: c.creado_en ?? '',
-        modificado_fecha: modificadoFecha,
-        modificado_por: modificadoPor,
-      }
-    })
+    pedidos.value = (response.data || []).map(mapPedidoCompletoToPedidoResumido)
 
     metadata.value = {
       total: response.total || pedidos.value.length,
