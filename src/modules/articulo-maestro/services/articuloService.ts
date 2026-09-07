@@ -159,6 +159,15 @@ export interface ImportacionAceptada {
     totalGrupos: number
 }
 
+// H13: respuesta del reintento SELECTIVO de un grupo observado (a
+// diferencia de ImportacionAceptada, que es la respuesta de reintentar
+// TODO el trabajo).
+export interface ImportacionGrupoAceptado {
+    grupoId: number
+    trabajoId: number
+    estado: ImportacionGrupo['estado']
+}
+
 export interface ImportacionTrabajo {
     id: number
     nombreArchivo: string
@@ -171,6 +180,11 @@ export interface ImportacionTrabajo {
     totalFilas: number
     filasCorrectas: number
     filasError: number
+    // H09: true mientras el worker todavía no terminó de descomprimir y
+    // subir a staging las imágenes del ZIP -- distingue "Procesando
+    // imágenes..." de "Insertando artículos..." aunque ambos ocurran con
+    // estado === 'PROCESANDO'.
+    zipPendiente: boolean
     fechaInicio?: string | null
     fechaFin?: string | null
     grupos: ImportacionGrupo[]
@@ -376,7 +390,14 @@ export const articuloService = {
             formData,
             {
                 params: { tipo },
-                headers: { 'Content-Type': 'multipart/form-data' }
+                headers: { 'Content-Type': 'multipart/form-data' },
+                // H09: el backend guarda los archivos crudos y responde 202
+                // en menos de 1s (ya no descomprime el ZIP ni sube imágenes
+                // en este request) -- este timeout más amplio que el
+                // default del cliente (30s) es solo una red de seguridad
+                // para la transferencia de bytes crudos en redes lentas,
+                // no para esperar el procesamiento de imágenes.
+                timeout: 120_000
             }
         )
         return response.data
@@ -449,6 +470,17 @@ export const articuloService = {
     ): Promise<ImportacionAceptada> => {
         const response = await apiMaestro.post<ImportacionAceptada>(
             `/api/v1/articulos/importaciones/${jobId}/reintentar`
+        )
+        return response.data
+    },
+
+    // H13: reintento SELECTIVO de un único grupo observado (ej. una fila
+    // cuya Foto 3 falló por un corte de red), sin reabrir todo el trabajo.
+    reintentarGrupoImportacion: async (
+        grupoId: number
+    ): Promise<ImportacionGrupoAceptado> => {
+        const response = await apiMaestro.post<ImportacionGrupoAceptado>(
+            `/api/v1/articulos/importaciones/grupos/${grupoId}/reintentar`
         )
         return response.data
     },

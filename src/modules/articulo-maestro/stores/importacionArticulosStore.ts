@@ -6,6 +6,7 @@ import {
     type ImportacionTrabajo,
     type TipoCargaMasiva
 } from '../services/articuloService'
+import { useToast } from '@/composables/useToast'
 
 const STORAGE_KEY = 'articulo-maestro:importacion-activa'
 const POLL_INTERVAL_MS = 2500
@@ -26,6 +27,10 @@ interface ImportacionState {
     verificando: boolean
     resumenSimulacion: DryRunSummary | null
     errorSimulacion: string | null
+    // H13: id del grupo con un reintento selectivo en vuelo -- distingue
+    // ese botón puntual de `loading` (que es del reintento del trabajo
+    // COMPLETO), para no deshabilitar toda la UI por un solo grupo.
+    reintentandoGrupoId: number | null
 }
 
 function readPersistedJobId(): number | null {
@@ -61,7 +66,8 @@ export const useImportacionArticulosStore = defineStore(
             pollTimer: null,
             verificando: false,
             resumenSimulacion: null,
-            errorSimulacion: null
+            errorSimulacion: null,
+            reintentandoGrupoId: null
         }),
 
         getters: {
@@ -109,7 +115,40 @@ export const useImportacionArticulosStore = defineStore(
             imagenesConError: (state): number =>
                 state.trabajo?.grupos
                     .flatMap(grupo => grupo.imagenes)
-                    .filter(imagen => imagen.estado === 'ERROR').length ?? 0
+                    .filter(imagen => imagen.estado === 'ERROR').length ?? 0,
+            // H12: CAMPO_ESTRUCTURAL_CON_MOVIMIENTOS no es un fallo del
+            // sistema -- es una regla de negocio esperable (el artículo ya
+            // tiene stock/movimientos en SAP y esa columna puntual no puede
+            // tocarse por Excel). Se discrimina del resto de errores
+            // (validación de catálogo, SAP no disponible, etc.) para que la
+            // UI pueda tratarlos como una observación informativa en vez de
+            // un error destructivo.
+            erroresEstructurales: (state): ImportacionError[] =>
+                state.errores.filter(
+                    error => error.codigoError === 'CAMPO_ESTRUCTURAL_CON_MOVIMIENTOS'
+                ),
+            erroresNoEstructurales: (state): ImportacionError[] =>
+                state.errores.filter(
+                    error => error.codigoError !== 'CAMPO_ESTRUCTURAL_CON_MOVIMIENTOS'
+                ),
+            // true cuando el trabajo terminó con observaciones, pero TODAS
+            // son restricciones de SAP esperables -- ninguna es un error de
+            // validación/sistema real. GestionArticulos.vue la usa para
+            // decidir Warning Toast (bloqueos esperables) vs Error Toast
+            // (algo realmente falló).
+            soloBloqueosEstructurales(): boolean {
+                return (
+                    this.errores.length > 0 &&
+                    this.erroresNoEstructurales.length === 0
+                )
+            },
+            // H13: grupos observados (ERROR) -- la UI los lista
+            // individualmente con su avance de fotos y un botón de
+            // reintento puntual, en vez de solo el resumen agregado.
+            gruposObservados: (state): ImportacionTrabajo['grupos'] =>
+                state.trabajo?.grupos.filter(
+                    grupo => grupo.estado === 'ERROR'
+                ) ?? []
         },
 
         actions: {
@@ -222,6 +261,34 @@ export const useImportacionArticulosStore = defineStore(
                     this.error = getErrorMessage(error)
                 } finally {
                     this.loading = false
+                }
+            },
+
+            // H13: reintento SELECTIVO de un único grupo observado (ej. una
+            // fila cuya Foto 3 falló por un corte de red), sin reabrir el
+            // trabajo completo. `reintentandoGrupoId` habilita el estado de
+            // carga del botón puntual y previene doble pulsación.
+            async reintentarGrupo(grupoId: number): Promise<void> {
+                const grupo = this.trabajo?.grupos.find(g => g.id === grupoId)
+                if (!grupo || this.reintentandoGrupoId !== null) return
+
+                const estadoPrevio = grupo.estado
+                // Optimista: refleja de inmediato que el reintento está en
+                // curso, antes de esperar la respuesta del servidor.
+                grupo.estado = 'PROCESANDO'
+                this.reintentandoGrupoId = grupoId
+                try {
+                    await articuloService.reintentarGrupoImportacion(grupoId)
+                    await this.actualizar()
+                    this.iniciarPolling()
+                } catch (error: unknown) {
+                    grupo.estado = estadoPrevio
+                    useToast().error(
+                        'No se pudo iniciar el reintento del grupo',
+                        'Verifique la conexión e inténtelo de nuevo.'
+                    )
+                } finally {
+                    this.reintentandoGrupoId = null
                 }
             },
 
