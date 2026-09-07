@@ -22,7 +22,7 @@ describe('articulo-scaner pricing helpers', () => {
       margin: 12.95
     })
     expect(formatCurrency(pricing.avgPrice, 'USD')).toBe('$9.75')
-    expect(formatPercent(pricing.margin)).toBe('12,95%')
+    expect(formatPercent(pricing.margin)).toBe('12.95%')
   })
 
   it('returns null values when backend sends null by permissions', () => {
@@ -43,9 +43,9 @@ describe('articulo-scaner pricing helpers', () => {
       price: null,
       margin: null
     })
-    expect(formatCurrency(pricing.avgPrice)).toBe('N/A')
-    expect(formatCurrency(pricing.price)).toBe('N/A')
-    expect(formatPercent(pricing.margin)).toBe('N/A')
+    expect(formatCurrency(pricing.avgPrice)).toBe('No autorizado')
+    expect(formatCurrency(pricing.price)).toBe('No autorizado')
+    expect(formatPercent(pricing.margin)).toBe('No autorizado')
   })
 
   it('computes margin fallback when margin is absent', () => {
@@ -63,6 +63,6 @@ describe('articulo-scaner pricing helpers', () => {
     expect(pricing.avgPrice).toBe(10)
     expect(pricing.price).toBe(20)
     expect(pricing.margin).toBe(50)
-    expect(formatPercent(pricing.margin)).toBe('50,00%')
+    expect(formatPercent(pricing.margin)).toBe('50.00%')
   })
 })

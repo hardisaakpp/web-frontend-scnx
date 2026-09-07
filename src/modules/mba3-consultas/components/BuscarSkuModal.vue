@@ -1,18 +1,12 @@
 <template>
   <Teleport to="body">
-    <div
-      class="fixed inset-0 z-50 overflow-y-auto"
+    <dialog
+      ref="modalRef"
       aria-labelledby="modal-title"
-      role="dialog"
-      aria-modal="true"
-      @click.self="$emit('close')"
+      class="buscar-sku-modal-dialog relative p-0 m-auto border-0 transform overflow-y-auto rounded-lg bg-white dark:bg-gray-900 dark:text-gray-100 shadow-xl transition-all w-full max-w-4xl max-h-[90vh] focus:outline-none"
+      @cancel.prevent="cerrar"
+      @click="onBackdropClick"
     >
-      <!-- Overlay -->
-      <div class="fixed inset-0 bg-gray-500 bg-opacity-75 dark:bg-gray-900 dark:bg-opacity-80 transition-opacity" @click.self="$emit('close')"></div>
-
-      <!-- Modal -->
-      <div class="flex min-h-full items-center justify-center p-4">
-        <div class="relative transform overflow-hidden rounded-lg bg-white dark:bg-gray-900 dark:text-gray-100 shadow-xl transition-all w-full max-w-4xl">
           <!-- Header -->
           <div class="bg-gradient-to-r from-green-500 to-green-600 px-6 py-4">
             <div class="flex items-center justify-between">
@@ -23,7 +17,7 @@
                 Buscar SKU en MBA3 y SAP
               </h3>
               <button
-                @click="$emit('close')"
+                @click="cerrar"
                 class="text-white hover:text-gray-200 transition-colors"
               >
                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -288,27 +282,28 @@
           <!-- Footer -->
           <div class="bg-gray-50 dark:bg-gray-800 px-6 py-4 flex justify-end gap-3">
             <button
-              @click="$emit('close')"
+              @click="cerrar"
               class="px-4 py-2 text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
             >
               Cerrar
             </button>
           </div>
-        </div>
-      </div>
-    </div>
+    </dialog>
   </Teleport>
 </template>
 
 <script setup lang="ts">
 import { ref } from '@vue/reactivity'
+import { onMounted } from '@vue/runtime-core'
 import { useToast } from '@/composables/useToast'
 import { mba3ConsultasService } from '../services/mba3ConsultasApi'
 import type { SugerenciaSkuSap } from '../types'
 
-defineEmits<{
+const emit = defineEmits<{
   close: []
 }>()
+
+const modalRef = ref<HTMLDialogElement | null>(null)
 
 const toast = useToast()
 const skuBusqueda = ref('')
@@ -339,6 +334,27 @@ const resultadoBusqueda = ref<{
   } | null
 } | null>(null)
 const errorBusqueda = ref<string | null>(null)
+
+onMounted(() => {
+  // showModal(): foco inicial + focus-trap + backdrop nativos (accesibilidad: lector de
+  // pantalla anuncia el diálogo, Escape/Tab funcionan de inmediato)
+  modalRef.value?.showModal()
+})
+
+function cerrar(): void {
+  modalRef.value?.close()
+  emit('close')
+}
+
+/**
+ * Clic en el <dialog> mismo (no en su contenido) equivale a clic en el backdrop nativo:
+ * el navegador despacha el click con target=dialog cuando cae fuera de la tarjeta visible.
+ */
+function onBackdropClick(evento: MouseEvent): void {
+  if (evento.target === modalRef.value) {
+    cerrar()
+  }
+}
 
 async function buscarSku() {
   if (!skuBusqueda.value.trim()) {
@@ -484,3 +500,14 @@ function getScoreBadgeClass(porcentaje: number): string {
 }
 </script>
 
+<style>
+/* ::backdrop del <dialog> nativo: no se puede scopear (pseudo-elemento fuera del arbol normal),
+   por eso el nombre de clase bien especifico y el estilo sin "scoped". Reemplaza al overlay
+   manual bg-gray-500/75 dark:bg-gray-900/80 que envolvia el modal antes de la migracion a <dialog>. */
+.buscar-sku-modal-dialog::backdrop {
+  background-color: rgb(107 114 128 / 0.75);
+}
+.dark .buscar-sku-modal-dialog::backdrop {
+  background-color: rgb(17 24 39 / 0.8);
+}
+</style>

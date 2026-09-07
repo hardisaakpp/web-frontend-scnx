@@ -27,7 +27,9 @@
                 Matriz
               </span>
             </button>
+            <!-- Vista Compacta: oculta salvo para funcionalidades-admin.view -->
             <button
+              v-if="authStore.canViewFuncionalidadesAdmin"
               @click="modoVista = 'compacta'"
               :class="[
                 'px-3 py-1.5 text-sm font-medium rounded transition-colors',
@@ -63,66 +65,66 @@
       </div>
     </div>
 
-    <!-- Barra de indicadores (solo la cuadrícula de totales es sticky) -->
+    <!-- Barra de indicadores: fila única con separadores (compacta) -->
     <div
       v-if="pedidoValue?.respuesta_proveedor"
-      class="sticky top-16 z-20 bg-white dark:bg-gray-800 px-6 py-3 border-b border-gray-200 dark:border-gray-700 shadow-sm"
+      class="sticky top-16 z-20 bg-white dark:bg-gray-800 px-6 py-2 border-b border-gray-200 dark:border-gray-700 shadow-sm"
     >
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
-      <div class="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-2.5 border border-blue-200 dark:border-blue-800">
-        <label class="text-[10px] font-medium text-blue-600 dark:text-blue-400 uppercase leading-tight">Total Confirmado</label>
-        <p class="mt-0.5 text-lg font-bold text-blue-900 dark:text-blue-200 leading-tight">
-          {{ formatNumberWithDecimals(resumenRedistribucion.total_confirmado, decimalPlaces) }}
-        </p>
-        <p class="text-[10px] text-blue-700 dark:text-blue-300 mt-0.5 leading-tight">
-          Ajustado por EL RAYO
-        </p>
-      </div>
-      <div class="bg-purple-50 dark:bg-purple-900/20 rounded-lg p-2.5 border border-purple-200 dark:border-purple-800">
-        <label class="text-[10px] font-medium text-purple-600 dark:text-purple-400 uppercase leading-tight">Total Distribuido</label>
-        <p class="mt-0.5 text-lg font-bold text-purple-900 dark:text-purple-200 leading-tight">
-          {{ formatNumberWithDecimals(resumenRedistribucion.total_distribuido, decimalPlaces) }}
-        </p>
-        <p class="text-[10px] text-purple-700 dark:text-purple-300 mt-0.5 leading-tight">
-          Repartido entre tiendas
-        </p>
-      </div>
-      <div 
-        class="rounded-lg p-2.5 border-2"
-        :class="cercaDeCero(resumenRedistribucion.diferencia_pendiente) 
-          ? 'bg-green-50 dark:bg-green-900/20 border-green-300 dark:border-green-700' 
-          : resumenRedistribucion.diferencia_pendiente < 0
-          ? 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-300 dark:border-yellow-700'
-          : 'bg-red-50 dark:bg-red-900/20 border-red-300 dark:border-red-700'"
-      >
-        <label 
-          class="text-[10px] font-medium uppercase leading-tight"
-          :class="cercaDeCero(resumenRedistribucion.diferencia_pendiente) 
-            ? 'text-green-600 dark:text-green-400' 
-            : resumenRedistribucion.diferencia_pendiente < 0
-            ? 'text-yellow-600 dark:text-yellow-400'
-            : 'text-red-600 dark:text-red-400'"
+      <!-- Fusión del diseño original (tarjetas de color, identificables de un vistazo) con la
+           versión compacta (una sola fila): las 3 métricas van en "pills" de color, todas con el
+           mismo alto (px-2.5 py-1 rounded-full border) que ya tenía el pill de Diferencia, para
+           que el contenedor NO crezca de alto (el máximo de la fila ya lo marcaba ese pill). -->
+      <div class="flex items-center gap-3 flex-wrap">
+        <div
+          class="flex items-baseline gap-1.5 px-2.5 py-1 rounded-full border bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800"
+          title="Ajustado por EL RAYO"
         >
-          {{ cercaDeCero(resumenRedistribucion.diferencia_pendiente) ? '✓ Completo' : resumenRedistribucion.diferencia_pendiente < 0 ? '⚠ Falta' : '✗ Excede' }}
-        </label>
-        <p 
-          class="mt-0.5 text-lg font-bold leading-tight"
-          :class="cercaDeCero(resumenRedistribucion.diferencia_pendiente) 
-            ? 'text-green-900 dark:text-green-200' 
-            : resumenRedistribucion.diferencia_pendiente < 0
-            ? 'text-yellow-900 dark:text-yellow-200'
-            : 'text-red-900 dark:text-red-200'"
+          <span class="text-[10px] font-semibold text-blue-600 dark:text-blue-400 uppercase tracking-wide">Confirmado</span>
+          <span class="text-sm font-bold text-blue-900 dark:text-blue-200">
+            {{ formatNumberWithDecimals(resumenRedistribucion.total_confirmado, decimalPlaces) }}
+          </span>
+        </div>
+
+        <div
+          class="flex items-baseline gap-1.5 px-2.5 py-1 rounded-full border bg-purple-50 dark:bg-purple-900/20 border-purple-200 dark:border-purple-800"
+          title="Repartido entre tiendas"
         >
-          {{ resumenRedistribucion.diferencia_pendiente > 0 ? '+' : '' }}{{ formatNumberWithDecimals(resumenRedistribucion.diferencia_pendiente, decimalPlaces) }}
-        </p>
-        <p class="text-[10px] mt-0.5 leading-tight" :class="cercaDeCero(resumenRedistribucion.diferencia_pendiente) 
-          ? 'text-green-700 dark:text-green-300' 
-          : resumenRedistribucion.diferencia_pendiente < 0
-          ? 'text-yellow-700 dark:text-yellow-300'
-          : 'text-red-700 dark:text-red-300'">
-          {{ cercaDeCero(resumenRedistribucion.diferencia_pendiente) ? 'Listo para confirmar' : resumenRedistribucion.diferencia_pendiente < 0 ? 'Faltan por distribuir' : 'Excede el total' }}
-        </p>
-      </div>
+          <span class="text-[10px] font-semibold text-purple-600 dark:text-purple-400 uppercase tracking-wide">Distribuido</span>
+          <span class="text-sm font-bold text-purple-900 dark:text-purple-200">
+            {{ formatNumberWithDecimals(resumenRedistribucion.total_distribuido, decimalPlaces) }}
+          </span>
+        </div>
+
+        <div
+          class="flex items-baseline gap-1.5 ml-auto px-2.5 py-1 rounded-full border"
+          :class="cercaDeCero(resumenRedistribucion.diferencia_pendiente)
+            ? 'bg-green-50 dark:bg-green-900/20 border-green-300 dark:border-green-700'
+            : resumenRedistribucion.diferencia_pendiente < 0
+            ? 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-300 dark:border-yellow-700'
+            : 'bg-red-50 dark:bg-red-900/20 border-red-300 dark:border-red-700'"
+          :title="cercaDeCero(resumenRedistribucion.diferencia_pendiente) ? 'Listo para confirmar' : resumenRedistribucion.diferencia_pendiente < 0 ? 'Faltan por distribuir' : 'Excede el total'"
+        >
+          <span
+            class="text-[10px] font-semibold uppercase tracking-wide"
+            :class="cercaDeCero(resumenRedistribucion.diferencia_pendiente)
+              ? 'text-green-600 dark:text-green-400'
+              : resumenRedistribucion.diferencia_pendiente < 0
+              ? 'text-yellow-600 dark:text-yellow-400'
+              : 'text-red-600 dark:text-red-400'"
+          >
+            {{ cercaDeCero(resumenRedistribucion.diferencia_pendiente) ? '✓ Completo' : resumenRedistribucion.diferencia_pendiente < 0 ? '⚠ Falta' : '✗ Excede' }}
+          </span>
+          <span
+            class="text-sm font-bold"
+            :class="cercaDeCero(resumenRedistribucion.diferencia_pendiente)
+              ? 'text-green-900 dark:text-green-200'
+              : resumenRedistribucion.diferencia_pendiente < 0
+              ? 'text-yellow-900 dark:text-yellow-200'
+              : 'text-red-900 dark:text-red-200'"
+          >
+            {{ resumenRedistribucion.diferencia_pendiente > 0 ? '+' : '' }}{{ formatNumberWithDecimals(resumenRedistribucion.diferencia_pendiente, decimalPlaces) }}
+          </span>
+        </div>
       </div>
     </div>
 
@@ -151,65 +153,32 @@
       </div>
     </div>
 
-    <!-- Contenido Principal: Tabla de Productos -->
-    <div v-if="pedidoValue?.respuesta_proveedor" class="p-6 pb-24">
+    <!-- Contenido Principal: Tabla de Productos.
+         pb-24 reserva espacio para que la barra de acciones sticky no tape las últimas filas
+         al hacer scroll de página — necesario en Compacta (tabla sin altura acotada). En Matriz
+         ya no hace falta: el scroller de ExcelLikeGridView está acotado en altura (calc(100dvh-Kpx),
+         ver ExcelLikeGridView.vue) y esos Kpx ya incluyen la barra de acciones en su fórmula;
+         mantener pb-24 aquí además desalinearía el thead congelado respecto a la barra de indicadores. -->
+    <div v-if="pedidoValue?.respuesta_proveedor" :class="modoVista === 'compacta' ? 'p-6 pb-24' : 'p-6 pb-6'">
       <!-- Header de la tabla con selector de columnas (solo vista compacta) -->
       <div v-if="modoVista === 'compacta'" class="flex items-center justify-between mb-4">
         <h3 class="text-sm font-medium text-gray-700 dark:text-gray-300">Tabla de Redistribución</h3>
-        <div class="relative">
-          <button
-            @click="showColumnSelector = !showColumnSelector"
-            class="px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors flex items-center gap-2 text-gray-700 dark:text-gray-300"
-          >
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
-            </svg>
-            Columnas
-          </button>
-          
-          <!-- Dropdown de selección de columnas -->
-          <div
-            v-if="showColumnSelector"
-            @click.stop
-            class="absolute right-0 top-full mt-2 w-64 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-50 p-3"
-          >
-            <div class="flex items-center justify-between mb-2 px-2">
-              <div class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Seleccionar columnas</div>
-              <div v-if="isSyncing" class="flex items-center gap-1">
-                <LoadingSpinner layout="inline" size="xs" aria-label="Guardando preferencias" />
-                <span class="text-xs text-indigo-600 dark:text-indigo-400">Guardando...</span>
-              </div>
-            </div>
-            <div class="space-y-1 max-h-80 overflow-y-auto">
-              <label
-                v-for="column in availableColumnsWithVisibility"
-                :key="column.key"
-                :class="[
-                  'flex items-center gap-2 px-2 py-2 rounded transition-colors',
-                  column.fixed 
-                    ? 'cursor-not-allowed opacity-60 bg-gray-50 dark:bg-gray-900' 
-                    : 'hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer'
-                ]"
-              >
-                <input
-                  type="checkbox"
-                  :checked="column.visible"
-                  :disabled="column.fixed"
-                  @change="!column.fixed && toggleColumnVisibility(column.key)"
-                  class="w-4 h-4 text-indigo-600 border-gray-300 dark:border-gray-600 rounded focus:ring-indigo-500 dark:focus:ring-indigo-400 disabled:opacity-50 disabled:cursor-not-allowed"
-                />
-                <span class="text-sm text-gray-700 dark:text-gray-300">
-                  {{ column.label }}
-                  <span v-if="column.fixed" class="text-xs text-gray-500 dark:text-gray-500 ml-1">(fija)</span>
-                </span>
-              </label>
-            </div>
-          </div>
-        </div>
+        <ColumnSelectorDropdown
+          :columns="columnsWithVisibility"
+          :is-open="columnVisibility.isOpen.value"
+          :selector-id="columnVisibility.selectorId"
+          :is-syncing="isSyncing"
+          @toggle-open="columnVisibility.toggleOpen"
+          @toggle-column="columnVisibility.toggleColumnVisibility"
+        />
       </div>
       
       <!-- Tabla Principal -->
-      <div class="overflow-x-auto min-w-0">
+      <!-- Requerimiento 1.1.1: en vista Matriz NO se pone overflow aquí. ExcelLikeGridView
+           tiene su propio scroller acotado y un segundo scrollport anidado impediría que su
+           thead se congele (el sticky se resolvería contra este div, que nunca scrollea).
+           La vista Compacta sí lo necesita porque su tabla no trae scroller propio. -->
+      <div :class="modoVista === 'compacta' ? 'overflow-x-auto min-w-0' : 'min-w-0'">
         <!-- Vista Excel -->
         <ExcelLikeGridView
           v-if="modoVista === 'excel'"
@@ -218,9 +187,11 @@
           :solo-lectura="soloLectura"
           :decimal-places="decimalPlaces"
           :columnas-modificadas="columnasModificadas"
+          :roles-modificacion="rolesModificacion"
           :pedido="pedidoValue"
           @actualizar-cantidad-tienda="handleActualizarCantidadTienda"
           @validar-y-corregir-cantidad="handleValidarYCorregirCantidad"
+          @agregar-tienda="handleAgregarTienda"
         />
         
         <!-- Vista Compacta (tabla original) -->
@@ -252,18 +223,19 @@
           <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
             <template v-for="producto in productosArray" :key="producto.codigo_producto">
               <!-- Fila Principal del Producto -->
-              <!-- Fila Principal: Resalta primero modificaciones (ámbar), luego diferencia (verde/rojo) -->
-              <!-- ⭐ IMPORTANTE: El resaltado ámbar debe aparecer inmediatamente si el producto tiene modificaciones del flujo anterior (EL RAYO) -->
-              <tr 
+              <!-- Fila Principal: Resalta primero modificaciones heredadas del flujo anterior
+                   (púrpura ODCSAP / ámbar EL RAYO), luego diferencia (verde/rojo) -->
+              <!-- ⭐ IMPORTANTE: el resaltado debe aparecer inmediatamente si el producto tiene modificaciones del flujo anterior -->
+              <tr
                 :class="[
                   'transition-colors',
                   producto.error ? 'bg-gray-100 dark:bg-gray-700/30' :
-                  // ⭐ PRIORIDAD 1: Resaltar productos con modificaciones del flujo anterior (EL RAYO)
+                  // ⭐ PRIORIDAD 1: Resaltar productos con modificaciones del flujo anterior
                   // Esto debe aparecer inmediatamente al cargar la página, no solo después de distribuir
-                  tieneModificaciones(producto) ? 'bg-amber-50 dark:bg-amber-900/20 border-l-4 border-amber-500 dark:border-amber-400' :
+                  claseResaltadoFila(producto, 'base') ??
                   // ⭐ PRIORIDAD 2: Resaltar según el estado de la distribución (rojo si diferencia !== 0)
-                  cercaDeCero(producto.diferencia) ? 'bg-green-50 dark:bg-green-900/30' :
-                  'bg-red-50 dark:bg-red-900/30'
+                  (cercaDeCero(producto.diferencia) ? 'bg-green-50 dark:bg-green-900/30' :
+                  'bg-red-50 dark:bg-red-900/30')
                 ]"
               >
                 <td
@@ -281,9 +253,9 @@
                     column.key === 'estado' ? 'whitespace-nowrap text-center' :
                     column.key === 'acciones' ? 'whitespace-nowrap text-center' :
                     '',
-                    column.key === 'expand' ? 'sticky left-0 z-10 border-r border-gray-200 dark:border-gray-700 shadow-[4px_0_6px_-2px_rgba(0,0,0,0.06)] dark:shadow-[4px_0_6px_-2px_rgba(0,0,0,0.2)] ' + (producto.error ? 'bg-gray-100 dark:bg-gray-700/30' : tieneModificaciones(producto) ? 'bg-amber-50 dark:bg-amber-900/20' : cercaDeCero(producto.diferencia) ? 'bg-green-50 dark:bg-green-900/30' : 'bg-red-50 dark:bg-red-900/30') : '',
-                    column.key === 'codigo' ? 'sticky left-8 z-10 min-w-[120px] border-r border-gray-200 dark:border-gray-700 shadow-[4px_0_6px_-2px_rgba(0,0,0,0.06)] dark:shadow-[4px_0_6px_-2px_rgba(0,0,0,0.2)] ' + (producto.error ? 'bg-gray-100 dark:bg-gray-700/30' : tieneModificaciones(producto) ? 'bg-amber-50 dark:bg-amber-900/20' : cercaDeCero(producto.diferencia) ? 'bg-green-50 dark:bg-green-900/30' : 'bg-red-50 dark:bg-red-900/30') : '',
-                    column.key === 'diferencia' ? 'sticky right-0 z-[5] min-w-[120px] border-l border-gray-200 dark:border-gray-700 shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.06)] dark:shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.2)] ' + (producto.error ? 'bg-gray-100 dark:bg-gray-700' : tieneModificaciones(producto) ? 'bg-amber-50 dark:bg-amber-900/80' : cercaDeCero(producto.diferencia) ? 'bg-green-50 dark:bg-green-900/80' : 'bg-red-50 dark:bg-red-900/80') : ''
+                    column.key === 'expand' ? 'sticky left-0 z-10 border-r border-gray-200 dark:border-gray-700 shadow-[4px_0_6px_-2px_rgba(0,0,0,0.06)] dark:shadow-[4px_0_6px_-2px_rgba(0,0,0,0.2)] ' + (producto.error ? 'bg-gray-100 dark:bg-gray-700/30' : claseResaltadoFila(producto, 'sticky20') ?? (cercaDeCero(producto.diferencia) ? 'bg-green-50 dark:bg-green-900/30' : 'bg-red-50 dark:bg-red-900/30')) : '',
+                    column.key === 'codigo' ? 'sticky left-8 z-10 min-w-[120px] border-r border-gray-200 dark:border-gray-700 shadow-[4px_0_6px_-2px_rgba(0,0,0,0.06)] dark:shadow-[4px_0_6px_-2px_rgba(0,0,0,0.2)] ' + (producto.error ? 'bg-gray-100 dark:bg-gray-700/30' : claseResaltadoFila(producto, 'sticky20') ?? (cercaDeCero(producto.diferencia) ? 'bg-green-50 dark:bg-green-900/30' : 'bg-red-50 dark:bg-red-900/30')) : '',
+                    column.key === 'diferencia' ? 'sticky right-0 z-[5] min-w-[120px] border-l border-gray-200 dark:border-gray-700 shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.06)] dark:shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.2)] ' + (producto.error ? 'bg-gray-100 dark:bg-gray-700' : claseResaltadoFila(producto, 'sticky80') ?? (cercaDeCero(producto.diferencia) ? 'bg-green-50 dark:bg-green-900/80' : 'bg-red-50 dark:bg-red-900/80')) : ''
                   ]"
                 >
                   <!-- Columna Expand -->
@@ -593,7 +565,9 @@
                   ? 'Enviando a SAP...'
                   : puedeEnviarOdcSap
                     ? 'Enviar ODC a SAP'
-                    : 'Redistribución incompleta'
+                    : pedidoYaEnviado
+                      ? 'Pedido Enviado'
+                      : 'Redistribución incompleta'
               }}
             </button>
             <Teleport to="body">
@@ -618,19 +592,22 @@
 
 <script setup lang="ts">
 import { computed, ref, watch, type Ref } from '@vue/reactivity'
-import { nextTick, onMounted, onUnmounted } from '@vue/runtime-core'
+import { nextTick } from '@vue/runtime-core'
+import { useAuthStore } from '@/stores/auth'
 import type { PedidoCompleto, PedidoDetalle } from '../types'
 import type { ProductoRedistribucion, DistribucionTiendaEditada } from '../utils/redistribucionHelpers'
 import { formatNumber, formatNumberWithDecimals, formatCurrency, type ColumnConfig } from '../utils/formatters'
 import { getDiferenciaClass } from '../utils/styleHelpers'
-import { 
-  getProgresoPorcentaje, 
-  getProgresoBarClass, 
+import {
+  getProgresoPorcentaje,
+  getProgresoBarClass,
   getProgresoTextClass,
   getMensajeValidacionRedistribucion
 } from '../utils/redistribucionHelpers'
 import { useTablePreferences } from '@/composables/useTablePreferences'
+import { useColumnVisibilityToggle, type ColumnVisibilityOption } from '../composables/useColumnVisibilityToggle'
 import ExcelLikeGridView from './ExcelLikeGridView.vue'
+import ColumnSelectorDropdown from './ColumnSelectorDropdown.vue'
 import LoadingSpinner from './LoadingSpinner.vue'
 
 interface Props {
@@ -647,6 +624,10 @@ interface Props {
   /** Si true, el botón "Guardar Borrador" va deshabilitado (solo se permite en estado CONFIRMADO POR EL RAYO = 4) */
   guardarBorradorDeshabilitadoPorEstado?: boolean
   columnasModificadas?: Ref<Set<string>>
+  /** Rol (ODCSAP/PRODUCCION_ELRAYO) de quien hizo cada modificación en columnasModificadas,
+   * para pintar el resaltado heredado con el mismo color de marca que Cargar Plantilla /
+   * Detalle del Pedido (púrpura ODCSAP, ámbar PRODUCCION_ELRAYO). */
+  rolesModificacion?: Ref<Map<string, string | null>>
   /** Si true, muestra el botón "Enviar ODC a SAP" (proceso completo) */
   showEnviarOdcSap?: boolean
   /** Boolean que indica si está enviando a SAP */
@@ -657,6 +638,7 @@ interface Emits {
   (e: 'toggle-expandir-producto', codigoProducto: string): void
   (e: 'actualizar-cantidad-tienda', codigoProducto: string, tiendaCodigo: string, event: Event): void
   (e: 'validar-y-corregir-cantidad', producto: ProductoRedistribucion, tienda: DistribucionTiendaEditada, event?: Event): void
+  (e: 'agregar-tienda', tienda: { codigo: string; nombre: string }): void
   (e: 'distribuir-proporcionalmente', codigoProducto: string): void
   (e: 'copiar-distribucion-original', codigoProducto: string): void
   (e: 'resetear-distribucion', codigoProducto: string): void
@@ -668,14 +650,13 @@ interface Emits {
 const props = withDefaults(defineProps<Props>(), { confirmarDeshabilitadoPorEstado: false, guardarBorradorDeshabilitadoPorEstado: false, soloLectura: false })
 const emit = defineEmits<Emits>()
 
+const authStore = useAuthStore()
+
 // Estado para el modo de vista
 const modoVista = ref<'compacta' | 'excel'>('excel')
 
 /** Número de decimales a mostrar en cantidades (solo 0 o 1). Por defecto 1. No aplica a la columna Precio. */
 const decimalPlaces = ref(1)
-
-// ⭐ Gestión de columnas visibles en la tabla
-const showColumnSelector = ref(false)
 
 // Tooltip "Enviar ODC a SAP": Teleport a body para que quede siempre sobre la columna Diferencia
 const enviarOdcSapTriggerRef = ref<HTMLElement | null>(null)
@@ -739,55 +720,20 @@ const orderedVisibleColumns = computed(() => {
 })
 
 // Computed para obtener todas las columnas con su estado de visibilidad
-const availableColumnsWithVisibility = computed(() => {
+const columnsWithVisibility = computed<ColumnVisibilityOption[]>(() => {
   return availableColumns.map(col => ({
     ...col,
     visible: col.fixed ? true : visibleColumns.value.includes(col.key)
   }))
 })
 
-// Función para toggle de visibilidad de columnas
-function toggleColumnVisibility(columnKey: string) {
-  const column = availableColumns.find(col => col.key === columnKey)
-  if (column?.fixed) {
-    return
-  }
-  
-  const currentVisible = [...visibleColumns.value]
-  const index = currentVisible.indexOf(columnKey)
-  
-  // Validación: Asegurar que hay al menos una columna visible (excluyendo fijas)
-  const visibleNonFixed = currentVisible.filter(key => {
-    const col = availableColumns.find(c => c.key === key)
-    return !col?.fixed
-  })
-  
-  if (index > -1 && visibleNonFixed.length === 1) {
-    console.warn('⚠️ Debe haber al menos una columna visible. Operación cancelada.')
-    return
-  }
-  
-  if (index > -1) {
-    currentVisible.splice(index, 1)
-  } else {
-    currentVisible.push(columnKey)
-  }
-  
-  visibleColumns.value = currentVisible
-  savePreferences()
-}
-
-// Cerrar dropdown al hacer click fuera
-function handleClickOutsideColumnSelector(event: MouseEvent) {
-  if (!showColumnSelector.value) return
-  
-  const target = event.target as HTMLElement
-  if (target.closest('.relative')) {
-    return
-  }
-  
-  showColumnSelector.value = false
-}
+// ⭐ Gestión de columnas visibles en la tabla (abrir/cerrar dropdown, toggle con validación
+// de "al menos una columna visible" y cierre al hacer click fuera)
+const columnVisibility = useColumnVisibilityToggle({
+  columns: availableColumns,
+  visibleColumns,
+  persist: savePreferences
+})
 
 // Alias para pedido para consistencia con el template
 const pedidoValue = computed(() => props.pedido)
@@ -807,6 +753,12 @@ const enviandoOdcSapValue = computed(() => props.enviandoOdcSap ?? false)
 // En esta vista (redistribución) solo nos interesa "Enviar ODC a SAP"; el reintento vive en /proceso.
 const puedeReintentarEnvioOdcSapValue = computed(
   () => props.pedido?.puede_reintentar_envio_odc_sap === true
+)
+
+// El pedido ya fue enviado a SAP (estado_id 12, CONFIRMADO_ENVIADO): no es "redistribución
+// incompleta", es que la ODC ya se generó y no corresponde reenviar.
+const pedidoYaEnviado = computed(
+  () => Number(props.pedido?.cabecera?.estado_id) === 12
 )
 
 // Computed para resumen de redistribución
@@ -850,72 +802,70 @@ const tituloBotonEnviarOdcSap = computed(() => {
     return 'Complete la redistribución (debe quedar completa y válida) antes de enviar a SAP'
   }
   if (!puedeReintentarEnvioOdcSapValue.value) {
-    return 'Acción no disponible para el estado actual del pedido'
+    return pedidoYaEnviado.value
+      ? 'Este pedido ya fue enviado a SAP; no corresponde reenviarlo'
+      : 'Acción no disponible para el estado actual del pedido'
   }
   return 'Enviar ODC a SAP'
 })
 
 /**
- * ⭐ Computed que mapea cada producto a si tiene modificaciones
- * Esto asegura reactividad completa y que el resaltado se aplique inmediatamente
- * 
- * IMPORTANTE: Accede directamente a props.columnasModificadas?.value para que Vue rastree la dependencia
+ * Computed que mapea cada producto a si tiene alguna modificación heredada (COSTO UNIT.,
+ * TOTAL o COMENTARIO editados en Cargar Plantilla / Detalle del Pedido). Ya no distingue
+ * qué rol hizo la edición (púrpura ODCSAP / ámbar PRODUCCION_ELRAYO): esa distinción
+ * dependía de que columnasModificadas/rolesModificacion llegaran ya hidratados desde el
+ * backend en el momento exacto del render y resultó poco fiable en esta vista (terminaba
+ * mostrando ámbar aun cuando el último editor había sido ODCSAP), así que el resaltado
+ * ahora solo indica "fue modificado", con un único color.
+ *
+ * IMPORTANTE: Accede directamente a props.columnasModificadas?.value para que Vue rastree
+ * la dependencia.
  */
 const productosConModificaciones = computed(() => {
   const map = new Map<string, boolean>()
-  
-  // ⭐ Acceder directamente a las props para que Vue rastree las dependencias
-  // Esto asegura que el computed se recalcule cuando cambien las columnas modificadas
+
   const columnasModificadasValue = props.columnasModificadas?.value
   const pedidoDetalles = props.pedido?.detalles
-  
+
   if (!columnasModificadasValue || !pedidoDetalles || productosArray.value.length === 0) {
     return map
   }
-  
+
   productosArray.value.forEach((producto: ProductoRedistribucion) => {
-    // ⭐ PRIORIDAD 1: Usar campos del backend si están disponibles
-    if (producto.costo_modificado_manual === true || producto.total_modificado_manual === true) {
-      map.set(producto.codigo_producto, true)
-      return
-    }
-    
-    // ⭐ PRIORIDAD 2: Verificar columnasModificadas (heredar del flujo anterior - EL RAYO)
-    // Esta es la fuente principal para heredar el resaltado del flujo anterior
     const detallePedido = pedidoDetalles.find(
       (d: PedidoDetalle) => d.codigo_interno === producto.codigo_producto
     )
-    
-    if (!detallePedido?.pedido_detalle_id) {
-      map.set(producto.codigo_producto, false)
-      return
+
+    // PRIORIDAD 1: columnasModificadas (heredado del flujo anterior)
+    let modificado = false
+    if (detallePedido?.pedido_detalle_id) {
+      const columnasParaResaltar = ['costo_doc_sin_iva', 'total', 'comentario']
+      modificado = columnasParaResaltar.some(columnaKey =>
+        columnasModificadasValue.has(`${detallePedido.pedido_detalle_id}:${columnaKey}`)
+      )
     }
-    
-    // ⭐ Solo verificar columnas COSTO UNIT y TOTAL (no comentario)
-    // Estas son las columnas que se resaltan en color ámbar en la interfaz de EL RAYO
-    const columnasParaResaltar = ['costo_doc_sin_iva', 'total']
-    
-    const tieneMod = columnasParaResaltar.some(columnaKey => {
-      const key = `${detallePedido.pedido_detalle_id}:${columnaKey}`
-      const existe = columnasModificadasValue.has(key)
-      return existe
-    })
-    
-    map.set(producto.codigo_producto, tieneMod)
+
+    // PRIORIDAD 2 (fallback): flag legacy (edición previa al tracking granular, o ajuste
+    // manual del comprador en la respuesta del proveedor)
+    if (!modificado && (producto.costo_modificado_manual === true || producto.total_modificado_manual === true)) {
+      modificado = true
+    }
+
+    map.set(producto.codigo_producto, modificado)
   })
-  
+
   // Log para depuración (solo en desarrollo)
   if (import.meta.env.DEV) {
-    const productosConMod = Array.from(map.entries()).filter(([_, tieneMod]) => tieneMod)
+    const productosConMod = Array.from(map.entries()).filter(([, mod]) => mod)
     if (productosConMod.length > 0) {
-      if (import.meta.env.DEV) console.log(`🎨 [RedistribucionTiendas] ${productosConMod.length} productos con modificaciones heredadas:`, productosConMod.map(([codigo]) => codigo))
+      if (import.meta.env.DEV) console.log(`🎨 [RedistribucionTiendas] ${productosConMod.length} productos con modificaciones heredadas:`, productosConMod)
     }
   }
-  
+
   return map
 })
 
-// ⭐ Watch para forzar reactividad cuando cambien las columnas modificadas
+// Watch para forzar reactividad cuando cambien las columnas modificadas
 // Esto asegura que el resaltado se actualice inmediatamente cuando se carguen las columnas
 watch(
   () => props.columnasModificadas?.value,
@@ -929,14 +879,19 @@ watch(
   { deep: true, immediate: true }
 )
 
+const CLASES_RESALTADO_FILA: Record<'base' | 'sticky20' | 'sticky80', string> = {
+  base: 'bg-cyan-50 dark:bg-cyan-900/20 border-l-4 border-cyan-500 dark:border-cyan-400',
+  sticky20: 'bg-cyan-50 dark:bg-cyan-900/20',
+  sticky80: 'bg-cyan-50 dark:bg-cyan-900/80'
+}
+
 /**
- * Verifica si un producto tiene modificaciones en COSTO UNIT o TOTAL (columnas modificadas por EL RAYO)
- * ⭐ MEJORADO: Ahora usa el computed reactivo para asegurar que el resaltado se aplique inmediatamente
+ * Clase de resaltado heredado para un producto, o null si no tiene modificaciones (el
+ * caller debe caer al color de diferencia verde/rojo).
  */
-function tieneModificaciones(producto: ProductoRedistribucion): boolean {
-  // Usar el computed reactivo que ya tiene toda la lógica
-  // Esto asegura que el resaltado se aplique inmediatamente al cargar la página
-  return productosConModificaciones.value.get(producto.codigo_producto) || false
+function claseResaltadoFila(producto: ProductoRedistribucion, variante: 'base' | 'sticky20' | 'sticky80'): string | null {
+  const modificado = productosConModificaciones.value.get(producto.codigo_producto)
+  return modificado ? CLASES_RESALTADO_FILA[variante] : null
 }
 
 // Funciones que emiten eventos
@@ -963,6 +918,10 @@ function handleValidarYCorregirCantidad(producto: ProductoRedistribucion, tienda
 
 function validarYCorregirCantidad(producto: ProductoRedistribucion, tienda: DistribucionTiendaEditada) {
   emit('validar-y-corregir-cantidad', producto, tienda)
+}
+
+function handleAgregarTienda(tienda: { codigo: string; nombre: string }) {
+  emit('agregar-tienda', tienda)
 }
 
 const TOLERANCIA_SUMA = 1e-6
@@ -1018,13 +977,4 @@ function copiarDistribucionOriginal(codigoProducto: string) {
 function resetearDistribucion(codigoProducto: string) {
   emit('resetear-distribucion', codigoProducto)
 }
-
-// Agregar listener para cerrar dropdown al hacer click fuera
-onMounted(() => {
-  document.addEventListener('click', handleClickOutsideColumnSelector)
-})
-
-onUnmounted(() => {
-  document.removeEventListener('click', handleClickOutsideColumnSelector)
-})
 </script>

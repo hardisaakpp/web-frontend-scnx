@@ -123,6 +123,7 @@ import { ArrowPathIcon, ArchiveBoxXMarkIcon } from '@heroicons/vue/24/outline'
 import { inventarioSesionesService } from '../services/inventarioSesionesApi'
 import type { InventorySessionListItemDto, InventorySessionStatus } from '../types'
 import { useWarehouseAccessType } from '../composables/useWarehouseAccessType'
+import { APP_LOCALE } from '@/plugins/locale'
 
 const router = useRouter()
 const sesiones = ref<InventorySessionListItemDto[]>([])
@@ -150,8 +151,8 @@ function badgeClass(status: InventorySessionStatus): string {
 function formatDate(value?: string | null): string {
   if (!value) return '—'
   const d = new Date(value)
-  return d.toLocaleDateString('es', { day: '2-digit', month: '2-digit', year: '2-digit' })
-    + ' ' + d.toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' })
+  return d.toLocaleDateString(APP_LOCALE, { day: '2-digit', month: '2-digit', year: '2-digit' })
+    + ' ' + d.toLocaleTimeString(APP_LOCALE, { hour: '2-digit', minute: '2-digit' })
 }
 
 function formatDateOnly(value?: string | null): string {
@@ -159,7 +160,7 @@ function formatDateOnly(value?: string | null): string {
   // El backend puede mandar solo fecha ('2026-08-26') o fecha-hora ('2026-08-26T00:00:00');
   // concatenar 'T00:00:00' a la segunda producía Invalid Date.
   const d = new Date(value.slice(0, 10) + 'T00:00:00')
-  return d.toLocaleDateString('es', { day: '2-digit', month: '2-digit', year: '2-digit' })
+  return d.toLocaleDateString(APP_LOCALE, { day: '2-digit', month: '2-digit', year: '2-digit' })
 }
 
 async function cargar() {

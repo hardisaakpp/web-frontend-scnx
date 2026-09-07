@@ -1,10 +1,11 @@
 /**
  * Composable para manejar la redistribución de productos a tiendas
  */
-import { ref, Ref, type ComputedRef, triggerRef } from '@vue/reactivity'
+import { ref, computed, Ref, type ComputedRef, triggerRef } from '@vue/reactivity'
 import { useRouter } from 'vue-router'
 import { useToast } from '@/composables/useToast'
 import { useAuthStore } from '@/stores/auth'
+import { APP_LOCALE } from '@/plugins/locale'
 import { formatNumber } from '../utils/formatters'
 import type { ProductoRedistribucion, DistribucionTiendaEditada } from '../utils/redistribucionHelpers'
 import { esBodega } from '../utils/redistribucionHelpers'
@@ -59,7 +60,8 @@ export function useRedistribucion(options: {
           cantidad_original: cantidadOriginal,
           cantidad_asignada: d.cantidad_asignada,
           diferencia: (d.cantidad_asignada ?? 0) - cantidadOriginal,
-          es_bodega: esBodega(d.tienda_codigo)
+          es_bodega: esBodega(d.tienda_codigo),
+          agregada_manualmente: d.agregada_manualmente ?? false
         }
       })
       const cantidad_distribuida = p.cantidad_asignada_total ?? distribucion_tiendas.reduce((sum, t) => sum + t.cantidad_asignada, 0)
@@ -169,7 +171,8 @@ export function useRedistribucion(options: {
           cantidad_original: cantidad,
           cantidad_asignada: cantidad,
           diferencia: 0,
-          es_bodega: esBodega(t.tienda_codigo)
+          es_bodega: esBodega(t.tienda_codigo),
+          agregada_manualmente: t.agregada_manualmente ?? false
         }
       })
       const cantidad_distribuida = a.cantidad_ajustada ?? distribucion_tiendas.reduce((sum, t) => sum + t.cantidad_asignada, 0)
@@ -619,6 +622,35 @@ export function useRedistribucion(options: {
     }
   }
 
+  /**
+   * Agrega una tienda del catálogo maestro a TODOS los productos de la redistribución
+   * (cantidad 0), para que aparezca como columna nueva en la matriz. Usado por el botón
+   * "+" de "Vista Excel - Redistribución" en pedidos hijo (redistribución hacia tiendas
+   * que no venían en el Excel original del pedido).
+   */
+  function agregarTiendaATodosLosProductos(codigo: string, nombre: string) {
+    let agregada = false
+    productosRedistribucion.value.forEach(producto => {
+      const yaExiste = producto.distribucion_tiendas.some(t => t.tienda_codigo === codigo)
+      if (yaExiste) return
+      producto.distribucion_tiendas.push({
+        tienda_codigo: codigo,
+        tienda_nombre: nombre,
+        cantidad_original: 0,
+        cantidad_asignada: 0,
+        diferencia: 0,
+        es_bodega: false,
+        agregada_manualmente: true
+      })
+      agregada = true
+    })
+    if (agregada) {
+      recalcularDiferencias()
+    } else {
+      toast.warning('Tienda ya agregada', `La tienda ${codigo} ya está en la redistribución`)
+    }
+  }
+
   /** Redondea a 4 decimales (alineado con backend) */
   function round4(x: number): number {
     return Math.round(x * 1e4) / 1e4
@@ -717,7 +749,8 @@ export function useRedistribucion(options: {
         distribucion_tiendas: producto.distribucion_tiendas.map(t => ({
           tienda_codigo: t.tienda_codigo,
           tienda_nombre: t.tienda_nombre,
-          cantidad: t.cantidad_asignada
+          cantidad: t.cantidad_asignada,
+          agregada_manualmente: t.agregada_manualmente ?? false
         })),
         costo_original: producto.costo_unitario,
         costo_ajustado: producto.costo_unitario,
@@ -760,7 +793,7 @@ export function useRedistribucion(options: {
         
         // Notificar al usuario que se restauró el borrador
         const fechaGuardado = borrador.fecha_guardado 
-          ? new Date(borrador.fecha_guardado).toLocaleString('es-CO', { 
+          ? new Date(borrador.fecha_guardado).toLocaleString(APP_LOCALE, { 
               dateStyle: 'short', 
               timeStyle: 'short' 
             })
@@ -828,13 +861,14 @@ export function useRedistribucion(options: {
         distribucion_tiendas: producto.distribucion_tiendas.map(t => ({
           tienda_codigo: t.tienda_codigo,
           tienda_nombre: t.tienda_nombre,
-          cantidad: t.cantidad_asignada
+          cantidad: t.cantidad_asignada,
+          agregada_manualmente: t.agregada_manualmente ?? false
         })),
         costo_original: producto.costo_unitario,
         costo_ajustado: producto.costo_unitario,
         cambio_precio: false
       }))
-      
+
       // 2. Confirmar redistribución (el backend procesa hasta terminar; el modal bloquea la pantalla hasta que responda)
       // El backend procesa automáticamente:
       // - Consulta SAP para cada producto
@@ -877,13 +911,73 @@ export function useRedistribucion(options: {
     }
   }
 
+  // ⭐ FASE 4: Computed para resumen de redistribución
+  const resumenRedistribucion = computed(() => {
+    if (productosRedistribucion.value.length === 0) {
+      return {
+        total_solicitado: 0,
+        total_confirmado: 0,
+        total_distribuido: 0,
+        diferencia_pendiente: 0
+      }
+    }
+
+    const total_solicitado = productosRedistribucion.value.reduce((sum, p) => sum + p.cantidad_solicitada, 0)
+    const total_confirmado = productosRedistribucion.value.reduce((sum, p) => sum + p.cantidad_confirmada, 0)
+    const total_distribuido = productosRedistribucion.value.reduce((sum, p) => sum + p.cantidad_distribuida, 0)
+    const diferencia_pendiente = total_confirmado - total_distribuido
+
+    return {
+      total_solicitado,
+      total_confirmado,
+      total_distribuido,
+      diferencia_pendiente
+    }
+  })
+
+  // ⭐ FASE 4: Computed para impacto económico
+  const impactoEconomico = computed(() => {
+    let costo_unitario_total = 0
+    let subtotal_original = 0
+    let subtotal_ajustado = 0
+    let diferencia_economica = 0
+
+    productosRedistribucion.value.forEach(producto => {
+      const costo = producto.costo_unitario || 0
+      costo_unitario_total += costo
+      subtotal_original += producto.cantidad_solicitada * costo
+      subtotal_ajustado += producto.cantidad_distribuida * costo
+    })
+
+    diferencia_economica = subtotal_ajustado - subtotal_original
+
+    return {
+      costo_unitario_promedio: productosRedistribucion.value.length > 0
+        ? costo_unitario_total / productosRedistribucion.value.length
+        : 0,
+      subtotal_original,
+      subtotal_ajustado,
+      diferencia_economica
+    }
+  })
+
+  // ⭐ FASE 4: Validar si se puede confirmar
+  const puedeConfirmarRedistribucion = computed(() => {
+    return resumenRedistribucion.value.diferencia_pendiente === 0 &&
+           productosRedistribucion.value.every(p => p.diferencia === 0) &&
+           productosRedistribucion.value.every(p => !p.error)
+  })
+
   return {
     // Estado
     productosRedistribucion,
     productosExpandidos,
     guardandoRedistribucion,
     confirmandoRedistribucion,
-    
+    resumenRedistribucion,
+    impactoEconomico,
+    puedeConfirmarRedistribucion,
+
     // Funciones
     inicializarProductosRedistribucion,
     cargarYInicializarRedistribucion,
@@ -896,6 +990,7 @@ export function useRedistribucion(options: {
     actualizarTiendasDesdeReporte,
     toggleExpandirProducto,
     actualizarCantidadTienda,
+    agregarTiendaATodosLosProductos,
     distribuirProporcionalmente,
     copiarDistribucionOriginal,
     resetearDistribucion,

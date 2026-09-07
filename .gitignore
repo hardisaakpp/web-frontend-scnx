@@ -1,3 +1,6 @@
+# SonarLens local scan config (contiene el token de SonarQube en texto plano)
+sonar-project.properties
+
 # Logs
 logs
 *.log
@@ -56,9 +59,18 @@ Thumbs.db
 
 # Claude Code / agent local config (not shared with the team)
 .agents/
+.github/
 openspec/
 skills-lock.json
 
 # Playwright output (generado localmente, no subir al repo)
 test-results/
 playwright-report/
+
+# Se descartan/regeneran al publicar — no versionar (causaban conflictos de merge sin
+# aportar nada, la versión real la pone el pipeline de deploy).
+deploy/docker-entrypoint.sh
+deploy/scripts/docker-entrypoint.sh
+
+# API specs (generados automáticamente, no subir al repo)
+openapi.json

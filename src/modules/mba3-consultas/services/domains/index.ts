@@ -30,3 +30,9 @@ export { reportesService } from './reportes'
 
 // Servicios de pedidos (dominio completo)
 export { pedidosService } from './pedidos'
+
+// Administración del catálogo de correos por tipo de notificación (solo Admin)
+export { notificacionTipoCorreoService } from './notificacionTipoCorreo'
+
+// Organización persona-céntrica de correos (solo Admin)
+export { notificacionPersonaCorreoService } from './notificacionPersonaCorreo'

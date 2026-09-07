@@ -54,7 +54,7 @@ const routes: RouteRecordRaw[] = [
         name: 'articulo-maestro-migracion',
         component: () => import('./views/MigracionSAP.vue'),
         meta: {
-            title: 'Sincronización a SAP',
+            title: 'Monitoreo de Sincronización SAP',
             icon: 'CubeIcon',
             requiresAuth: true,
             permissions: ['articulomaestro.migracion']

@@ -41,7 +41,8 @@
           </div>
           
           <button
-            @click="showColumnSelector = !showColumnSelector"
+            @click="columnVisibility.toggleOpen"
+            :data-column-selector-id="columnVisibility.selectorId"
             class="px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-sm font-medium flex items-center gap-2 relative text-gray-900 dark:text-gray-200 bg-white dark:bg-gray-800"
           >
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -57,19 +58,19 @@
       </div>
       
       <!-- Selector de Columnas -->
-      <div v-if="showColumnSelector" class="mt-4 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+      <div v-if="columnVisibility.isOpen.value" :data-column-selector-id="columnVisibility.selectorId" class="mt-4 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
         <div class="flex items-center justify-between mb-3">
           <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-300">Seleccionar Columnas</h3>
           <div class="flex items-center gap-2">
             <button
-              @click="selectAllColumns"
+              @click="selectAllTableColumns(allAvailableColumns.map(col => col.key))"
               class="text-xs text-blue-600 hover:text-blue-700 font-medium"
             >
               Mostrar todas
             </button>
             <span class="text-gray-300 dark:text-gray-600">|</span>
             <button
-              @click="resetColumns"
+              @click="resetTablePreferences"
               class="text-xs text-gray-600 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 font-medium"
             >
               Restaurar predeterminadas
@@ -84,8 +85,8 @@
           >
             <input
               type="checkbox"
-              v-model="visibleColumns"
-              :value="column.key"
+              :checked="visibleColumns.includes(column.key)"
+              @change="columnVisibility.toggleColumnVisibility(column.key)"
               class="w-4 h-4 text-blue-600 border-gray-300 dark:border-gray-600 rounded focus:ring-blue-500"
             />
             <span class="text-sm text-gray-700 dark:text-gray-300">{{ column.label }}</span>
@@ -174,9 +175,13 @@
 
 <script setup lang="ts">
 import { ref, computed, watch } from '@vue/reactivity'
+import { NUMBER_LOCALE } from '@/plugins/locale'
+import { formatDate } from '../utils/formatters'
 import type { OrdenCompraLog } from '../types'
 import { isSapError, getSapErrorMessage } from '../composables/useSapErrorMessages'
 import { useTablePreferences } from '@/composables/useTablePreferences'
+import { useColumnVisibilityToggle } from '../composables/useColumnVisibilityToggle'
+import { useColumnDragAndDrop } from '../composables/useColumnDragAndDrop'
 import LoadingSpinner from './LoadingSpinner.vue'
 
 const props = defineProps<{
@@ -186,7 +191,6 @@ const props = defineProps<{
 }>()
 
 const searchQuery = ref('')
-const showColumnSelector = ref(false)
 
 // Ordenamiento
 const sortField = ref<string | null>(null)
@@ -297,6 +301,14 @@ watch(allAvailableColumns, (newColumns: { key: string; label: string; default: b
   columnOrder.value = [...currentOrder, ...missingInOrder]
 }, { deep: true })
 
+// Selector de columnas: estado abierto/cerrado, click-outside y toggle de visibilidad
+// (lógica compartida vía composable; sin mínimo obligatorio de columnas visibles, igual que hoy)
+const columnVisibility = useColumnVisibilityToggle({
+  columns: allAvailableColumns,
+  visibleColumns,
+  enforceMinVisible: false
+})
+
 // Computed para contar columnas visibles
 const visibleColumnsCount = computed(() => visibleColumns.value.length)
 
@@ -317,71 +329,17 @@ const logColumns = computed(() => {
   return allAvailableColumns.value
 })
 
-// Funciones de utilidad para manejo de columnas
-function selectAllColumns() {
-  const allKeys = allAvailableColumns.value.map((col: { key: string }) => col.key)
-  visibleColumns.value = [...allKeys]
-  columnOrder.value = [...allKeys]
-}
-
-function resetColumns() {
-  resetTablePreferences()
-}
-
-// Funciones para drag and drop
-const draggedColumn = ref<string | null>(null)
-const dragOverColumn = ref<string | null>(null)
-
-function handleDragStart(event: DragEvent, columnKey: string) {
-  draggedColumn.value = columnKey
-  if (event.dataTransfer) {
-    event.dataTransfer.effectAllowed = 'move'
-    event.dataTransfer.setData('text/plain', columnKey)
-  }
-}
-
-function handleDragOver(event: DragEvent, columnKey: string) {
-  event.preventDefault()
-  if (event.dataTransfer) {
-    event.dataTransfer.dropEffect = 'move'
-  }
-  dragOverColumn.value = columnKey
-}
-
-function handleDragLeave() {
-  dragOverColumn.value = null
-}
-
-function handleDrop(event: DragEvent, targetColumnKey: string) {
-  event.preventDefault()
-  
-  if (!draggedColumn.value || draggedColumn.value === targetColumnKey) {
-    draggedColumn.value = null
-    dragOverColumn.value = null
-    return
-  }
-  
-  // Reordenar columnas
-  const currentOrder = [...columnOrder.value]
-  const draggedIndex = currentOrder.indexOf(draggedColumn.value)
-  const targetIndex = currentOrder.indexOf(targetColumnKey)
-  
-  if (draggedIndex !== -1 && targetIndex !== -1) {
-    // Remover la columna arrastrada
-    currentOrder.splice(draggedIndex, 1)
-    // Insertar en la nueva posición
-    currentOrder.splice(targetIndex, 0, draggedColumn.value)
-    columnOrder.value = currentOrder
-  }
-  
-  draggedColumn.value = null
-  dragOverColumn.value = null
-}
-
-function handleDragEnd() {
-  draggedColumn.value = null
-  dragOverColumn.value = null
-}
+// Drag and drop de columnas (lógica compartida vía composable). No se pasa `persist`: columnOrder
+// viene de useTablePreferences, cuyo propio watcher ya persiste (igual que hoy).
+const {
+  draggedColumn,
+  dragOverColumn,
+  handleDragStart,
+  handleDragOver,
+  handleDragLeave,
+  handleDrop,
+  handleDragEnd
+} = useColumnDragAndDrop({ columnOrder })
 
 // Función para obtener el valor de un log
 // Función para detectar problemas en una fila de log de orden de compra
@@ -490,7 +448,7 @@ function formatLogValue(log: OrdenCompraLog, columnKey: string): string {
     }
     
     // Otros números con formato estándar
-    return value.toLocaleString('es-ES')
+    return value.toLocaleString(NUMBER_LOCALE)
   }
   
   // Si es un booleano, mostrar texto
@@ -616,22 +574,6 @@ function sortBy(field: string) {
   } else {
     sortField.value = field
     sortDirection.value = 'asc'
-  }
-}
-
-function formatDate(dateString: string): string {
-  if (!dateString) return '-'
-  try {
-    const date = new Date(dateString)
-    if (isNaN(date.getTime())) {
-      return dateString
-    }
-    const day = String(date.getDate()).padStart(2, '0')
-    const month = String(date.getMonth() + 1).padStart(2, '0')
-    const year = date.getFullYear()
-    return `${day}/${month}/${year}`
-  } catch {
-    return dateString
   }
 }
 

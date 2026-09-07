@@ -67,6 +67,25 @@ export default {
           900: '#312e81',
           950: '#1e1b4b',
         },
+        // Escala nueva (no remapea nada existente) para "estados de error" en badges de
+        // listados: mezcla rojo/naranja (vermellón) generada a partir de un color base
+        // (500), para no reusar 'red' puro (reservado a Cancelado/Rechazado) ni 'orange'
+        // puro (reservado a "requiere acción"). Uso: bg-vermilion-100 text-vermilion-800
+        // dark:bg-vermilion-900/50 dark:text-vermilion-200 (ver getEstadoPedidoBadgeClass
+        // en utils/styleHelpers.ts).
+        vermilion: {
+          50: '#fff3f0',
+          100: '#ffe1d9',
+          200: '#fec3b0',
+          300: '#fd9b79',
+          400: '#f66f45',
+          500: '#e8491f',
+          600: '#c93815',
+          700: '#a32d12',
+          800: '#852912',
+          900: '#6e2712',
+          950: '#3b1207',
+        },
       },
       // ── Sombras y profundidad (tokens reutilizables) ──
       // Card: sombra larga muy suave para tarjetas/paneles (profundidad sutil).

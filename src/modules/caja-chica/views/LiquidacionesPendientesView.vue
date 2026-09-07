@@ -94,6 +94,7 @@ import { onMounted, ref } from 'vue'
 import { cajaChicaApi } from '../services/cajaChicaApi'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { APP_LOCALE } from '@/plugins/locale'
 
 const authStore = useAuthStore()
 

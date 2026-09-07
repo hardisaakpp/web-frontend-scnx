@@ -12,11 +12,23 @@
                         {{ isEdit ? `Modificando: ${route.params.itemCode}` : 'Completa los campos del nuevo artículo' }}
                     </p>
                 </div>
-                <router-link
-                    class="rounded border border-gray-200 dark:border-gray-700 text-sm px-3 py-1.5 hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300 transition-colors"
-                    to="/articulo-maestro/lista">
-                    ← Volver a la Lista
-                </router-link>
+                <div class="flex items-center gap-3">
+                    <button
+                        class="p-1.5 text-gray-500 hover:text-gray-700 bg-white border border-gray-300 rounded hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-400 dark:border-gray-600 dark:hover:bg-gray-700 transition-colors shadow-sm"
+                        @click="showKeyboardHelp = true"
+                        type="button"
+                        title="Atajos de teclado"
+                    >
+                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6A2.25 2.25 0 0 1 6 3.75h12A2.25 2.25 0 0 1 20.25 6v12a2.25 2.25 0 0 1-2.25 2.25H6A2.25 2.25 0 0 1 3.75 18V6ZM7.5 9h.008v.008H7.5V9Zm3 0h.008v.008H10.5V9Zm3 0h.008v.008H13.5V9Zm3 0h.008v.008H16.5V9Zm-9 3h.008v.008H7.5V12Zm3 0h.008v.008H10.5V12Zm3 0h.008v.008H13.5V12Zm3 0h.008v.008H16.5V12Zm-6 3h.008v.008H10.5V15Zm3 0h.008v.008H13.5V15Z" />
+                        </svg>
+                    </button>
+                    <router-link
+                        class="rounded border border-gray-200 dark:border-gray-700 text-sm px-3 py-1.5 hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300 transition-colors"
+                        to="/articulo-maestro/lista">
+                        ← Volver a la Lista
+                    </router-link>
+                </div>
             </div>
 
             <!-- Loading state (edit mode fetching) -->
@@ -58,24 +70,72 @@
                         </button>
                     </div>
 
+                    <!-- Banner de Bloqueo Estructural -->
+                    <div v-if="isEdit && form.isStructuralLocked" class="m-6 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 p-4 flex gap-3">
+                        <svg class="w-6 h-6 text-amber-600 dark:text-amber-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                        <div>
+                            <h4 class="text-sm font-bold text-amber-800 dark:text-amber-300">Artículo sincronizado con SAP / con historial contable</h4>
+                            <p class="text-xs text-amber-700 dark:text-amber-400 mt-1">Los parámetros estructurales se encuentran bloqueados para proteger la integridad de datos: Categoría, Línea, Atributo Único y Gestión por Lotes ya no pueden modificarse en este artículo.</p>
+                        </div>
+                    </div>
+
                     <!-- Tab: General -->
                     <div v-show="activeTab === 'general'" class="p-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div class="form-field" :class="{ required: !isEdit }">
+                        <div class="form-field">
                             <label for="formItemCode">Código Interno (ItemCode)</label>
-                            <input id="formItemCode" v-model="form.itemCode" type="text" :disabled="isEdit" :required="!isEdit" placeholder="Ej: ART-001" />
-                            <span v-if="isEdit" class="help">El código no puede cambiarse en edición.</span>
-                        </div>
-                        <div class="form-field required">
-                            <label for="formItemName">Descripción Factura (ItemName)</label>
-                            <input id="formItemName" v-model="form.itemName" type="text" required placeholder="Nombre del artículo" />
+                            <input id="formItemCode" :value="form.itemCode" type="text" disabled placeholder="[Generación Automática en Backend]" />
+                            <span class="help">{{ isEdit ? LOCK_REASON.identidadItemCode : 'Se genera automáticamente al crear.' }}</span>
                         </div>
                         <div class="form-field">
+                            <label for="formItemName">Descripción Factura (ItemName)</label>
+                            <input id="formItemName" v-model="form.itemName" type="text" maxlength="50" placeholder="Se sugiere automáticamente; puede editarla" />
+                            <span class="help">Sugerido: Línea + Género + Marca + Atributo + Color + Pack. Editable: sus cambios no se sobrescriben.</span>
+                        </div>
+
+                        <!-- Nuevos campos SIS-CCPYTD-00014 -->
+                        <div class="form-field sm:col-span-2 flex flex-row flex-wrap items-center gap-3 bg-gray-50 dark:bg-gray-900 p-3 rounded-lg border border-gray-200 dark:border-gray-700">
+                            <input id="formTieneCodigoProveedor" v-model="form.tieneCodigoProveedor" type="checkbox" class="w-5 h-5 text-blue-600 rounded border-gray-300" :disabled="isEdit" :title="isEdit ? LOCK_REASON.barCodeSellado : ''" />
+                            <label for="formTieneCodigoProveedor" class="!text-sm !m-0 !font-medium">¿El producto posee código de barras del proveedor?</label>
+                            <span v-if="isEdit" class="help w-full text-amber-600 dark:text-amber-400">{{ LOCK_REASON.barCodeSellado }}</span>
+                        </div>
+                        <div class="form-field" :class="{ required: form.tieneCodigoProveedor }">
                             <label for="formBarCode">Código de Barras</label>
-                            <input id="formBarCode" v-model="form.barCode" type="text" placeholder="EAN / UPC" />
+                            <input
+                                id="formBarCode"
+                                :value="form.barCode"
+                                @input="onBarCodeInput($event)"
+                                type="text"
+                                inputmode="numeric"
+                                maxlength="15"
+                                :required="form.tieneCodigoProveedor"
+                                :placeholder="form.tieneCodigoProveedor ? 'Ingrese EAN/UPC (8 a 15 dígitos)' : '[Asignación Automática desde Bolsa]'"
+                                :disabled="isEdit || !form.tieneCodigoProveedor"
+                                :title="isEdit ? LOCK_REASON.barCodeSellado : ''"
+                            />
+                            <span v-if="isEdit" class="help">{{ LOCK_REASON.barCodeSellado }}</span>
+                            <span v-else-if="form.tieneCodigoProveedor" class="help">Solo dígitos, estándar EAN/UPC (8 a 15 caracteres).</span>
+                        </div>
+                        <div class="form-field">
+                            <label for="formCodigoAlterno">Código Alterno</label>
+                            <div class="flex items-center gap-2">
+                                <input id="formCodigoAlterno" :value="form.codigoAlterno" type="text" disabled class="flex-1" placeholder="Se genera automáticamente al crear" />
+                                <button
+                                    v-if="isEdit && puedePromoverAlterno"
+                                    type="button"
+                                    :disabled="promoviendo"
+                                    @click="handlePromoverAlterno"
+                                    class="shrink-0 px-3 py-2 text-xs font-medium rounded-lg border border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 disabled:opacity-60 transition-colors whitespace-nowrap"
+                                    title="Reemplaza el ItemCode actual por este Código Alterno"
+                                >
+                                    {{ promoviendo ? 'Promoviendo...' : 'Promover a Código Principal' }}
+                                </button>
+                            </div>
+                            <span class="help">No editable: solo cambia con "Promover a Código Principal".</span>
                         </div>
                         <div class="form-field">
                             <label for="formSkuSinTalla">Referencia / SKU sin talla</label>
-                            <input id="formSkuSinTalla" v-model="form.uSxxSkuSinTalla" type="text" placeholder="Código padre / referencia" />
+                            <input id="formSkuSinTalla" :value="form.uSxxSkuSinTalla" type="text" disabled placeholder="[Generación Automática en Backend]" :title="LOCK_REASON.skuSelladoAlCrear" />
+                            <span class="help">{{ isEdit ? LOCK_REASON.skuSelladoAlCrear : 'Se genera automáticamente al crear (ItemCode sin el sufijo de talla).' }}</span>
                         </div>
                         <div class="form-field">
                             <label for="selectTalla">Talla</label>
@@ -84,7 +144,11 @@
                                 v-model="form.uIxxTalla"
                                 :options="cats.talla"
                                 placeholder="Seleccionar talla..."
+                                valueKey="nombre"
+                                :disabled="isEdit"
+                                :title="isEdit ? LOCK_REASON.tallaInmutable : ''"
                             />
+                            <span v-if="isEdit" class="help">{{ LOCK_REASON.tallaInmutable }}</span>
                         </div>
                         <div class="form-field">
                             <label for="selectGenero">Género</label>
@@ -93,7 +157,11 @@
                                 v-model="form.uGen"
                                 :options="cats.genero"
                                 placeholder="Seleccionar género..."
+                                valueKey="nombre"
+                                :disabled="isEdit"
+                                :title="isEdit ? LOCK_REASON.generoInmutable : ''"
                             />
+                            <span v-if="isEdit" class="help">{{ LOCK_REASON.generoInmutable }}</span>
                         </div>
 
                         <div class="form-field sm:col-span-2">
@@ -115,13 +183,23 @@
                                 v-model="form.uIxxMarca"
                                 :options="cats.negocio"
                                 placeholder="Seleccionar negocio..."
+                                valueKey="nombre"
                                 required
+                                :disabled="isEdit"
+                                :title="isEdit ? LOCK_REASON.negocioInmutable : ''"
                             />
+                            <span v-if="isEdit" class="help">{{ LOCK_REASON.negocioInmutable }}</span>
+                            <small
+                                v-if="!isEdit && showValidationErrors && !form.uIxxMarca"
+                                class="text-red-500 text-xs font-semibold mt-1"
+                            >
+                                Debe seleccionar un Negocio para generar el código del producto.
+                            </small>
                         </div>
 
-                        <div class="form-field">
+                        <div class="form-field required">
                             <label for="formMarca">Marca</label>
-                            <input id="formMarca" v-model="form.uMarca" type="text" placeholder="Ej: ROLLY" />
+                            <input id="formMarca" v-model="form.uMarca" type="text" placeholder="Ej: ROLLY" required />
                         </div>
 
                         <!-- Jerarquía en cascada: Sección → Categoría → Línea -->
@@ -134,7 +212,10 @@
                                 placeholder="Seleccionar sección..."
                                 @change="onSeccionChange"
                                 valueKey="nombre"
+                                :disabled="isEdit"
+                                :title="isEdit ? LOCK_REASON.seccionInmutable : ''"
                             />
+                            <span v-if="isEdit" class="help">{{ LOCK_REASON.seccionInmutable }}</span>
                         </div>
                         <div class="form-field">
                             <label for="selectCategoria">Categoría (U_NV2)</label>
@@ -143,10 +224,12 @@
                                 v-model="form.uNv2"
                                 :options="cats.categorias"
                                 placeholder="Seleccionar categoría..."
-                                :disabled="!form.uNv1"
+                                :disabled="!form.uNv1 || form.isStructuralLocked"
+                                :title="form.isStructuralLocked ? LOCK_REASON.historialSap : ''"
                                 @change="onCategoriaChange"
                                 valueKey="nombre"
                             />
+                            <span v-if="form.isStructuralLocked" class="help text-amber-600 dark:text-amber-400">{{ LOCK_REASON.historialSap }}</span>
                         </div>
                         <div class="form-field">
                             <label for="selectLinea">Línea (U_NV3)</label>
@@ -155,9 +238,11 @@
                                 v-model="form.uNv3"
                                 :options="cats.lineas"
                                 placeholder="Seleccionar línea..."
-                                :disabled="!form.uNv2"
+                                :disabled="!form.uNv2 || form.isStructuralLocked"
+                                :title="form.isStructuralLocked ? LOCK_REASON.historialSap : ''"
                                 valueKey="nombre"
                             />
+                            <span v-if="form.isStructuralLocked" class="help text-amber-600 dark:text-amber-400">{{ LOCK_REASON.historialSap }}</span>
                         </div>
 
                         <div class="form-field">
@@ -167,6 +252,7 @@
                                 v-model="form.uNomColeccion"
                                 :options="cats.coleccion"
                                 placeholder="Seleccionar colección..."
+                                valueKey="nombre"
                             />
                         </div>
                         <div class="form-field">
@@ -176,6 +262,7 @@
                                 v-model="form.uReposicion"
                                 :options="cats.permanencia"
                                 placeholder="Seleccionar estatus..."
+                                valueKey="nombre"
                             />
                         </div>
                         <div class="form-field">
@@ -185,6 +272,7 @@
                                 v-model="form.uCanalVenta"
                                 :options="cats.canal"
                                 placeholder="Seleccionar canal..."
+                                valueKey="nombre"
                             />
                         </div>
                         <div class="form-field">
@@ -194,6 +282,7 @@
                                 v-model="form.uRegion"
                                 :options="cats.region"
                                 placeholder="Seleccionar región..."
+                                valueKey="nombre"
                             />
                         </div>
 
@@ -210,7 +299,10 @@
                                 placeholder="Seleccionar color..."
                                 @change="onColorPrimarioChangeManual"
                                 valueKey="codigo"
+                                :disabled="isEdit"
+                                :title="isEdit ? LOCK_REASON.colorSellado : ''"
                             />
+                            <span v-if="isEdit" class="help">{{ LOCK_REASON.colorSellado }}</span>
                         </div>
                         <div class="form-field">
                             <label for="formCodColorDisplay">Cód. Color Primario</label>
@@ -226,7 +318,10 @@
                                 placeholder="Seleccionar color..."
                                 @change="onColorSecundarioChangeManual"
                                 valueKey="codigo"
+                                :disabled="isEdit"
+                                :title="isEdit ? LOCK_REASON.colorSellado : ''"
                             />
+                            <span v-if="isEdit" class="help">{{ LOCK_REASON.colorSellado }}</span>
                         </div>
 
                         <div class="form-field">
@@ -236,14 +331,18 @@
                         </div>
                         <div class="form-field">
                             <label for="formMaterial">Material</label>
-                            <input id="formMaterial" v-model="form.uIxxMaterial" type="text" placeholder="Tela, Cuero, Sintético..." />
+                            <input id="formMaterial" v-model="form.uIxxMaterial" type="text" placeholder="Tela, Cuero, Sintético..." :disabled="isEdit" :title="isEdit ? LOCK_REASON.materialSellado : ''" />
+                            <span v-if="isEdit" class="help">{{ LOCK_REASON.materialSellado }}</span>
                         </div>
                         <div class="form-field">
                             <label for="formComposicion">Composición</label>
-                            <input id="formComposicion" v-model="form.uIxxComposicion" type="text" placeholder="80% Algodón 20% Poliéster" />
+                            <input id="formComposicion" v-model="form.uIxxComposicion" type="text" placeholder="80% Algodón 20% Poliéster" :disabled="isEdit" :title="isEdit ? LOCK_REASON.materialSellado : ''" />
+                            <span v-if="isEdit" class="help">{{ LOCK_REASON.materialSellado }}</span>
                         </div>
 
-                        <!-- Cascada: Línea de Atributo → Atributo Único -->
+                        <!-- Cascada: Línea de Atributo → Atributo Único. El disabled de la
+                             línea sigue al de su Atributo Único (mismo criterio: historial SAP),
+                             para no dejar seleccionable un padre cuyo hijo ya está bloqueado. -->
                         <div class="form-field">
                             <label for="selectLineaAtributo">Línea de Atributo</label>
                             <SearchableSelect
@@ -253,7 +352,10 @@
                                 placeholder="Seleccionar línea..."
                                 @change="onLineaAtributoChange"
                                 valueKey="nombre"
+                                :disabled="form.isStructuralLocked"
+                                :title="form.isStructuralLocked ? LOCK_REASON.historialSap : ''"
                             />
+                            <span v-if="form.isStructuralLocked" class="help text-amber-600 dark:text-amber-400">{{ LOCK_REASON.historialSap }}</span>
                         </div>
                         <div class="form-field">
                             <label for="selectAtributo">Atributo Único Textil/Calzado</label>
@@ -262,9 +364,11 @@
                                 v-model="form.uAtrMed"
                                 :options="cats.atributos"
                                 placeholder="Seleccionar atributo..."
-                                :disabled="!selectedLineaAtributo"
+                                :disabled="!selectedLineaAtributo || form.isStructuralLocked"
+                                :title="form.isStructuralLocked ? LOCK_REASON.historialSap : ''"
                                 valueKey="nombre"
                             />
+                            <span v-if="form.isStructuralLocked" class="help text-amber-600 dark:text-amber-400">{{ LOCK_REASON.historialSap }}</span>
                         </div>
 
                         <div class="form-field">
@@ -277,7 +381,8 @@
                     <div v-show="activeTab === 'log'" class="p-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div class="form-field">
                             <label for="formCodPvr">Código Proveedor</label>
-                            <input id="formCodPvr" v-model="form.uCodPvr" type="text" placeholder="Código del proveedor" />
+                            <input id="formCodPvr" v-model="form.uCodPvr" type="text" placeholder="Código del proveedor" :disabled="isEdit" :title="isEdit ? LOCK_REASON.procedenciaSellada : ''" />
+                            <span v-if="isEdit" class="help">{{ LOCK_REASON.procedenciaSellada }}</span>
                         </div>
                         <div class="form-field">
                             <label for="selectOrigen">Origen de Compra</label>
@@ -286,7 +391,11 @@
                                 v-model="form.uOrigen"
                                 :options="cats.origen"
                                 placeholder="Seleccionar origen..."
+                                valueKey="nombre"
+                                :disabled="isEdit"
+                                :title="isEdit ? LOCK_REASON.procedenciaSellada : ''"
                             />
+                            <span v-if="isEdit" class="help">{{ LOCK_REASON.procedenciaSellada }}</span>
                         </div>
                         <div class="form-field">
                             <label for="selectPais">País de Origen</label>
@@ -295,7 +404,11 @@
                                 v-model="form.uPOri"
                                 :options="cats.pais"
                                 placeholder="Seleccionar país..."
+                                valueKey="nombre"
+                                :disabled="isEdit"
+                                :title="isEdit ? LOCK_REASON.procedenciaSellada : ''"
                             />
+                            <span v-if="isEdit" class="help">{{ LOCK_REASON.procedenciaSellada }}</span>
                         </div>
 
                         <div class="form-field">
@@ -313,6 +426,7 @@
                                 v-model="form.uTipAbs"
                                 :options="cats.envio"
                                 placeholder="Seleccionar tipo..."
+                                valueKey="nombre"
                             />
                         </div>
 
@@ -330,11 +444,24 @@
                         </div>
                         <div class="form-field">
                             <label for="formPrice">PVP (Precio)</label>
-                            <input id="formPrice" v-model.number="form.price" type="number" step="0.01" placeholder="0.00" min="0" />
+                            <input id="formPrice" :value="form.price ?? ''" @input="onPvpInput($event)" @blur="onPvpBlur" type="number" step="0.01" placeholder="0.00" min="0" />
                         </div>
+                        <fieldset class="form-field sm:col-span-2 flex flex-col gap-2 bg-gray-50 dark:bg-gray-900 p-3 rounded-lg border border-gray-200 dark:border-gray-700">
+                            <legend class="!text-sm !m-0 !p-0 !font-medium">Listas de Precios Aplicables</legend>
+                            <div class="flex items-center gap-6">
+                                <div class="flex items-center gap-2">
+                                    <input id="formAplicaPrecioMinorista" v-model="form.aplicaPrecioMinorista" @change="onPrecioListasChange('minorista')" type="checkbox" class="w-4 h-4 text-blue-600 rounded border-gray-300" />
+                                    <label for="formAplicaPrecioMinorista" class="!text-sm !m-0">Minorista</label>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <input id="formAplicaPrecioInternacional" v-model="form.aplicaPrecioInternacional" @change="onPrecioListasChange('internacional')" type="checkbox" class="w-4 h-4 text-blue-600 rounded border-gray-300" />
+                                    <label for="formAplicaPrecioInternacional" class="!text-sm !m-0">Internacional</label>
+                                </div>
+                            </div>
+                        </fieldset>
                         <div class="form-field">
-                            <label for="formPrArq">Costo de Arranque</label>
-                            <input id="formPrArq" v-model.number="form.uPrArq" type="number" step="0.01" placeholder="0.00" />
+                            <label for="formCostoArranque">Costo de Arranque</label>
+                            <input id="formCostoArranque" :value="form.uPrArq ?? ''" @input="onCostoArranqueInput($event)" @blur="onCostoArranqueBlur" type="number" step="0.01" min="0" placeholder="0.00" />
                         </div>
                         <div class="form-field">
                             <label for="selectLiquidacion">Liquidación</label>
@@ -343,152 +470,248 @@
                                 v-model="form.uLiq"
                                 :options="cats.liquidacion"
                                 placeholder="Seleccionar..."
+                                valueKey="nombre"
                             />
                         </div>
-
+                        <div class="form-field sm:col-span-2 flex flex-row items-center gap-3 bg-gray-50 dark:bg-gray-900 p-3 rounded-lg border border-gray-200 dark:border-gray-700">
+                            <input id="formAplicaEcommerce" v-model="form.aplicaEcommerce" type="checkbox" class="w-5 h-5 text-blue-600 rounded border-gray-300" />
+                            <label for="formAplicaEcommerce" class="!text-sm !m-0 !font-medium">Aplica para E-commerce</label>
+                        </div>
                     </div>
 
                     <!-- Tab: Config. SAP / Impuestos -->
                     <div v-show="activeTab === 'sap'" class="p-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div class="form-field required">
                             <label for="formItemType">Tipo de Artículo (ItemType)</label>
-                            <input id="formItemType" v-model="form.itemType" type="text" required placeholder="itItems" />
+                            <select id="formItemType" v-model="form.itemType" required :disabled="isEdit" :title="isEdit ? LOCK_REASON.estructuralSap : ''">
+                                <option value="I">I - Artículo de inventario</option>
+                                <option value="L">L - Mano de obra</option>
+                                <option value="T">T - Viaje</option>
+                            </select>
+                            <span v-if="isEdit" class="help">{{ LOCK_REASON.estructuralSap }}</span>
                         </div>
                         <div class="form-field required">
                             <label for="formItemsGroupCode">Grupo de Artículos (ItemsGroupCode)</label>
-                            <input id="formItemsGroupCode" v-model.number="form.itemsGroupCode" type="number" required placeholder="100" />
+                            <input id="formItemsGroupCode" v-model.number="form.itemsGroupCode" type="number" required placeholder="100" :disabled="isEdit" :title="isEdit ? LOCK_REASON.estructuralSap : ''" />
+                            <span v-if="isEdit" class="help">{{ LOCK_REASON.estructuralSap }}</span>
                         </div>
                         <div class="form-field">
                             <label for="formCostAccounting">Sistema de Evaluación</label>
-                            <select id="formCostAccounting" v-model="form.costAccountingMethod">
-                                <option value="A">A - Promedio</option>
-                                <option value="S">S - Estándar</option>
-                                <option value="F">F - FIFO</option>
+                            <select
+                                id="formCostAccounting"
+                                v-model="form.costAccountingMethod"
+                                :disabled="isEdit"
+                                :title="isEdit ? LOCK_REASON.sapRechazaCambio : ''"
+                            >
+                                <option v-for="opt in OPCIONES_COST_ACCOUNTING" :key="opt.value" :value="opt.value" :title="opt.description">
+                                    {{ opt.label }}
+                                </option>
                             </select>
+                            <span v-if="isEdit" class="help">{{ LOCK_REASON.sapRechazaCambio }}</span>
                         </div>
                         <div class="form-field">
                             <label for="formGlMethod">GL Method</label>
-                            <select id="formGlMethod" v-model="form.glMethod">
+                            <select
+                                id="formGlMethod"
+                                v-model="form.glMethod"
+                                :disabled="isEdit"
+                                :title="isEdit ? LOCK_REASON.sapRechazaCambio : ''"
+                            >
                                 <option value="C">C - Clase de Artículo</option>
                                 <option value="W">W - Almacén</option>
                             </select>
+                            <span v-if="isEdit" class="help">{{ LOCK_REASON.sapRechazaCambio }}</span>
                         </div>
                         <div class="form-field">
                             <label for="formInventoryItem">Artículo de Inventario</label>
-                            <select id="formInventoryItem" v-model="form.inventoryItem">
+                            <select id="formInventoryItem" v-model="form.inventoryItem" :disabled="isEdit" :title="isEdit ? LOCK_REASON.estructuralSap : ''">
                                 <option value="Y">Y - Sí</option>
                                 <option value="N">N - No</option>
                             </select>
+                            <span v-if="isEdit" class="help">{{ LOCK_REASON.estructuralSap }}</span>
                         </div>
                         <div class="form-field">
                             <label for="formSalesItem">Artículo de Venta</label>
-                            <select id="formSalesItem" v-model="form.salesItem">
+                            <select id="formSalesItem" v-model="form.salesItem" :disabled="isEdit" :title="isEdit ? LOCK_REASON.estructuralSap : ''">
                                 <option value="Y">Y - Sí</option>
                                 <option value="N">N - No</option>
                             </select>
+                            <span v-if="isEdit" class="help">{{ LOCK_REASON.estructuralSap }}</span>
                         </div>
                         <div class="form-field">
                             <label for="formPurchaseItem">Artículo de Compra</label>
-                            <select id="formPurchaseItem" v-model="form.purchaseItem">
+                            <select id="formPurchaseItem" v-model="form.purchaseItem" :disabled="isEdit" :title="isEdit ? LOCK_REASON.estructuralSap : ''">
                                 <option value="Y">Y - Sí</option>
                                 <option value="N">N - No</option>
                             </select>
+                            <span v-if="isEdit" class="help">{{ LOCK_REASON.estructuralSap }}</span>
                         </div>
                         <div class="form-field">
                             <label for="formManageStock">Gestión por Almacén</label>
-                            <select id="formManageStock" v-model="form.manageStockByWarehouse">
+                            <select id="formManageStock" v-model="form.manageStockByWarehouse" :disabled="isEdit" :title="isEdit ? LOCK_REASON.parametroSapSellado : ''">
                                 <option value="Y">Y - Sí</option>
                                 <option value="N">N - No</option>
                             </select>
+                            <span v-if="isEdit" class="help">{{ LOCK_REASON.parametroSapSellado }}</span>
                         </div>
                         <div class="form-field">
                             <label for="formVatLiable">IVA (VATLiable)</label>
-                            <select id="formVatLiable" v-model="form.vatLiable">
+                            <select
+                                id="formVatLiable"
+                                v-model="form.vatLiable"
+                                :disabled="isEdit"
+                                :title="isEdit ? LOCK_REASON.sapRechazaCambio : ''"
+                            >
                                 <option value="Y">Y - Sí</option>
                                 <option value="N">N - No</option>
                             </select>
+                            <span v-if="isEdit" class="help">{{ LOCK_REASON.sapRechazaCambio }}</span>
                         </div>
                         <div class="form-field">
                             <label for="formWtLiable">Retención (WTLiable)</label>
-                            <select id="formWtLiable" v-model="form.wtLiable">
+                            <select
+                                id="formWtLiable"
+                                v-model="form.wtLiable"
+                                :disabled="isEdit"
+                                :title="isEdit ? LOCK_REASON.sapRechazaCambio : ''"
+                            >
                                 <option value="Y">Y - Sí</option>
                                 <option value="N">N - No</option>
                             </select>
+                            <span v-if="isEdit" class="help">{{ LOCK_REASON.sapRechazaCambio }}</span>
                         </div>
                         <div class="form-field">
                             <label for="formIndirectTax">Impuesto Indirecto</label>
-                            <select id="formIndirectTax" v-model="form.indirectTax">
+                            <select id="formIndirectTax" v-model="form.indirectTax" :disabled="isEdit" :title="isEdit ? LOCK_REASON.parametroSapSellado : ''">
                                 <option value="Y">Y - Sí</option>
                                 <option value="N">N - No</option>
                             </select>
+                            <span v-if="isEdit" class="help">{{ LOCK_REASON.parametroSapSellado }}</span>
                         </div>
                         <div class="form-field">
                             <label for="formArTaxCode">Código Impuesto AR</label>
-                            <input id="formArTaxCode" v-model="form.arTaxCode" type="text" placeholder="IVA, IVAI..." />
+                            <input id="formArTaxCode" v-model="form.arTaxCode" type="text" placeholder="IVA, IVAI..." :disabled="isEdit" :title="isEdit ? LOCK_REASON.parametroSapSellado : ''" />
+                            <span v-if="isEdit" class="help">{{ LOCK_REASON.parametroSapSellado }}</span>
                         </div>
                         <div class="form-field">
                             <label for="formApTaxCode">Código Impuesto AP</label>
-                            <input id="formApTaxCode" v-model="form.apTaxCode" type="text" placeholder="IVA, IVAI..." />
+                            <input id="formApTaxCode" v-model="form.apTaxCode" type="text" placeholder="IVA, IVAI..." :disabled="isEdit" :title="isEdit ? LOCK_REASON.parametroSapSellado : ''" />
+                            <span v-if="isEdit" class="help">{{ LOCK_REASON.parametroSapSellado }}</span>
                         </div>
                         <div class="form-field">
                             <label for="formPlanningSystem">Sistema de Planificación</label>
-                            <select id="formPlanningSystem" v-model="form.planningSystem">
+                            <select
+                                id="formPlanningSystem"
+                                v-model="form.planningSystem"
+                                :disabled="isEdit"
+                                :title="isEdit ? LOCK_REASON.sapRechazaCambio : ''"
+                            >
                                 <option value="M">M - MRP</option>
                                 <option value="N">N - Ninguno</option>
                             </select>
+                            <span v-if="isEdit" class="help">{{ LOCK_REASON.sapRechazaCambio }}</span>
                         </div>
                         <div class="form-field">
                             <label for="formProcurementMethod">Método de Abastecimiento</label>
-                            <select id="formProcurementMethod" v-model="form.procurementMethod">
+                            <select id="formProcurementMethod" v-model="form.procurementMethod" :disabled="isEdit" :title="isEdit ? LOCK_REASON.parametroSapSellado : ''">
                                 <option value="B">B - Compra</option>
                                 <option value="M">M - Fabricación</option>
                             </select>
+                            <span v-if="isEdit" class="help">{{ LOCK_REASON.parametroSapSellado }}</span>
                         </div>
                         <div class="form-field">
                             <label for="formInventoryUom">Unidad de Medida Inventario</label>
-                            <input id="formInventoryUom" v-model="form.inventoryUom" type="text" placeholder="PAR, UND..." />
+                            <input id="formInventoryUom" v-model="form.inventoryUom" type="text" placeholder="PAR, UND..." :disabled="isEdit" :title="isEdit ? LOCK_REASON.parametroSapSellado : ''" />
+                            <span v-if="isEdit" class="help">{{ LOCK_REASON.parametroSapSellado }}</span>
                         </div>
                         <div class="form-field">
                             <label for="formPurchaseUnit">Unidad de Compra</label>
-                            <input id="formPurchaseUnit" v-model="form.purchaseUnit" type="text" placeholder="PAR, UND..." />
+                            <input id="formPurchaseUnit" v-model="form.purchaseUnit" type="text" placeholder="PAR, UND..." :disabled="isEdit" :title="isEdit ? LOCK_REASON.parametroSapSellado : ''" />
+                            <span v-if="isEdit" class="help">{{ LOCK_REASON.parametroSapSellado }}</span>
                         </div>
                         <div class="form-field">
                             <label for="formPurchaseItemsPerUnit">Unidades por Compra</label>
-                            <input id="formPurchaseItemsPerUnit" v-model.number="form.purchaseItemsPerUnit" type="number" placeholder="1" min="0" />
+                            <input id="formPurchaseItemsPerUnit" v-model.number="form.purchaseItemsPerUnit" type="number" placeholder="1" min="0" :disabled="isEdit" :title="isEdit ? LOCK_REASON.parametroSapSellado : ''" />
+                            <span v-if="isEdit" class="help">{{ LOCK_REASON.parametroSapSellado }}</span>
                         </div>
                         <div class="form-field">
                             <label for="formSalesUnit">Unidad de Venta</label>
-                            <input id="formSalesUnit" v-model="form.salesUnit" type="text" placeholder="PAR, UND..." />
+                            <input id="formSalesUnit" v-model="form.salesUnit" type="text" placeholder="PAR, UND..." :disabled="isEdit" :title="isEdit ? LOCK_REASON.parametroSapSellado : ''" />
+                            <span v-if="isEdit" class="help">{{ LOCK_REASON.parametroSapSellado }}</span>
                         </div>
                         <div class="form-field">
                             <label for="formSalesItemsPerUnit">Unidades por Venta</label>
-                            <input id="formSalesItemsPerUnit" v-model.number="form.salesItemsPerUnit" type="number" placeholder="1" min="0" />
+                            <input id="formSalesItemsPerUnit" v-model.number="form.salesItemsPerUnit" type="number" placeholder="1" min="0" :disabled="isEdit" :title="isEdit ? LOCK_REASON.parametroSapSellado : ''" />
+                            <span v-if="isEdit" class="help">{{ LOCK_REASON.parametroSapSellado }}</span>
                         </div>
                         <div class="form-field">
-                            <label for="formManageBatch">Gestión por Lotes</label>
-                            <select id="formManageBatch" v-model="form.manageBatchNumbers">
+                            <label for="formManageBatch">Gestión por Lotes (ManBtchNum)</label>
+                            <select
+                                id="formManageBatch"
+                                v-model="form.manageBatchNumbers"
+                                :disabled="isEdit && form.isStructuralLocked"
+                                :title="isEdit && form.isStructuralLocked ? LOCK_REASON.historialSapLotes : ''"
+                            >
                                 <option value="N">N - No</option>
                                 <option value="Y">Y - Sí</option>
                             </select>
+                            <span v-if="isEdit && form.isStructuralLocked" class="help text-amber-600 dark:text-amber-400">
+                                {{ LOCK_REASON.historialSapLotes }}
+                            </span>
+                        </div>
+                        <div class="form-field">
+                            <label for="formEstadoProducto">Estado de Producto (SAP)</label>
+                            <!-- Switch UI en vez de select simple -->
+                            <div class="flex items-center gap-3 mt-1 h-[42px]">
+                                <label class="relative inline-flex items-center cursor-pointer">
+                                    <input type="checkbox" id="formEstadoProducto" v-model="form.estadoProducto" class="sr-only peer">
+                                    <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"></div>
+                                    <span class="ml-3 text-sm font-medium text-gray-900 dark:text-gray-300">{{ form.estadoProducto ? 'Activo' : 'Inactivo' }}</span>
+                                </label>
+                            </div>
                         </div>
                         <div class="form-field">
                             <label for="formManufacturer">Fabricante (FirmCode)</label>
-                            <input id="formManufacturer" v-model.number="form.manufacturer" type="number" placeholder="0" />
+                            <input id="formManufacturer" v-model.number="form.manufacturer" type="number" placeholder="0" :disabled="isEdit" :title="isEdit ? LOCK_REASON.parametroSapSellado : ''" />
+                            <span v-if="isEdit" class="help">{{ LOCK_REASON.parametroSapSellado }}</span>
                         </div>
                         <div class="form-field">
                             <label for="formShipType">Tipo de Envío</label>
-                            <input id="formShipType" v-model.number="form.shipType" type="number" placeholder="0" />
+                            <input id="formShipType" v-model.number="form.shipType" type="number" placeholder="0" :disabled="isEdit" :title="isEdit ? LOCK_REASON.parametroSapSellado : ''" />
+                            <span v-if="isEdit" class="help">{{ LOCK_REASON.parametroSapSellado }}</span>
                         </div>
                         <div class="form-field">
                             <label for="formTipoBien">Tipo de Bien</label>
-                            <input id="formTipoBien" v-model="form.uTipoBien" type="text" placeholder="Tipo de bien" />
+                            <input id="formTipoBien" v-model="form.uTipoBien" type="text" placeholder="Tipo de bien" :disabled="isEdit" :title="isEdit ? LOCK_REASON.parametroSapSellado : ''" />
+                            <span v-if="isEdit" class="help">{{ LOCK_REASON.parametroSapSellado }}</span>
                         </div>
+                    </div>
+
+                    <!-- Tab: Imágenes -->
+                    <div v-show="activeTab === 'img'" class="p-6">
+                        <GestorImagenes
+                            ref="gestorImagenesRef"
+                            :item-code="isEdit ? (route.params.itemCode as string) : null"
+                            :images="form.imagenes"
+                            :disabled="submitting"
+                            @update:images="onImagesUpdate"
+                        />
                     </div>
                 </div>
 
                 <!-- Error al guardar -->
                 <div v-if="submitError" class="rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 px-4 py-3 text-sm text-red-700 dark:text-red-400">
                     {{ submitError }}
+                </div>
+                <div v-if="submitSuccess" class="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700 dark:border-emerald-800 dark:bg-emerald-900/20 dark:text-emerald-400">
+                    <span>{{ submitSuccess }}</span>
+                    <router-link
+                        v-if="puedeVerMonitoreoSap"
+                        :to="monitoreoSapLink"
+                        class="shrink-0 font-semibold underline hover:text-emerald-800 dark:hover:text-emerald-300"
+                    >
+                        Ver monitoreo de SAP →
+                    </router-link>
                 </div>
 
                 <!-- Botones de acción -->
@@ -514,6 +737,12 @@
             </form>
         </div>
     </div>
+
+    <KeyboardHelpModal
+        :is-open="showKeyboardHelp"
+        :shortcuts="shortcuts"
+        @close="showKeyboardHelp = false"
+    />
 
     <!-- Validation Modal -->
     <Teleport to="body">
@@ -547,23 +776,61 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { useAuthStore } from '@/stores/auth'
+import { useToast } from '@/composables/useToast'
 import { articuloService, catalogoService } from '../services/articuloService'
-import type { CatalogoItem, JerarquiaItem } from '../services/articuloService'
+import type {
+    CatalogoItem,
+    JerarquiaItem
+} from '../services/articuloService'
+import type { Articulo, ImagenArticuloReferencia } from '../types'
 import SearchableSelect from '../components/SearchableSelect.vue'
+import GestorImagenes from '../components/GestorImagenes.vue'
+import KeyboardHelpModal from '../components/KeyboardHelpModal.vue'
+import { useKeyboardShortcuts } from '../composables/useKeyboardShortcuts'
+import { OPCIONES_COST_ACCOUNTING, DEFAULT_COST_ACCOUNTING } from '../constants/costAccounting'
 
 const route = useRoute()
 const router = useRouter()
+const authStore = useAuthStore()
+const toast = useToast()
+
+const puedeVerMonitoreoSap = computed(() =>
+    authStore.isAdmin || authStore.hasPermission('articulomaestro.migracion')
+)
+// Código del artículo recién creado/editado/promovido, para que el enlace al
+// monitoreo de SAP abra ya filtrado por ese ItemCode en vez de la lista completa.
+const ultimoItemCodeSap = ref('')
+const monitoreoSapLink = computed(() => ({
+    path: '/articulo-maestro/migracion',
+    query: ultimoItemCodeSap.value ? { codigo: ultimoItemCodeSap.value } : {},
+}))
+
+// Mismo destino que "Ver monitoreo de SAP →" del banner in-place (edición
+// sin redirect), pero como acción de toast: los flujos que sí redirigen
+// (creación, promover alterno) no pueden depender del ref reactivo
+// ultimoItemCodeSap/monitoreoSapLink porque el router.replace remonta el
+// componente (:key="route.path" en MainLayout) y ese ref local se pierde
+// antes de que el usuario llegue a hacer clic. Se captura itemCode por
+// valor, no por referencia reactiva.
+function accionMonitoreoSap(itemCode: string) {
+    if (!puedeVerMonitoreoSap.value) return undefined
+    return {
+        label: 'Ver monitoreo de SAP →',
+        onClick: () => router.push({ path: '/articulo-maestro/migracion', query: { codigo: itemCode } })
+    }
+}
 
 const isEdit = computed(() => !!route.params.itemCode)
-
 const tabs = [
     { id: 'general', label: 'General' },
     { id: 'cat',     label: 'Categorización' },
     { id: 'mat',     label: 'Color y Material' },
     { id: 'log',     label: 'Logística y Precios' },
     { id: 'sap',     label: 'Config. SAP / Impuestos' },
+    { id: 'img',     label: 'Imágenes' },
 ]
 const activeTab = ref('general')
 
@@ -571,32 +838,62 @@ const activeTab = ref('general')
 const showValidationErrors = ref(false)
 const showValidationModal = ref(false)
 
+// H08: estándar GS1 (EAN-8/UPC-A/EAN-13/EAN-14) -- solo dígitos, 8 a 15.
+const BAR_CODE_REGEX = /^\d{8,15}$/
+
+// Cubre tanto "vacío" (obligatorio si tieneCodigoProveedor) como "formato
+// inválido" (letras, símbolos, longitud fuera de rango) en un solo lugar,
+// para que tabsWithErrors/validationErrorsList/getFirstErrorTab no puedan
+// desincronizarse entre sí evaluando la regla de forma distinta cada uno.
+function barCodeEsInvalido(): boolean {
+    if (!form.value.tieneCodigoProveedor) return false
+    return !BAR_CODE_REGEX.test((form.value.barCode || '').trim())
+}
+
+// uIxxMarca/itemType/itemsGroupCode son estructurales (ver
+// STRUCTURAL_LOCKED_KEYS/CAMPOS_ESTRUCTURALES_BLOQUEADOS): en edición ya
+// vienen cargados desde el backend y están deshabilitados en pantalla, así
+// que exigirlos aquí solo podía disparar un modal de "campo requerido" al
+// guardar deltas puramente comerciales sobre un artículo que en realidad
+// ya los tiene válidos.
 const tabsWithErrors = computed(() => {
     const errorTabs = new Set<string>()
-    if (!isEdit.value && !form.value.itemCode) errorTabs.add('general')
     if (!form.value.itemName) errorTabs.add('general')
-    if (!form.value.uIxxMarca) errorTabs.add('cat')
-    if (!form.value.itemType) errorTabs.add('sap')
-    if (form.value.itemsGroupCode == null) errorTabs.add('sap')
+    if (barCodeEsInvalido()) errorTabs.add('general')
+    if (!isEdit.value) {
+        if (!form.value.uIxxMarca) errorTabs.add('cat')
+        if (!form.value.itemType) errorTabs.add('sap')
+        if (form.value.itemsGroupCode == null) errorTabs.add('sap')
+    }
     return errorTabs
 })
 
 const validationErrorsList = computed(() => {
     const errors: string[] = []
-    if (!isEdit.value && !form.value.itemCode) errors.push('Código Interno (Tab General)')
     if (!form.value.itemName) errors.push('Descripción Factura (Tab General)')
-    if (!form.value.uIxxMarca) errors.push('Negocio (Tab Categorización)')
-    if (!form.value.itemType) errors.push('Tipo de Artículo (Tab Config. SAP)')
-    if (form.value.itemsGroupCode == null) errors.push('Grupo de Artículos (Tab Config. SAP)')
+    if (barCodeEsInvalido()) {
+        errors.push(
+            form.value.barCode
+                ? 'Código de Barras: debe contener entre 8 y 15 dígitos numéricos (Tab General)'
+                : 'Código de Barras (Tab General)'
+        )
+    }
+    if (!isEdit.value) {
+        if (!form.value.uIxxMarca) errors.push('Negocio (Tab Categorización)')
+        if (!form.value.itemType) errors.push('Tipo de Artículo (Tab Config. SAP)')
+        if (form.value.itemsGroupCode == null) errors.push('Grupo de Artículos (Tab Config. SAP)')
+    }
     return errors
 })
 
 function getFirstErrorTab() {
-    if (!isEdit.value && !form.value.itemCode) return 'general'
     if (!form.value.itemName) return 'general'
-    if (!form.value.uIxxMarca) return 'cat'
-    if (!form.value.itemType) return 'sap'
-    if (form.value.itemsGroupCode == null) return 'sap'
+    if (barCodeEsInvalido()) return 'general'
+    if (!isEdit.value) {
+        if (!form.value.uIxxMarca) return 'cat'
+        if (!form.value.itemType) return 'sap'
+        if (form.value.itemsGroupCode == null) return 'sap'
+    }
     return null
 }
 
@@ -716,6 +1013,79 @@ async function onLineaAtributoChange() {
     }
 }
 
+function onPrecioListasChange(tipo: 'minorista' | 'internacional') {
+    if (!form.value.aplicaPrecioMinorista && !form.value.aplicaPrecioInternacional) {
+        if (tipo === 'minorista') {
+            form.value.aplicaPrecioMinorista = true
+        } else {
+            form.value.aplicaPrecioInternacional = true
+        }
+        alert('Debe seleccionar al menos una lista de precios aplicable.')
+    }
+}
+
+// RF-021/CA-10: Costo de Arranque conserva únicamente dos decimales en toda la app.
+function onCostoArranqueInput(event: Event) {
+    const input = event.target as HTMLInputElement
+    const raw = input.value
+
+    if (raw === '' || raw === '-') {
+        form.value.uPrArq = null
+        return
+    }
+
+    const truncado = raw.match(/^-?\d*(?:\.\d{0,2})?/)?.[0] ?? raw
+    if (truncado !== raw) {
+        input.value = truncado
+    }
+
+    const parsed = Number(truncado)
+    form.value.uPrArq = Number.isNaN(parsed) ? null : Math.round(parsed * 100) / 100
+}
+
+// Red de seguridad al perder el foco: re-redondea por si el navegador dejó
+// pasar un valor con más de 2 decimales (autocompletado, pegado, spinners).
+function onCostoArranqueBlur(): void {
+    if (form.value.uPrArq == null) return
+    form.value.uPrArq = Math.round(form.value.uPrArq * 100) / 100
+}
+
+// PVP homologado con Costo de Arranque: mismo truncado a 2 decimales.
+function onPvpInput(event: Event) {
+    const input = event.target as HTMLInputElement
+    const raw = input.value
+
+    if (raw === '' || raw === '-') {
+        form.value.price = null
+        return
+    }
+
+    const truncado = raw.match(/^-?\d*(?:\.\d{0,2})?/)?.[0] ?? raw
+    if (truncado !== raw) {
+        input.value = truncado
+    }
+
+    const parsed = Number(truncado)
+    form.value.price = Number.isNaN(parsed) ? null : Math.round(parsed * 100) / 100
+}
+
+function onPvpBlur(): void {
+    if (form.value.price == null) return
+    form.value.price = Math.round(form.value.price * 100) / 100
+}
+
+// H08: código de barras GS1 (EAN-8/UPC-A/EAN-13/EAN-14) -- solo dígitos,
+// filtrados en tiempo real igual que PVP/Costo de Arranque arriba, en vez
+// de dejar que el usuario tipee letras y enterarse recién al guardar.
+function onBarCodeInput(event: Event): void {
+    const input = event.target as HTMLInputElement
+    const soloDigitos = input.value.replace(/\D/g, '').slice(0, 15)
+    if (soloDigitos !== input.value) {
+        input.value = soloDigitos
+    }
+    form.value.barCode = soloDigitos
+}
+
 // ─── Formulario ──────────────────────────────────────────────────────────────
 const form = ref({
     itemCode: '',
@@ -756,7 +1126,7 @@ const form = ref({
     uLiq: '',
     itemsGroupCode: null as number | null,
     uIxxMarca: '',
-    itemType: 'itItems',
+    itemType: 'I',
     costAccountingMethod: 'A',
     glMethod: 'C',
     manageStockByWarehouse: 'Y',
@@ -779,151 +1149,509 @@ const form = ref({
     salesUnit: '',
     salesItemsPerUnit: 1,
     uTipoBien: 'B',
-    properties63: 'N',
-    properties64: 'N',
+    // Nuevos campos
+    codigoAlterno: '',
+    tieneCodigoProveedor: false,
+    estadoProducto: true,
+    aplicaEcommerce: false,
+    aplicaPrecioMinorista: true,
+    aplicaPrecioInternacional: false,
+    imagenes: [] as ImagenArticuloReferencia[],
+    isStructuralLocked: false,
+})
+
+// RF-003: Auto-generación de ItemName (Descripción Factura) sin bloquear el
+// input. Solo se sobrescribe mientras el valor actual siga siendo la última
+// sugerencia (o esté vacío); en cuanto el usuario escribe algo distinto,
+// dejamos de pisarlo aunque cambie Marca/Talla/etc. después.
+const ultimoItemNameSugerido = ref('')
+
+function calcularItemNameSugerido(): string {
+    // Buscar descripciones en lugar de usar códigos directamente
+    const n3 = cats.value.lineas.find(l => l.nombre === form.value.uNv3)?.nombre || form.value.uNv3 || ''
+    const genero = cats.value.genero.find(g => g.codigo === String(form.value.uGen))?.nombre || form.value.uGen || ''
+    const marca = form.value.uMarca || ''
+    const atributo = form.value.uAtrMed || ''
+    const color = cats.value.color.find(c => c.codigo === String(form.value.uCodColor))?.nombre || form.value.uCodColor || ''
+    const pack = form.value.uIxxPack || ''
+
+    const parts = [n3, genero, marca, atributo, color, pack].filter(Boolean)
+    return parts.join(' ').toUpperCase().substring(0, 50)
+}
+
+watch([
+    () => form.value.uNv3,
+    () => form.value.uGen,
+    () => form.value.uMarca,
+    () => form.value.uAtrMed,
+    () => form.value.uCodColor,
+    () => form.value.uIxxPack
+], () => {
+    const sugerido = calcularItemNameSugerido()
+    const valorActual = (form.value.itemName || '').trim()
+    const sigueSiendoLaSugerencia = valorActual === '' || valorActual === ultimoItemNameSugerido.value.trim()
+
+    if (sigueSiendoLaSugerencia) {
+        form.value.itemName = sugerido
+    }
+    ultimoItemNameSugerido.value = sugerido
+}, { deep: true })
+
+// H08: al desactivar "Tiene código de proveedor", cualquier valor tipeado
+// en barCode queda huérfano (el backend lo neutraliza igual al guardar,
+// ver ArticuloCreate.validate_supplier_barcode), pero dejarlo visible en
+// pantalla es confuso -- se limpia de inmediato para reflejar que ese
+// campo ya no aplica y que el código real lo asignará la bolsa corporativa.
+watch(() => form.value.tieneCodigoProveedor, (tieneCodigo) => {
+    if (!tieneCodigo) {
+        form.value.barCode = ''
+    }
 })
 
 const loadingData = ref(false)
 const loadError = ref('')
 const submitting = ref(false)
 const submitError = ref('')
+const submitSuccess = ref('')
+const gestorImagenesRef = ref<InstanceType<typeof GestorImagenes> | null>(null)
+
+// ─── Dirty Checking (edición) ──────────────────────────────────────────────
+// Copia inmutable de `form` tomada justo después de que cargarDatosEdicion
+// termina de poblar el formulario y las cascadas de catálogo. handleSubmit
+// compara contra esta copia para enviar en el PATCH únicamente las
+// propiedades que realmente cambiaron.
+const originalSnapshot = ref<typeof form.value | null>(null)
+
+// Campos estructurales de SAP (CAMPOS_ESTRUCTURALES_BLOQUEADOS en el
+// backend): están bloqueados de por vida, no solo mientras el artículo esté
+// sincronizado. El backend rechaza el PATCH completo con 422 si CUALQUIERA
+// de estas claves llega en el body, sin importar si el valor es igual al
+// actual, así que se excluyen siempre en edición, no solo cuando cambian.
+const STRUCTURAL_LOCKED_KEYS = new Set([
+    'itemCode', 'codigoAlterno', 'uIxxMarca',
+    'itemsGroupCode', 'itemType', 'purchaseItem', 'salesItem', 'inventoryItem',
+    'uGen', 'uIxxTalla', 'uNv1'
+])
+
+// Campos que no existen en ArticuloUpdate (o se gestionan por endpoints
+// dedicados): incluirlos en el PATCH también dispara un 422 por extra="forbid".
+const READONLY_KEYS = new Set(['imagenes', 'isStructuralLocked', 'controlSap', 'activo', 'id'])
+
+// ─── Muro de Contención: mensajes de bloqueo de campos ────────────────────
+// Un artículo ya creado, sincronizado con SAP o con historial transaccional
+// restringe la edición de ciertos campos. Se centralizan aquí las razones
+// (en vez de repetir el texto en cada :title/<span>) para que el mensaje
+// mostrado al usuario sea consistente y se pueda ajustar en un solo lugar.
+const LOCK_REASON = {
+    identidadItemCode: 'Este valor compone el ItemCode del artículo y no puede modificarse después de creado.',
+    estructuralSap: 'Es un parámetro estructural de SAP y no puede modificarse una vez creado el artículo.',
+    sapRechazaCambio: 'SAP rechaza este dato si difiere de lo ya existente en una actualización; solo puede definirse al crear el artículo.',
+    historialSap: 'El artículo posee historial en SAP y no puede modificar su estructura.',
+    historialSapLotes: 'Este artículo posee historial en SAP y su gestión por lotes ya no puede modificarse.',
+    negocioInmutable: 'El Negocio define el ItemCode del artículo y no puede modificarse después de creado.',
+    seccionInmutable: 'La Sección define el ItemCode del artículo y no puede modificarse después de creado.',
+    tallaInmutable: 'La Talla es información tomada del comprador al crear el artículo y no puede modificarse después.',
+    generoInmutable: 'El Género es información tomada del comprador al crear el artículo y no puede modificarse después.',
+    skuSelladoAlCrear: 'Es la referencia base del artículo (SKU sin talla) y no puede modificarse después de creado.',
+    barCodeSellado: 'El código de barras del proveedor se definió al crear el artículo y queda sellado.',
+    colorSellado: 'El color es un atributo de ficha técnica definido al crear el artículo y no puede modificarse después.',
+    materialSellado: 'Es un dato de catalogación técnica definido al crear el artículo y no puede modificarse después.',
+    procedenciaSellada: 'Es un dato de procedencia fijado al crear el artículo y no puede modificarse después.',
+    parametroSapSellado: 'Es un parámetro contable/de inventario de SAP fijado al crear el artículo; su edición podría generar inconsistencias en el ERP.',
+} as const
+
+// ─── RF-002: Promoción de Código Alterno ──────────────────────────────────────
+const promoviendo = ref(false)
+const puedePromoverAlterno = computed(() =>
+    !!form.value.codigoAlterno && form.value.codigoAlterno !== form.value.itemCode
+)
+
+async function handlePromoverAlterno(): Promise<void> {
+    const itemCodeActual = route.params.itemCode as string
+    const confirmado = window.confirm(
+        `Esto reemplazará el ItemCode "${itemCodeActual}" por el código alterno ` +
+        `"${form.value.codigoAlterno}" y se encolará una nueva sincronización con SAP. ` +
+        '¿Desea continuar?'
+    )
+    if (!confirmado) return
+
+    promoviendo.value = true
+    submitError.value = ''
+    submitSuccess.value = ''
+    try {
+        const resultado = await articuloService.promoverCodigoAlterno(itemCodeActual)
+        // Mismo motivo que en la creación: este router.replace cambia de
+        // itemCode y remonta el componente (:key="route.path" en MainLayout),
+        // así que el banner local no sobreviviría — se usa el toast global.
+        toast.addToast({
+            type: 'success',
+            title: 'Código alterno promovido',
+            message: resultado.message,
+            action: accionMonitoreoSap(resultado.item_code_nuevo)
+        })
+        ultimoItemCodeSap.value = resultado.item_code_nuevo
+        await router.replace(`/articulo-maestro/editar/${resultado.item_code_nuevo}`)
+        await cargarDatosEdicion(resultado.item_code_nuevo)
+    } catch (err: unknown) {
+        const axiosErr = err as { response?: { data?: { detail?: string } } }
+        submitError.value = axiosErr?.response?.data?.detail
+            || 'No se pudo promover el código alterno. Inténtalo de nuevo.'
+    } finally {
+        promoviendo.value = false
+    }
+}
+
+function onImagesUpdate(images: ImagenArticuloReferencia[]): void {
+    form.value.imagenes = images
+}
 
 // En edición: cargar los datos del artículo desde la API y pre-poblar la jerarquía de catálogos
-// Shortcuts
-const handleKeydown = (e: KeyboardEvent) => {
-    // Ctrl + S: Guardar
-    if ((e.ctrlKey || e.metaKey) && e.key === 's') {
-        e.preventDefault()
-        handleSubmit()
+function aplicarDatosArticuloAlForm(articulo: Articulo) {
+    Object.keys(form.value).forEach(key => {
+        const k = key as keyof typeof form.value
+        if (articulo && key in articulo) {
+            const val = (articulo as unknown as Record<string, unknown>)[key]
+            if (val != null) {
+                (form.value as Record<string, unknown>)[k] = val
+            }
+        }
+    })
+    // Fallback seguro: costAccountingMethod puede llegar con un valor legacy
+    // (ej. 'B' en un artículo sin gestión de lotes, o null) que ya no es una
+    // opción visible del selector. Sin este resguardo, el <select> se
+    // renderiza en blanco porque ningún <option> coincide con el v-model.
+    const esValorValido = OPCIONES_COST_ACCOUNTING.some(
+        opt => opt.value === form.value.costAccountingMethod
+    )
+    if (!esValorValido) {
+        form.value.costAccountingMethod = DEFAULT_COST_ACCOUNTING
     }
-    // Escape: Cancelar
-    if (e.key === 'Escape') {
-        router.push('/articulo-maestro/lista')
+}
+
+async function cargarCascadasCatalogoParaEdicion() {
+    if (form.value.uNv1) {
+        cats.value.categorias = await catalogoService.getCategorias(form.value.uNv1).catch(() => [])
     }
-    // Ctrl + 1..5: Cambiar pestañas
-    if (e.ctrlKey && e.key >= '1' && e.key <= '5') {
-        e.preventDefault()
-        activeTab.value = tabs[Number.parseInt(e.key, 10) - 1].id
+    if (form.value.uNv2) {
+        cats.value.lineas = await catalogoService.getLineas(form.value.uNv2).catch(() => [])
     }
+}
+
+// Busca, entre las líneas de atributo ya cargadas, cuál es la dueña del
+// uAtrMed guardado (el backend no indica a qué línea pertenece un atributo,
+// así que hay que probar una por una contra el catálogo de cada línea).
+async function restaurarLineaAtributoSeleccionada() {
+    if (!form.value.uAtrMed || cats.value.lineasAtributo.length === 0) return
+    for (const lineaItem of cats.value.lineasAtributo) {
+        try {
+            const attrs = await catalogoService.getAtributos(lineaItem.nombre)
+            if (attrs.some(a => a.nombre === form.value.uAtrMed)) {
+                selectedLineaAtributo.value = lineaItem.nombre
+                cats.value.atributos = attrs
+                break
+            }
+        } catch { /* continuar buscando */ }
+    }
+}
+
+function resolverMensajeErrorCarga(err: unknown, itemCode: string): string {
+    const axiosErr = err as { response?: { data?: { detail?: string | { msg: string }[] } } }
+    const detail = axiosErr?.response?.data?.detail
+    if (Array.isArray(detail)) {
+        return detail.map(d => d.msg).join('. ')
+    }
+    if (typeof detail === 'string') {
+        return detail
+    }
+    return `No se pudo cargar el artículo "${itemCode}". Verifica que el código es correcto.`
 }
 
 async function cargarDatosEdicion(itemCode: string) {
     loadingData.value = true
     try {
         const articulo = await articuloService.getArticuloByCode(itemCode)
-        Object.keys(form.value).forEach(key => {
-            const k = key as keyof typeof form.value
-            if (articulo && key in articulo) {
-                const val = (articulo as unknown as Record<string, unknown>)[key]
-                if (val != null) {
-                    (form.value as Record<string, unknown>)[k] = val
-                }
-            }
-        })
-        if (form.value.uNv1) {
-            cats.value.categorias = await catalogoService.getCategorias(form.value.uNv1).catch(() => [])
-        }
-        if (form.value.uNv2) {
-            cats.value.lineas = await catalogoService.getLineas(form.value.uNv2).catch(() => [])
-        }
-        if (form.value.uAtrMed && cats.value.lineasAtributo.length > 0) {
-            for (const lineaItem of cats.value.lineasAtributo) {
-                try {
-                    const attrs = await catalogoService.getAtributos(lineaItem.nombre)
-                    if (attrs.some(a => a.nombre === form.value.uAtrMed)) {
-                        selectedLineaAtributo.value = lineaItem.nombre
-                        cats.value.atributos = attrs
-                        break
-                    }
-                } catch { /* continuar buscando */ }
-            }
-        }
-    } catch {
-        loadError.value = `No se pudo cargar el artículo "${itemCode}". Verifica que el código es correcto.`
+        aplicarDatosArticuloAlForm(articulo)
+        await cargarCascadasCatalogoParaEdicion()
+        await restaurarLineaAtributoSeleccionada()
+        // RF-003: recién con las cascadas de catálogo ya cargadas podemos
+        // calcular la sugerencia "real" y usarla como base de comparación;
+        // si el ItemName guardado coincide, seguirá auto-actualizándose al
+        // tocar Marca/Talla/etc. Si no coincide (fue editado a mano), el
+        // watcher ya no lo va a pisar.
+        ultimoItemNameSugerido.value = calcularItemNameSugerido()
+
+        // Snapshot para dirty checking: se toma al final, con el formulario
+        // ya asentado (incluyendo la sugerencia de ItemName), para que no
+        // se considere "cambiado" algo que el propio watcher acabó de fijar.
+        // Se usa stringify/parse en lugar de structuredClone para desvincular
+        // limpiamente el proxy reactivo de Vue (previene DataCloneError).
+        originalSnapshot.value = JSON.parse(JSON.stringify(form.value))
+    } catch (err: unknown) {
+        console.error(`[FormularioArticulo] Error al cargar ${itemCode}:`, err)
+        loadError.value = resolverMensajeErrorCarga(err, itemCode)
     } finally {
         loadingData.value = false
     }
 }
 
 onMounted(async () => {
-    globalThis.addEventListener('keydown', handleKeydown)
     await cargarCatalogos()
     if (isEdit.value) {
         await cargarDatosEdicion(route.params.itemCode as string)
     }
 })
 
-// Guardar formulario
+// Lista de campos que sí deben ser enviados como numéricos. Vive fuera de
+// handleSubmit porque es una constante: no necesita recrearse en cada guardado.
+const NUMERIC_FIELDS = new Set([
+    'uCodColor', 'uCodColSecu', 'leadTime', 'minOrderQuantity',
+    'uUnidadDespacho', 'uDespIn', 'uPrArq', 'price',
+    'itemsGroupCode', 'manufacturer', 'shipType',
+    'purchaseItemsPerUnit', 'salesItemsPerUnit'
+])
+
+function coerceValorSubmit(key: string, val: unknown): unknown {
+    // Pydantic strictness: forzar a string los campos que backend espera como texto
+    // pero que Catálogos/jerarquías pudieron asignar como número.
+    if (typeof val === 'number' && !NUMERIC_FIELDS.has(key)) {
+        return String(val)
+    }
+    return val
+}
+
+// Creación: se sigue enviando el formulario completo (menos vacíos/nulos
+// opcionales), ya que ArticuloCreate exige varios campos obligatorios.
+function buildCreatePayload(): Record<string, unknown> {
+    const payload: Record<string, unknown> = {}
+    Object.entries(form.value).forEach(([key, val]) => {
+        if (READONLY_KEYS.has(key)) return
+        if (val === '' || val == null) return
+        payload[key] = coerceValorSubmit(key, val)
+    })
+    return payload
+}
+
+// Edición: Dirty Checking real contra originalSnapshot. Solo viajan las
+// propiedades que cambiaron respecto a lo cargado desde el backend, y
+// nunca las estructurales (bloqueadas de por vida, sin importar si el
+// valor "cambió" o no: su sola presencia en el body dispara un 422).
+// Un valor vacío/null intencional se envía como null, nunca como 0/N/false.
+function buildPatchPayload(): Record<string, unknown> {
+    const payload: Record<string, unknown> = {}
+    const original = originalSnapshot.value
+    if (!original) return payload
+
+    Object.entries(form.value).forEach(([key, rawVal]) => {
+        if (STRUCTURAL_LOCKED_KEYS.has(key) || READONLY_KEYS.has(key)) return
+        // manageBatchNumbers queda bloqueado por el backend en PATCH cuando
+        // el artículo ya tiene historial en SAP (ver
+        // _ensure_manage_batch_numbers_editable); se aproxima con
+        // isStructuralLocked, ya que la confirmación real requiere una
+        // consulta en vivo a SAP que el frontend no puede anticipar.
+        if (key === 'manageBatchNumbers' && form.value.isStructuralLocked) return
+
+        const val = rawVal === '' ? null : rawVal
+        const originalRaw = (original as Record<string, unknown>)[key]
+        const originalVal = originalRaw === '' ? null : originalRaw
+
+        if (val === originalVal) return // sin cambios reales: no reenviar
+
+        payload[key] = val === null ? null : coerceValorSubmit(key, val)
+    })
+    return payload
+}
+
+// Resalta la pestaña/campos inválidos y, si aplica, muestra el toast
+// dedicado de Negocio faltante. Extraído de handleSubmit para mantener su
+// complejidad cognitiva dentro del límite de SonarQube.
+function mostrarErroresValidacion(firstErrorTab: string): void {
+    showValidationErrors.value = true
+    activeTab.value = firstErrorTab
+    showValidationModal.value = true
+
+    // RF-001: el Negocio (uIxxMarca) faltante es el único error de
+    // creación con un toast dedicado -- define la letra del ItemCode y
+    // no admite fallback a Marca (uMarca), así que merece una
+    // notificación explícita además del resaltado en rojo del campo.
+    if (!isEdit.value && !form.value.uIxxMarca) {
+        toast.addToast({
+            type: 'error',
+            title: 'Validación',
+            message: 'El campo Negocio es obligatorio para la creación.'
+        })
+    }
+
+    // H08: mismo criterio que el toast de Negocio -- un valor tipeado con
+    // formato inválido es fácil de pasar por alto solo con el campo
+    // resaltado en rojo, así que además se notifica explícitamente.
+    if (barCodeEsInvalido() && form.value.barCode) {
+        toast.addToast({
+            type: 'error',
+            title: 'Validación',
+            message: 'El código de barras debe contener entre 8 y 15 dígitos numéricos.'
+        })
+    }
+
+    // Intentar hacer focus al primer campo inválido después de cambiar de pestaña
+    setTimeout(() => {
+        const firstInvalid = document.querySelector('input:invalid, select:invalid, .form-field.required input') as HTMLElement
+        if (firstInvalid) firstInvalid.focus()
+    }, 100)
+}
+
+function resolverMensajeErrorSubmit(detail: string | { msg: string; loc?: string[] }[] | undefined): string {
+    if (Array.isArray(detail)) return detail.map(d => d.msg).join('. ')
+    if (typeof detail === 'string') return detail
+    return 'Ocurrió un error al guardar. Revisa los datos e inténtalo de nuevo.'
+}
+
+// HTTP 422: el backend rechazó por Negocio ausente/no registrado en el
+// catálogo (ver GeneradorCodigosService.obtener_codigo_negocio) -- se
+// intercepta el detail crudo para mostrar un mensaje de negocio claro en
+// vez del texto técnico del backend. HTTP 409: conflicto de identificador.
+function mostrarToastErrorSubmit(
+    status: number | undefined,
+    detail: string | { msg: string; loc?: string[] }[] | undefined,
+    mensaje: string
+): void {
+    const detalleTexto = Array.isArray(detail)
+        ? detail.map(d => `${d.loc?.join('.') ?? ''} ${d.msg}`).join(' ')
+        : (detail ?? '')
+
+    if (status === 422 && /u_ixx_marca|uIxxMarca|Negocio/i.test(detalleTexto)) {
+        toast.addToast({
+            type: 'error',
+            title: 'No se pudo generar el código',
+            message: 'El Negocio seleccionado no es válido o no está registrado en el catálogo.'
+        })
+    } else if (status === 409) {
+        toast.addToast({
+            type: 'error',
+            title: 'Conflicto de identificadores',
+            message: mensaje || 'Ya existe un artículo con ese código o identificador.'
+        })
+    }
+}
+
+function manejarErrorSubmit(err: unknown): void {
+    const axiosErr = err as {
+        response?: { status?: number; data?: { detail?: string | { msg: string; loc?: string[] }[] } }
+    }
+    const status = axiosErr?.response?.status
+    const detail = axiosErr?.response?.data?.detail
+
+    submitError.value = resolverMensajeErrorSubmit(detail)
+    mostrarToastErrorSubmit(status, detail, submitError.value)
+}
+
+// Guardar formulario. Único punto de captura de Ctrl+S (FE-CONCURRENCY,
+// ver useKeyboardShortcuts(shortcuts) más abajo): antes coexistía un
+// segundo listener manual (`handleKeydown` vía
+// globalThis.addEventListener) que llamaba a esta misma función sin
+// ningún resguardo de concurrencia, disparando dos POST /articulos en
+// paralelo por cada Ctrl+S. El guardia de abajo (`submitting.value`)
+// ahora vive DENTRO de handleSubmit, así que protege sin importar cuántos
+// puntos de disparo existan (teclado, botón, o uno nuevo a futuro).
 async function handleSubmit() {
+    if (submitting.value) return
+
     const firstErrorTab = getFirstErrorTab()
     if (firstErrorTab) {
-        showValidationErrors.value = true
-        activeTab.value = firstErrorTab
-        showValidationModal.value = true
-        
-        // Intentar hacer focus al primer campo inválido después de cambiar de pestaña
-        setTimeout(() => {
-            const firstInvalid = document.querySelector('input:invalid, select:invalid, .form-field.required input') as HTMLElement
-            if (firstInvalid) firstInvalid.focus()
-        }, 100)
+        mostrarErroresValidacion(firstErrorTab)
         return
     }
 
     submitting.value = true
     submitError.value = ''
-
-    // Construir el payload omitiendo nulos y strings vacíos opcionales
-    const payload: Record<string, unknown> = {}
-    
-    // Lista de campos que sí deben ser enviados como numéricos
-    const numericFields = new Set([
-        'uCodColor', 'uCodColSecu', 'leadTime', 'minOrderQuantity',
-        'uUnidadDespacho', 'uDespIn', 'uPrArq', 'price',
-        'itemsGroupCode', 'manufacturer', 'shipType',
-        'purchaseItemsPerUnit', 'salesItemsPerUnit'
-    ])
-
-    Object.entries(form.value).forEach(([key, val]) => {
-        // No enviar el código de artículo en el body del PATCH (se envía en la URL)
-        if (key === 'itemCode' && isEdit.value) return
-
-        if (val === '' || val == null) return
-
-        // Pydantic strictness: forzar a string los campos que backend espera como texto
-        // pero que Catálogos/jerarquías pudieron asignar como número.
-        if (typeof val === 'number' && !numericFields.has(key)) {
-            payload[key] = String(val)
-        } else {
-            payload[key] = val
-        }
-    })
+    submitSuccess.value = ''
 
     try {
         if (isEdit.value) {
             const itemCode = route.params.itemCode as string
-            await articuloService.updateArticulo(itemCode, payload)
+            const payload = buildPatchPayload()
+            const article = await articuloService.updateArticulo(itemCode, payload)
+
+            // Bug H03: sincronizar form.value con el estado confirmado por el
+            // backend (isStructuralLocked recalculado, imágenes definitivas,
+            // etc. -- mismo helper que usa cargarDatosEdicion) ANTES de
+            // recongelar la línea base de dirty checking. Si originalSnapshot
+            // no se renueva aquí, queda anclado a la apertura inicial del
+            // formulario y una segunda edición consecutiva (p. ej. revertir
+            // un precio) calcula un delta vacío o reenvía campos ya guardados.
+            aplicarDatosArticuloAlForm(article)
+            form.value.imagenes = article.imagenes ?? []
+
+            // Renovación atómica de la línea base de comparación: cualquier
+            // edición posterior en la misma sesión (sin F5) vuelve a
+            // compararse contra los datos recién confirmados.
+            originalSnapshot.value = JSON.parse(JSON.stringify(form.value))
+
+            submitSuccess.value = `Artículo ${itemCode} actualizado. Sincronización con SAP iniciada en segundo plano.`
+            ultimoItemCodeSap.value = itemCode
         } else {
-            await articuloService.createArticulo(payload)
+            const payload = buildCreatePayload()
+            const article = await articuloService.createArticulo(payload)
+            form.value.imagenes = article.imagenes ?? []
+            // Las imágenes elegidas antes de crear el artículo quedaron en
+            // espera (GestorImagenes no tenía ItemCode todavía); ahora que ya
+            // existe, se suben.
+            await gestorImagenesRef.value?.flushPendingUploads(article.itemCode)
+            // El banner local (submitSuccess) no sobrevive al router.replace: el
+            // <component :key="route.path"> de MainLayout remonta este componente
+            // al cambiar de /nuevo a /editar/:itemCode, destruyendo sus refs antes
+            // de que el mensaje llegue a pintarse. El toast global sí sobrevive,
+            // porque vive fuera del árbol remontado (ver ToastContainer/useToast).
+            toast.addToast({
+                type: 'success',
+                title: 'Artículo creado',
+                message: `Artículo ${article.itemCode} creado. Sincronización con SAP iniciada en segundo plano.`,
+                action: accionMonitoreoSap(article.itemCode)
+            })
+            ultimoItemCodeSap.value = article.itemCode
+            await router.replace(`/articulo-maestro/editar/${article.itemCode}`)
         }
-        router.push('/articulo-maestro/lista')
     } catch (err: unknown) {
-        const axiosErr = err as { response?: { data?: { detail?: string | { msg: string }[] } } }
-        const detail = axiosErr?.response?.data?.detail
-        if (Array.isArray(detail)) {
-            submitError.value = detail.map(d => d.msg).join('. ')
-        } else if (typeof detail === 'string') {
-            submitError.value = detail
-        } else {
-            submitError.value = 'Ocurrió un error al guardar. Revisa los datos e inténtalo de nuevo.'
-        }
+        manejarErrorSubmit(err)
     } finally {
         submitting.value = false
     }
 }
 
-onUnmounted(() => {
-    globalThis.removeEventListener('keydown', handleKeydown)
-})
+const showKeyboardHelp = ref(false)
+const shortcuts = {
+    'Ctrl+S': {
+        description: 'Guardar artículo',
+        action: () => {
+            // El resguardo de re-entrancia (submitting.value) ahora vive
+            // dentro de handleSubmit; aquí solo se filtran los estados en
+            // los que no tiene sentido intentar guardar (carga en curso o
+            // fallida).
+            if (!loadingData.value && !loadError.value) {
+                handleSubmit()
+            }
+        }
+    },
+    'Esc': {
+        description: 'Cerrar modal o Volver',
+        action: () => {
+            if (showValidationModal.value) {
+                showValidationModal.value = false
+            } else if (showKeyboardHelp.value) {
+                showKeyboardHelp.value = false
+            } else {
+                router.push('/articulo-maestro/lista')
+            }
+        }
+    },
+    'Alt+1': { description: 'Ir a General', action: () => { activeTab.value = 'general' } },
+    'Alt+2': { description: 'Ir a Categorización', action: () => { activeTab.value = 'cat' } },
+    'Alt+3': { description: 'Ir a Color y Material', action: () => { activeTab.value = 'mat' } },
+    'Alt+4': { description: 'Ir a Logística y Precios', action: () => { activeTab.value = 'log' } },
+    'Alt+5': { description: 'Ir a Config. SAP', action: () => { activeTab.value = 'sap' } },
+    'Alt+6': { description: 'Ir a Imágenes', action: () => { activeTab.value = 'img' } }
+}
+useKeyboardShortcuts(shortcuts)
+
 </script>
 
 <style scoped>

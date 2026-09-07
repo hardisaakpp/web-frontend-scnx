@@ -1,3 +1,5 @@
+import { APP_LOCALE } from '@/plugins/locale'
+
 const ISO_OFFSET_SUFFIX = /(?:[zZ]|[+-]\d{2}:\d{2})$/
 
 /** Muestra fecha/hora persistida en BD (hora local del cajero) sin reinterpretar zona. */
@@ -15,14 +17,14 @@ export function formatPromocionSobresFecha(iso: string): string {
         Number(match[6] ?? 0)
       )
       if (!Number.isNaN(date.getTime())) {
-        return date.toLocaleString('es-EC', { dateStyle: 'medium', timeStyle: 'short' })
+        return date.toLocaleString(APP_LOCALE, { dateStyle: 'medium', timeStyle: 'short' })
       }
     }
   }
 
   const date = new Date(iso)
   if (Number.isNaN(date.getTime())) return iso
-  return date.toLocaleString('es-EC', { dateStyle: 'medium', timeStyle: 'short' })
+  return date.toLocaleString(APP_LOCALE, { dateStyle: 'medium', timeStyle: 'short' })
 }
 
 /** ISO 8601 con offset de la zona del navegador (hora de la PC del cajero). */

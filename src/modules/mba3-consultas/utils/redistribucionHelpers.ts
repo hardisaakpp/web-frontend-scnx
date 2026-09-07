@@ -32,6 +32,7 @@ export interface DistribucionTiendaEditada {
   cantidad_asignada: number
   diferencia: number
   es_bodega?: boolean // Indica si es una bodega (RL-CD, OUT-CD, REG-CD)
+  agregada_manualmente?: boolean // Tienda agregada fuera del Excel original del pedido (persiste en backend)
 }
 
 /**

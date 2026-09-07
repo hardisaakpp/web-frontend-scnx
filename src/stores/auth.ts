@@ -114,6 +114,10 @@ export interface AuthCapabilities {
   mabel_view?: boolean
   /** true con permiso mabel.view o admin. Botón "Listado Pedidos Originales" para ver/descargar/eliminar archivos Excel en MinIO. */
   can_view_plantillas_originales?: boolean
+  /** true solo con permiso produccion-elrayo.view (sin admin override). Botón "Producción El Rayo" en dashboard (req. 1.8). */
+  can_view_produccion_elrayo?: boolean
+  /** true solo con permiso funcionalidades-admin.view (sin admin override). Único requisito para ver el desplegable "Información Pedidos y ODC". */
+  can_view_funcionalidades_admin?: boolean
   [key: string]: boolean | undefined
 }
 
@@ -126,8 +130,6 @@ interface AuthState {
   capabilities: AuthCapabilities | null
   loading: boolean
   error: string | null
-  /** Emoji elegido por el usuario como icono (GET/PUT /Users/me/avatar). */
-  avatarEmoji: string | null
 }
 
 interface LoginCredentials {
@@ -172,6 +174,8 @@ const MBA3_CAPABILITY_DEFS: { snake: keyof AuthCapabilities; aliases: string[] }
   { snake: 'can_view_order_list', aliases: ['CanViewOrderList'] },
   { snake: 'mabel_view', aliases: ['MabelView'] },
   { snake: 'can_view_plantillas_originales', aliases: ['CanViewPlantillasOriginales'] },
+  { snake: 'can_view_produccion_elrayo', aliases: ['CanViewProduccionElRayo'] },
+  { snake: 'can_view_funcionalidades_admin', aliases: ['CanViewFuncionalidadesAdmin'] },
 ]
 
 function capabilitiesFromApiCapabilitiesObject(raw: unknown): Partial<AuthCapabilities> {
@@ -196,12 +200,16 @@ function deriveCapabilitiesFromPermissions(permissions: string[], roles: string[
   const odcsap = p.has('odcsap.view')
   const mabel = p.has('mabel.view')
   const odc = p.has('odc.view')
+  const produccionElRayo = p.has('produccion-elrayo.view')
+  const funcionalidadesAdmin = p.has('funcionalidades-admin.view')
   return {
     can_view_odc_sap: odc,
     can_manage_order: odcsap,
     can_view_order_list: odcsap,
     mabel_view: mabel,
     can_view_plantillas_originales: mabel || isAdmin,
+    can_view_produccion_elrayo: produccionElRayo,
+    can_view_funcionalidades_admin: funcionalidadesAdmin,
   }
 }
 
@@ -228,8 +236,7 @@ export const useAuthStore = defineStore('auth', {
     userData: null,
     capabilities: null,
     loading: false,
-    error: null,
-    avatarEmoji: null
+    error: null
   }),
 
   getters: {
@@ -393,7 +400,11 @@ export const useAuthStore = defineStore('auth', {
     /** true solo si capabilities.mabel_view === true (permiso mabel.view). Cargar Plantilla, Redistribución, Procesamiento SAP, Procesos, Homologaciones. Solo leer de capabilities. */
     canViewMabel: (state): boolean => state.capabilities?.mabel_view === true,
     /** true solo si capabilities.can_view_plantillas_originales === true (permiso mabel.view o admin). Botón "Listado Pedidos Originales" en sección Información ODC. */
-    canViewPlantillasOriginales: (state): boolean => state.capabilities?.can_view_plantillas_originales === true
+    canViewPlantillasOriginales: (state): boolean => state.capabilities?.can_view_plantillas_originales === true,
+    /** true solo si capabilities.can_view_produccion_elrayo === true (permiso produccion-elrayo.view). Botón "Producción El Rayo" (req. 1.8). */
+    canViewProduccionElRayo: (state): boolean => state.capabilities?.can_view_produccion_elrayo === true,
+    /** true solo si capabilities.can_view_funcionalidades_admin === true (permiso funcionalidades-admin.view). Único requisito del desplegable "Información Pedidos y ODC". */
+    canViewFuncionalidadesAdmin: (state): boolean => state.capabilities?.can_view_funcionalidades_admin === true
   },
 
   actions: {
@@ -428,7 +439,6 @@ export const useAuthStore = defineStore('auth', {
 
         scheduleRedirectOnTokenExpiry(token, this)
         await this.fetchMe()
-        await this.fetchAvatarEmoji()
         return true
       } catch (error) {
         if (import.meta.env.DEV) {
@@ -501,36 +511,6 @@ export const useAuthStore = defineStore('auth', {
         }
       }
     },
-
-    avatarStorageKey(): string {
-      return `avatarEmoji_${this.userName || 'default'}`
-    },
-
-    /** Carga el emoji guardado en localStorage (instantáneo) y luego lo sincroniza con GET /Users/me/avatar. */
-    async fetchAvatarEmoji(): Promise<void> {
-      const key = this.avatarStorageKey()
-      const cached = localStorage.getItem(key)
-      if (cached) this.avatarEmoji = cached
-
-      if (!this.token) return
-      try {
-        const { data } = await api.get<{ emoji?: string }>('/Users/me/avatar')
-        if (data?.emoji) {
-          this.avatarEmoji = data.emoji
-          localStorage.setItem(key, data.emoji)
-        }
-      } catch {
-        // Sin conexión al servidor: se mantiene el valor de localStorage.
-      }
-    },
-
-    /** Guarda el emoji vía PUT /Users/me/avatar (localStorage como respaldo instantáneo). */
-    async setAvatarEmoji(emoji: string): Promise<void> {
-      this.avatarEmoji = emoji
-      localStorage.setItem(this.avatarStorageKey(), emoji)
-      await api.put('/Users/me/avatar', { emoji })
-    },
-
     logout(): void {
       clearExpiryTimeout()
       // Clear state
@@ -541,7 +521,6 @@ export const useAuthStore = defineStore('auth', {
       this.capabilities = null
       this.error = null
       this.loading = false
-      this.avatarEmoji = null
 
       // Remove from storage
       localStorage.removeItem('token')
@@ -591,9 +570,6 @@ export const useAuthStore = defineStore('auth', {
 
         api.defaults.headers.common['Authorization'] = `Bearer ${token}`
         scheduleRedirectOnTokenExpiry(token, this)
-
-        const cachedEmoji = localStorage.getItem(this.avatarStorageKey())
-        if (cachedEmoji) this.avatarEmoji = cachedEmoji
       } catch {
         this.logout()
       }

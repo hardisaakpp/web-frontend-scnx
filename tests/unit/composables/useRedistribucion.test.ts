@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
+import { setActivePinia, createPinia } from 'pinia'
 import { ref, type Ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useRedistribucion } from '@/modules/mba3-consultas/composables/useRedistribucion'
@@ -33,6 +34,9 @@ describe('useRedistribucion', () => {
   let mockRouter: any
 
   beforeEach(() => {
+    // Instancia limpia de Pinia -- useRedistribucion usa useAuthStore() internamente
+    setActivePinia(createPinia())
+
     // Reset mocks
     vi.clearAllMocks()
 
@@ -254,7 +258,9 @@ describe('useRedistribucion', () => {
       expect(error).toContain('cantidades negativas')
     })
 
-    it('should return error for decimal quantities', () => {
+    // validarCantidadTienda documenta explícitamente "Acepta decimales (p. ej. 0.5)" -- validarProducto
+    // ya no tiene ninguna regla de "números enteros" (ver useRedistribucion.ts:326-328).
+    it('should accept decimal quantities', () => {
       const { validarProducto } = useRedistribucion({
         pedido: mockPedido,
         numeroPedido: mockNumeroPedido,
@@ -282,7 +288,7 @@ describe('useRedistribucion', () => {
       } as any
 
       const error = validarProducto(producto)
-      expect(error).toContain('números enteros')
+      expect(error).toBeUndefined()
     })
 
     it('should return error for quantities exceeding maximum limit', () => {

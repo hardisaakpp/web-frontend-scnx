@@ -60,6 +60,7 @@
 
 <script setup lang="ts">
 import type { ArticleDetailDto } from '../types'
+import { APP_LOCALE, NUMBER_LOCALE } from '@/plugins/locale'
 
 defineProps<{
   article: ArticleDetailDto | null
@@ -75,7 +76,7 @@ function formatJson(value: unknown) {
 
 function formatMoney(value?: number | null, currency: string | null = 'USD') {
   if (value === null || value === undefined) return '—'
-  return new Intl.NumberFormat('es-CL', {
+  return new Intl.NumberFormat(NUMBER_LOCALE, {
     style: 'currency',
     currency: currency || 'USD',
     maximumFractionDigits: 2
@@ -86,6 +87,6 @@ function formatDate(value?: string | null) {
   if (!value) return '—'
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) return value
-  return new Intl.DateTimeFormat('es-CL').format(date)
+  return new Intl.DateTimeFormat(APP_LOCALE).format(date)
 }
 </script>

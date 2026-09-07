@@ -24,6 +24,8 @@ import recepcionMercaderiaRoutes from '../modules/recepcion-mercaderia/router'
 import ruletaRoutes from '../modules/ruleta/router'
 import transferenciasDirectasRoutes from '../modules/transferencias-directas/router'
 import integracionesRoutes from '../modules/integraciones/router'
+import cediRoutes from '../modules/cedi/router'
+import demandaOtbRoutes from '../modules/demanda-otb/router'
 
 console.log('🔍 DEBUG usuariosRoutes:', usuariosRoutes)
 console.log('🔍 DEBUG cajaChicaRoutes:', cajaChicaRoutes)
@@ -83,6 +85,8 @@ const router = createRouter({
         ...recepcionMercaderiaRoutes,
         ...ruletaRoutes,
         ...integracionesRoutes,
+        ...cediRoutes,
+        ...demandaOtbRoutes,
         {
           path: 'forbidden',
           name: 'forbidden',

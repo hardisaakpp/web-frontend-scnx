@@ -158,6 +158,7 @@ import { ArrowPathIcon, PlusIcon, MagnifyingGlassIcon } from '@heroicons/vue/24/
 import { inventarioPlanesService } from '../services/inventarioPlanesApi'
 import type { InventoryPlanDto } from '../types'
 import CrearPlanModal from '../components/CrearPlanModal.vue'
+import { APP_LOCALE } from '@/plugins/locale'
 
 const planes = ref<InventoryPlanDto[]>([])
 const loading = ref(false)
@@ -220,8 +221,8 @@ function formatDate(value?: string | null): string {
 function formatDateTime(value?: string | null): string {
   if (!value) return '—'
   const d = new Date(value)
-  return d.toLocaleDateString('es', { day: '2-digit', month: '2-digit', year: '2-digit' })
-    + ' ' + d.toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' })
+  return d.toLocaleDateString(APP_LOCALE, { day: '2-digit', month: '2-digit', year: '2-digit' })
+    + ' ' + d.toLocaleTimeString(APP_LOCALE, { hour: '2-digit', minute: '2-digit' })
 }
 
 async function cargar() {

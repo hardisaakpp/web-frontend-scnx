@@ -12,13 +12,7 @@
  * Los nuevos servicios modulares están disponibles en `domains/`.
  */
 
-import type {
-  Despacho,
-  DespachoDetalle
-} from '../types'
-import type { OrdenCompraResponse, OrdenCompraLogResponse, RemisionResponse } from '../types'
-import type { HealthResponse, ProcesoResponse } from '../types'
-import type { SkuHomologacionResponse, SkuHomologacionUpdateRequest, SkuHomologacionCreateRequest, CruceProductosResponse, SugerenciasResponse, EstadoSincronizacionResponse, SincronizarMaestrosResponse, IniciarCruceResponse, ProcesoEstadoSSE, ProcesoEstado, ProcesoEstadoResponse, SugerenciaProducto, SugerenciasSkuResponse, DetallesOCResponse, ActualizarSkuRequest, ActualizarSkuResponse, BuscarSkuMba3Response, UploadPlantillaResponse, UploadPlantillaAsyncAcceptedResponse, PlantillaProcesoEstado, PedidoCompleto, CargarRespuestaProveedorResponse, RespuestaProveedorResponse, ProcesarConfirmacionResponse, ReporteDiferenciasResponse, IntegracionSAPResponse, ActualizarCostoPedidoResponse, AjusteDetalle, ResumenConfirmacion, GuardarModificacionesColumnasRequest, GuardarModificacionesColumnasResponse, ObtenerModificacionesColumnasResponse, ProcesamientoSAPResponse, PedidosListadoResponse, CrearOCDesdePedidoResponse, CrearPedidoRequest, CrearPedidoResponse, ModificarPedidoCabeceraRequest, ModificarPedidoCabeceraResponse, TienePedidosResponse, InfoArchivoPlantillaResponse, BuscarPlantillasResponse, PlantillasPedidosResponse, ProcesoCompletoSAPResponse, ProcesoCompletoSAPAsyncResponse, ProcesoCompletoSAPResultadoPolling, IntegracionSAPPorOCResponse, EstadosPedidoResponse } from '../types'
+import type { Despacho, DespachoDetalle, OrdenCompraResponse, OrdenCompraLogResponse, RemisionResponse, HealthResponse, ProcesoResponse, SkuHomologacionResponse, SkuHomologacionUpdateRequest, SkuHomologacionCreateRequest, SugerenciasResponse, EstadoSincronizacionResponse, SincronizarMaestrosResponse, IniciarCruceResponse, ProcesoEstadoSSE, ProcesoEstadoResponse, SugerenciasSkuResponse, DetallesOCResponse, ActualizarSkuResponse, BuscarSkuMba3Response, UploadPlantillaResponse, UploadPlantillaAsyncAcceptedResponse, PlantillaProcesoEstado, PedidoCompleto, CargarRespuestaProveedorResponse, RespuestaProveedorResponse, ProcesarConfirmacionResponse, ReporteDiferenciasResponse, IntegracionSAPResponse, ActualizarCostoPedidoResponse, AjusteDetalle, ResumenConfirmacion, GuardarModificacionesColumnasResponse, ObtenerModificacionesColumnasResponse, ProcesamientoSAPResponse, CrearOCDesdePedidoResponse, CrearPedidoRequest, CrearPedidoResponse, ModificarPedidoCabeceraRequest, ModificarPedidoCabeceraResponse, TienePedidosResponse, InfoArchivoPlantillaResponse, BuscarPlantillasResponse, PlantillasPedidosResponse, ProcesoCompletoSAPResponse, ProcesoCompletoSAPAsyncResponse, ProcesoCompletoSAPResultadoPolling, IntegracionSAPPorOCResponse, EstadosPedidoResponse, UsuariosPedidoResponse, DiferenciaProduccionResponse, ConfirmarConDiferenciaResponse, HijoDiferenciaPayload, OrdenesCompraListFilters } from '../types'
 
 // ⭐ REEXPORTAR CONFIGURACIÓN Y UTILIDADES REFACTORIZADAS
 export { mba3Api, API_BASE_URL } from './config/axiosConfig'
@@ -33,7 +27,6 @@ export * from './domains'
 import { mba3Api, API_BASE_URL } from './config/axiosConfig'
 import { pedidosService } from './domains/pedidos'
 import { ordenesCompraService } from './domains/ordenesCompra'
-import type { OrdenesCompraListFilters } from '../types'
 import { calculateIntegrarSapTimeoutMs } from '../utils/integrarSapTimeout'
 import { MAX_EXCEL_UPLOAD_SIZE_BYTES, MAX_EXCEL_UPLOAD_SIZE_MB } from '@/config/uploadLimits'
 
@@ -126,12 +119,27 @@ export const mba3ConsultasService = {
   },
 
   // Integrar SAP (una o múltiples ODCs)
-  // referenciaDespacho: string | string[] | undefined - Si se proporciona, integra solo esas ODCs
+  // ocId: string | string[] | undefined - Si se proporciona, identifica sin ambigüedad la(s) ODC(s)
+  //   a enviar (preferido sobre referenciaDespacho: un pedido mixto ROLAND/REGIONS genera 2 ODC
+  //   que comparten la misma referencia_despacho -- ver find_by_referencia_despacho en backend,
+  //   que resuelve una sola fila arbitraria por esa referencia sin filtrar por oc_id/estado).
+  // referenciaDespacho: string | string[] | undefined - Fallback cuando no se conoce el oc_id exacto
   // almacenDestino: string | undefined - Código del almacén destino (ej: RL, OUT, LP)
-  async integrarSAP(referenciaDespacho?: string | string[], almacenDestino?: string): Promise<IntegracionSAPResponse> {
+  async integrarSAP(
+    referenciaDespacho?: string | string[],
+    almacenDestino?: string,
+    ocId?: string | string[]
+  ): Promise<IntegracionSAPResponse> {
     const params = new URLSearchParams()
 
-    if (referenciaDespacho) {
+    if (ocId) {
+      // Identificador sin ambigüedad: preferido siempre que esté disponible.
+      if (Array.isArray(ocId)) {
+        ocId.forEach(id => params.append('oc_id', id))
+      } else {
+        params.append('oc_id', ocId)
+      }
+    } else if (referenciaDespacho) {
       // Si es un array, enviar múltiples referencias
       if (Array.isArray(referenciaDespacho)) {
         referenciaDespacho.forEach(ref => params.append('referencia_despacho', ref))
@@ -149,12 +157,16 @@ export const mba3ConsultasService = {
     const queryString = params.toString()
     const url = queryString ? `/integrar-sap?${queryString}` : '/integrar-sap'
 
-    const finalTimeout = calculateIntegrarSapTimeoutMs(referenciaDespacho)
-    const numOrdenes = Array.isArray(referenciaDespacho)
-      ? referenciaDespacho.length
-      : referenciaDespacho
-        ? 1
-        : 0
+    const idParaTimeout = ocId ?? referenciaDespacho
+    const finalTimeout = calculateIntegrarSapTimeoutMs(idParaTimeout)
+    let numOrdenes: number
+    if (Array.isArray(idParaTimeout)) {
+      numOrdenes = idParaTimeout.length
+    } else if (idParaTimeout) {
+      numOrdenes = 1
+    } else {
+      numOrdenes = 0
+    }
 
     console.debug(`⏱️ [integrarSAP] Timeout calculado: ${finalTimeout / 1000}s para ${numOrdenes} ODC(s)`)
 
@@ -177,9 +189,10 @@ export const mba3ConsultasService = {
     estado?: string,
     page: number = 1,
     pageSize: number = 10,
-    filters?: OrdenesCompraListFilters
+    filters?: OrdenesCompraListFilters,
+    signal?: AbortSignal
   ): Promise<OrdenCompraResponse> {
-    return ordenesCompraService.getOrdenesCompra(estado, page, pageSize, filters)
+    return ordenesCompraService.getOrdenesCompra(estado, page, pageSize, filters, signal)
   },
 
   // Eliminar órdenes de compra (una o múltiples)
@@ -935,8 +948,8 @@ export const mba3ConsultasService = {
    * @returns Blob del archivo plano
    * @deprecated Usar pedidosService.exportarPedidoPlanoMba() directamente
    */
-  async exportarPedidoPlanoMba(numeroPedido: string, formato: 'csv' | 'txt' = 'csv'): Promise<Blob> {
-    return pedidosService.exportarPedidoPlanoMba(numeroPedido, formato)
+  async exportarPedidoPlanoMba(numeroPedido: string, formato: 'csv' | 'txt' = 'csv', codigoBodega?: string): Promise<Blob> {
+    return pedidosService.exportarPedidoPlanoMba(numeroPedido, formato, codigoBodega)
   },
 
   /**
@@ -1026,15 +1039,18 @@ export const mba3ConsultasService = {
    * Requiere permiso: mba3-consultas.proceso.execute
    * @param numeroPedido Número de pedido (ej: "P-12.48 - 12 - 2025")
    * @param pedidoId Opcional: ID del pedido (si se proporciona, se usa en lugar de numeroPedido)
+   * @param diferenciaReconocida Req. 1.2 (endurecimiento): true si el usuario ya vio el modal
+   *   de diferencia de producción y decidió confirmar sin generar pedido hijo. El backend
+   *   rechaza (400) la confirmación si detecta diferencia y este flag no viene en true.
    */
-  async crearRespuestaProveedorDesdePedido(numeroPedido: string, pedidoId?: string): Promise<CargarRespuestaProveedorResponse> {
+  async crearRespuestaProveedorDesdePedido(numeroPedido: string, pedidoId?: string, diferenciaReconocida?: boolean): Promise<CargarRespuestaProveedorResponse> {
     try {
       // Usar pedido_id si está disponible, sino usar numero_pedido
       const identifier = pedidoId || encodeURIComponent(numeroPedido)
       // El backend usa /crear-respuesta-desde-pedido según la implementación
       const response = await mba3Api.post<CargarRespuestaProveedorResponse>(
         `/api/pedidos/${identifier}/crear-respuesta-desde-pedido`,
-        {}
+        diferenciaReconocida ? { diferencia_reconocida: true } : {}
       )
       return response.data
     } catch (error: any) {
@@ -1053,14 +1069,22 @@ export const mba3ConsultasService = {
       let message = error.message || 'Error desconocido al crear respuesta del proveedor'
 
       if (error.response?.data) {
-        if (error.response.data.detail) {
-          message = error.response.data.detail
+        const detail = error.response.data.detail
+        if (detail && typeof detail === 'object') {
+          // Req. 1.2 (endurecimiento): 'diferencia_produccion_no_reconocida' llega como
+          // objeto estructurado ({error, message, detalles}), no como string.
+          message = detail.message || message
+        } else if (detail) {
+          message = detail
         } else if (error.response.data.message) {
           message = error.response.data.message
         }
       }
 
-      throw new Error(message)
+      const enrichedError = new Error(message)
+        ; (enrichedError as any).response = error.response
+        ; (enrichedError as any).errorCode = error.response?.data?.detail?.error
+      throw enrichedError
     }
   },
 
@@ -1276,11 +1300,27 @@ export const mba3ConsultasService = {
   /**
    * Cancela un pedido desde Detalle del Pedido (botón "Cancelar Pedido").
    * POST /api/pedidos/{pedido_id}/cancelar-por-el-rayo
-   * Solo válido en estado GESTIONAR PEDIDO (3). Cambia estado a CANCELADO POR EL RAYO (20).
+   * Solo válido en estado CONFIRMADO POR PRODUCCION (23), y solo para odcsap.view.
+   * Cambia estado a CANCELADO POR EL RAYO (20).
    * @param pedidoId ID del pedido (UUID)
    */
   async cancelarPedidoPorElRayo(pedidoId: string): Promise<any> {
     return pedidosService.cancelarPedidoPorElRayo(pedidoId)
+  },
+
+  async confirmarProduccion(pedidoId: string): Promise<any> {
+    return pedidosService.confirmarProduccion(pedidoId)
+  },
+
+  /**
+   * Req. 1.2 (pedidos parciales): ver domains/pedidos.ts.
+   */
+  async obtenerDiferenciaProduccion(numeroPedido: string): Promise<DiferenciaProduccionResponse> {
+    return pedidosService.obtenerDiferenciaProduccion(numeroPedido)
+  },
+
+  async confirmarConDiferencia(numeroPedido: string, hijos: HijoDiferenciaPayload[]): Promise<ConfirmarConDiferenciaResponse> {
+    return pedidosService.confirmarConDiferencia(numeroPedido, hijos)
   },
 
   /**
@@ -1317,15 +1357,24 @@ export const mba3ConsultasService = {
   },
 
   /**
-   * Descarga la distribución por tiendas en formato Excel
-   * GET /api/pedidos/{pedido_id}/distribucion/descargar-excel
-   * Genera archivo Excel con distribución confirmada (3 hojas).
+   * Exporta las Solicitudes de Traslado del pedido en formato Excel
+   * GET /api/pedidos/{pedido_id}/traslados/exportar-excel
    * @param pedidoId ID del pedido (UUID)
    * @param version Versión específica (opcional)
    * @returns Blob del archivo Excel
    */
-  async descargarDistribucionExcel(pedidoId: string, version?: number): Promise<Blob> {
-    return pedidosService.descargarDistribucionExcel(pedidoId, version)
+  async exportarTrasladosExcel(pedidoId: string, version?: number): Promise<Blob> {
+    return pedidosService.exportarTrasladosExcel(pedidoId, version)
+  },
+
+  /**
+   * Exporta el Análisis de Margen de Rentabilidad por producto (req. 1.4/1.5)
+   * GET /api/pedidos/{numeroPedido}/margen/exportar-excel
+   * @param numeroPedido Número o UUID del pedido
+   * @returns Blob del archivo Excel
+   */
+  async exportarAnalisisMargen(numeroPedido: string): Promise<Blob> {
+    return pedidosService.exportarAnalisisMargen(numeroPedido)
   },
 
   /**
@@ -1334,6 +1383,15 @@ export const mba3ConsultasService = {
    */
   async cancelarPedido(pedidoId: string): Promise<PedidoCompleto> {
     return pedidosService.cancelarPedido(pedidoId)
+  },
+
+  /**
+   * Botón "Aceptar" sobre un pedido "hijo" en PRODUCCION POSPUESTA: pasa a LISTO PARA
+   * REDISTRIBUCION. POST /api/pedidos/{pedido_id}/aceptar-produccion-pospuesta.
+   * @param pedidoId ID del pedido (UUID)
+   */
+  async aceptarProduccionPospuesta(pedidoId: string): Promise<PedidoCompleto> {
+    return pedidosService.aceptarProduccionPospuesta(pedidoId)
   },
 
   /**
@@ -1530,9 +1588,11 @@ export const mba3ConsultasService = {
     estado?: string
     fecha_desde?: string
     fecha_hasta?: string
+    tipo_fecha?: import('../types').TipoFechaFiltro
     proveedor_nombre?: string
     numero_pedido?: string
     creado_por?: string
+    modificado_por?: string
   }): Promise<{
     data: PedidoCompleto[]
     total: number
@@ -1713,16 +1773,21 @@ export const mba3ConsultasService = {
    * 
    * A diferencia de getPedidosListado (GET /api/pedidos):
    * - INCLUYE pedidos en estado BORRADOR
-   * - Filtra automáticamente por el usuario actual
-   * 
+   * - No filtra por usuario: visibles para todos con permiso mba3-consultas.facturas.view
+   *
    * GET /api/plantillas/pedidos
-   * @param filtros Filtros opcionales (estado, numero_pedido, limit, offset)
+   * @param filtros Filtros opcionales (estado, numero_pedido, creado_por, limit, offset)
    * @returns Lista de pedidos con paginación
    * @deprecated Usar pedidosService.getPlantillasPedidos() directamente
    */
   async getPlantillasPedidos(filtros?: {
     estado?: string
     numero_pedido?: string
+    creado_por?: string
+    modificado_por?: string
+    fecha_desde?: string
+    fecha_hasta?: string
+    tipo_fecha?: import('../types').TipoFechaFiltro
     limit?: number
     offset?: number
     solo_pendientes_accion?: boolean
@@ -1738,8 +1803,28 @@ export const mba3ConsultasService = {
    * @returns Lista de estados con id, nombre y orden
    * @deprecated Usar pedidosService.getEstadosPedido() directamente
    */
-  async getEstadosPedido(contexto?: 'pedidos' | 'redistribucion' | 'cargar-plantilla'): Promise<EstadosPedidoResponse> {
+  async getEstadosPedido(contexto?: 'pedidos' | 'redistribucion' | 'cargar-plantilla' | 'produccion'): Promise<EstadosPedidoResponse> {
     return pedidosService.getEstadosPedido(contexto)
+  },
+
+  /**
+   * Obtiene la lista de usuarios que han creado al menos un pedido, para el <select> "Creado Por".
+   *
+   * GET /api/pedidos/creadores
+   * @deprecated Usar pedidosService.getCreadoresPedido() directamente
+   */
+  async getCreadoresPedido(): Promise<UsuariosPedidoResponse> {
+    return pedidosService.getCreadoresPedido()
+  },
+
+  /**
+   * Obtiene la lista de usuarios que han modificado al menos un pedido, para el <select> "Modificado Por".
+   *
+   * GET /api/pedidos/modificadores
+   * @deprecated Usar pedidosService.getModificadoresPedido() directamente
+   */
+  async getModificadoresPedido(): Promise<UsuariosPedidoResponse> {
+    return pedidosService.getModificadoresPedido()
   },
 }
 

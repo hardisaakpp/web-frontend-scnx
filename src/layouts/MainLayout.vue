@@ -97,6 +97,22 @@
             <span v-show="!effectiveSidebarCollapsed" class="relative z-10 font-medium">Artículo Maestro</span>
           </router-link>
 
+        <!-- CEDI -->
+        <router-link
+          v-if="hasModuleAccess('cedi')"
+          to="/cedi"
+          class="group flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 relative overflow-hidden"
+          :class="{
+            'bg-gradient-to-r from-blue-600 to-sky-500 text-white shadow-lg shadow-blue-500/50': $route.path.startsWith('/cedi'),
+            'text-slate-600 hover:bg-slate-200/70 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800/50 dark:hover:text-white': !$route.path.startsWith('/cedi')
+          }"
+          :title="effectiveSidebarCollapsed ? 'CEDI' : ''"
+        >
+          <div class="absolute inset-0 bg-gradient-to-r from-blue-600/20 to-sky-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
+          <TruckIcon class="h-5 w-5 flex-shrink-0 relative z-10" :class="{ 'scale-110': $route.path.startsWith('/cedi') }" />
+          <span v-show="!effectiveSidebarCollapsed" class="relative z-10 font-medium">CEDI</span>
+        </router-link>
+
           <!-- Caja Chica -->
           <router-link v-if="hasModuleAccess('cajachica')" to="/caja-chica"
             class="group flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 relative overflow-hidden"
@@ -127,20 +143,37 @@
             <span v-show="!effectiveSidebarCollapsed" class="relative z-10 font-medium">Conciliación</span>
           </router-link>
 
-          <!-- Gestión ODC SAP -->
-          <router-link v-if="canAccessGestionOdcSap" to="/mba3-consultas"
-            class="group flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 relative overflow-hidden"
-            :class="{
-              'bg-gradient-to-r from-blue-600 to-sky-500 text-white shadow-lg shadow-blue-500/50': $route.path.startsWith('/mba3-consultas'),
-              'text-slate-600 hover:bg-slate-200/70 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800/50 dark:hover:text-white': !$route.path.startsWith('/mba3-consultas')
-            }" :title="effectiveSidebarCollapsed ? 'Gestión ODC SAP' : ''">
-            <div
-              class="absolute inset-0 bg-gradient-to-r from-blue-600/20 to-sky-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-            </div>
-            <ArrowsRightLeftIcon class="h-5 w-5 flex-shrink-0 relative z-10"
-              :class="{ 'scale-110': $route.path.startsWith('/mba3-consultas') }" />
-            <span v-show="!effectiveSidebarCollapsed" class="relative z-10 font-medium">Gestión ODC SAP</span>
-          </router-link>
+        <!-- Demanda OTB -->
+        <router-link
+          v-if="hasModuleAccess('demanda-otb')"
+          to="/demanda-otb"
+          class="group flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 relative overflow-hidden"
+          :class="{
+            'bg-gradient-to-r from-blue-600 to-sky-500 text-white shadow-lg shadow-blue-500/50': $route.path.startsWith('/demanda-otb'),
+            'text-slate-600 hover:bg-slate-200/70 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800/50 dark:hover:text-white': !$route.path.startsWith('/demanda-otb')
+          }"
+          :title="effectiveSidebarCollapsed ? 'Demanda OTB' : ''"
+        >
+          <div class="absolute inset-0 bg-gradient-to-r from-blue-600/20 to-sky-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
+          <ChartBarIcon class="h-5 w-5 flex-shrink-0 relative z-10" :class="{ 'scale-110': $route.path.startsWith('/demanda-otb') }" />
+          <span v-show="!effectiveSidebarCollapsed" class="relative z-10 font-medium">Demanda OTB</span>
+        </router-link>
+
+        <!-- Gestión ODC SAP -->
+        <router-link
+          v-if="canAccessGestionOdcSap"
+          to="/mba3-consultas"
+          class="group flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 relative overflow-hidden"
+          :class="{
+            'bg-gradient-to-r from-blue-600 to-sky-500 text-white shadow-lg shadow-blue-500/50': $route.path.startsWith('/mba3-consultas'),
+            'text-slate-600 hover:bg-slate-200/70 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800/50 dark:hover:text-white': !$route.path.startsWith('/mba3-consultas')
+          }"
+          :title="effectiveSidebarCollapsed ? 'Gestión ODC SAP' : ''"
+        >
+          <div class="absolute inset-0 bg-gradient-to-r from-blue-600/20 to-sky-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
+          <ArrowsRightLeftIcon class="h-5 w-5 flex-shrink-0 relative z-10" :class="{ 'scale-110': $route.path.startsWith('/mba3-consultas') }" />
+          <span v-show="!effectiveSidebarCollapsed" class="relative z-10 font-medium">Gestión ODC SAP</span>
+        </router-link>
 
           <!-- Importador PYG (main) -->
           <router-link v-if="hasModuleAccess('pyg')" to="/pyg"
@@ -327,15 +360,14 @@
         <!-- Footer del Sidebar -->
         <div
           class="flex-shrink-0 p-4 border-t border-slate-200 dark:border-slate-700/50 bg-white/70 dark:bg-slate-900/50 backdrop-blur-sm">
-           <div v-show="!effectiveSidebarCollapsed" class="mb-3 px-2">
+          <div v-show="!effectiveSidebarCollapsed" class="mb-3 px-2">
             <router-link
               to="/user"
               class="flex items-center gap-3 p-2 rounded-lg bg-slate-100/90 dark:bg-slate-800/50 hover:bg-slate-200/70 dark:hover:bg-slate-700/60 transition-colors"
               title="Panel de Usuario"
             >
-              <div class="w-8 h-8 rounded-full bg-gradient-to-br from-blue-600 to-sky-500 flex items-center justify-center text-xs font-bold flex-shrink-0">
-                <span v-if="authStore.avatarEmoji" class="text-base leading-none">{{ authStore.avatarEmoji }}</span>
-                <span v-else>{{ authStore.userName?.charAt(0).toUpperCase() || 'U' }}</span>
+              <div class="w-8 h-8 rounded-full bg-gradient-to-br from-blue-600 to-sky-500 flex items-center justify-center text-xs font-bold flex-shrink-0 text-white">
+                <span>{{ inicialesDe(authStore.fullName || authStore.userName || 'U') }}</span>
               </div>
               <div class="flex-1 min-w-0">
                 <p class="text-sm font-medium text-slate-800 dark:text-white truncate">{{ authStore.userName }}</p>
@@ -417,9 +449,18 @@
       </header>
 
       <!-- Page Content -->
-      <main class="p-4 md:p-6 lg:p-8 min-h-[calc(100vh-4rem)]">
-        <div v-if="showOdcSapVolverInMainChrome && odcSapVolverTarget" class="flex justify-end mb-4 -mt-1">
-          <OdcSapVolverButton :to="odcSapVolverTarget" :title="odcSapVolverTitle" />
+      <main
+        class="min-h-[calc(100vh-4rem)]"
+        :class="route.meta?.fullBleed ? '' : 'p-2 md:p-3 lg:p-4'"
+      >
+        <div
+          v-if="showOdcSapVolverInMainChrome && odcSapVolverTarget"
+          class="flex justify-end mb-4 -mt-1"
+        >
+          <OdcSapVolverButton
+            :to="odcSapVolverTarget"
+            :title="odcSapVolverTitle"
+          />
         </div>
         <router-view v-slot="{ Component, route }">
           <component :is="Component" :key="route.path" />
@@ -429,6 +470,9 @@
 
     <!-- Toast Notifications -->
     <ToastContainer />
+
+    <!-- Asistente SCNEXUS AI (Cool-turito) -->
+    <AssistantWidget />
   </div>
 </template>
 
@@ -460,12 +504,15 @@ import {
   ShoppingCartIcon,
   ClipboardDocumentListIcon,
   BanknotesIcon,
-  ArrowPathRoundedSquareIcon
+  ArrowPathRoundedSquareIcon,
+  ChartBarIcon
 } from '@heroicons/vue/24/outline'
 import { Pin, PinOff, TruckIcon, ForkliftIcon } from 'lucide-vue-next'
 import { useAuthStore } from '../stores/auth'
+import { inicialesDe } from '@/utils/iniciales'
 import { useThemeStore } from '../stores/theme'
 import ToastContainer from '../components/ToastContainer.vue'
+import AssistantWidget from '../components/assistant/AssistantWidget.vue'
 import { useNotificaciones } from '@/composables/useNotificaciones'
 import { useOdcSapVolver } from '@/composables/useOdcSapVolver'
 import OdcSapVolverButton from '@/components/OdcSapVolverButton.vue'
@@ -493,10 +540,14 @@ const showOdcSapVolverInMainChrome = computed(() => {
   if (n === 'mba3-consultas-cargar-plantilla-detalle') return false
   if (n === 'mba3-consultas-cargar-plantilla') return false
   if (n === 'mba3-consultas-pedidos-listado') return false
+  if (n === 'mba3-consultas-produccion-pedidos-listado') return false
   if (n === 'mba3-consultas-redistribucion') return false
   if (n === 'mba3-consultas-pedido-redistribucion') return false
   if (n === 'mba3-consultas-revisar-redistribucion') return false
   if (n === 'mba3-consultas-proceso') return false
+  if (n === 'mba3-consultas-admin-destinatarios') return false
+  if (n === 'mba3-consultas-admin-catalogo-correos') return false
+  if (n === 'mba3-consultas-listado-pedidos-originales') return false
   return true
 })
 
@@ -650,6 +701,8 @@ const pageTitle = computed(() => {
     '/transferencias-stock': 'Transferencias de Stock',
     '/transferencias-stock/crearsolicitud': 'Crear Transferencia',
     '/transferencias-stock/historial' : 'Historial de Transferencias',
+    '/demanda-otb': 'Demanda OTB',
+    '/demanda-otb/ejemplo': 'Demanda OTB — Ejemplo de gráfico'
   }
 
   return (route.meta?.title as string) || titles[route.path] || 'SCNexus'
@@ -718,7 +771,8 @@ const canAccessGestionOdcSap = computed(() => {
     authStore.canViewOdcSap ||
     authStore.canManageOrder ||
     authStore.canViewOrderList ||
-    authStore.canViewMabel
+    authStore.canViewMabel ||
+    authStore.canViewProduccionElRayo
   ) {
     return true
   }
@@ -730,6 +784,7 @@ const canAccessGestionOdcSap = computed(() => {
       normalized === 'odc.view' ||
       normalized === 'odcsap.view' ||
       normalized === 'mabel.view' ||
+      normalized === 'produccion-elrayo.view' ||
       normalized.startsWith('odc.') ||
       normalized.startsWith('odcsap.') ||
       normalized.startsWith('mabel.')
@@ -740,9 +795,6 @@ const canAccessGestionOdcSap = computed(() => {
 onMounted(async () => {
   if (authStore.token && !authStore.capabilities) {
     await authStore.fetchMe()
-  }
-  if (authStore.token) {
-    authStore.fetchAvatarEmoji()
   }
   if (authStore.isAuthenticated && !hasModuleAccess('inventario') && authStore.userData?.id) {
     checkPickerAccess(authStore.userData.id)

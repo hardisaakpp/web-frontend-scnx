@@ -126,56 +126,6 @@
             </div>
           </div>
 
-          <!-- Barra de progreso para Procesar ODC / Integrar SAP -->
-          <div v-if="procesoStore.loading && (procesoStore.currentStep === 'procesar-oc' || procesoStore.currentStep === 'integrar-sap')" 
-               class="bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl rounded-xl shadow-2xl p-4 border border-white/30 dark:border-gray-600/30 relative overflow-hidden transition-all duration-300">
-            <div class="absolute inset-0 bg-gradient-to-br from-white/20 dark:from-gray-700/20 via-transparent to-transparent pointer-events-none"></div>
-            
-            <!-- Efecto de ondas animadas (shimmer) -->
-            <div class="absolute inset-0 overflow-hidden pointer-events-none">
-              <div class="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent animate-shimmer"></div>
-            </div>
-            
-            <!-- Partículas/puntos animados -->
-            <div class="absolute inset-0 pointer-events-none">
-              <div class="absolute top-2 left-1/4 w-2 h-2 bg-indigo-400/60 rounded-full animate-bounce" style="animation-delay: 0s; animation-duration: 1s;"></div>
-              <div class="absolute top-2 left-1/2 w-2 h-2 bg-purple-400/60 rounded-full animate-bounce" style="animation-delay: 0.3s; animation-duration: 1s;"></div>
-              <div class="absolute top-2 left-3/4 w-2 h-2 bg-pink-400/60 rounded-full animate-bounce" style="animation-delay: 0.6s; animation-duration: 1s;"></div>
-            </div>
-            
-            <div class="flex items-center justify-between mb-2 relative z-10">
-              <div class="flex items-center gap-2">
-                <!-- Spinner animado -->
-                <div class="relative w-4 h-4">
-                  <svg class="animate-spin h-4 w-4 text-indigo-600 dark:text-indigo-400" fill="none" viewBox="0 0 24 24">
-                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                  <div class="absolute inset-0 border-2 border-indigo-300/30 dark:border-indigo-500/30 rounded-full animate-ping"></div>
-                </div>
-                <span class="text-sm font-medium text-gray-700 dark:text-gray-200 transition-colors duration-300">Progreso del proceso</span>
-              </div>
-              <span class="text-sm text-gray-500 dark:text-gray-400 font-semibold transition-colors duration-300">{{ procesoStore.progress }}%</span>
-            </div>
-            <div class="w-full h-4 bg-gray-200/60 dark:bg-gray-700/60 backdrop-blur-sm rounded-full overflow-hidden shadow-inner relative z-10 transition-colors duration-300">
-              <div
-                class="h-full bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 transition-all duration-300 ease-out shadow-lg relative overflow-hidden"
-                :style="{ width: `${procesoStore.progress}%` }"
-              >
-                <!-- Efecto shimmer sobre la barra de progreso -->
-                <div class="absolute inset-0 bg-gradient-to-r from-transparent via-white/40 to-transparent animate-shimmer"></div>
-                
-                <!-- Barra de progreso animada interna -->
-                <div class="absolute bottom-0 left-0 right-0 h-1 bg-white/30 overflow-hidden">
-                  <div class="h-full bg-gradient-to-r from-emerald-300 via-emerald-400 to-emerald-300 animate-progress-bar"></div>
-                </div>
-                
-                <!-- Efecto de pulso en la barra -->
-                <div class="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-pulse"></div>
-              </div>
-            </div>
-          </div>
-
           <!-- Barra de progreso para Eliminar ODC -->
           <div v-if="eliminando" 
                class="flex items-center justify-between flex-wrap gap-4 p-6 rounded-xl border border-emerald-300/50 dark:border-emerald-700/50 backdrop-blur-xl transition-all duration-300 relative overflow-hidden shadow-2xl bg-gradient-to-br from-emerald-100/80 dark:from-emerald-900/30 to-emerald-200/60 dark:to-emerald-800/40">
@@ -307,6 +257,7 @@
       :is-open="showIntegracionSAPModal"
       :detalle="integracionSAPDetalle"
       :solicitudes-transferencia="integracionSAPSolicitudes"
+      :detalles-adicionales="integracionSAPDetallesAdicionales"
       :estado-general="integracionSAPEstado"
       :show-retry-sap-cta="showIntegracionSAPRetryCta"
       :retry-loading="sapRetryLoading"
@@ -323,18 +274,19 @@ import { useRoute } from 'vue-router'
 import { useProcesoStore } from '../stores/procesoStore'
 import { useOrdenesCompraStore } from '../stores/ordenesCompraStore'
 import { useToast } from '@/composables/useToast'
+import { APP_LOCALE } from '@/plugins/locale'
 import { mba3ConsultasService } from '../services/mba3ConsultasApi'
-import type { Despacho, OrdenCompra, PedidoCompleto } from '../types'
+import type { Despacho, OrdenCompra, PedidoCompleto, AjusteDetalle, IntegracionSAPDetalle, ProcesoCompletoSAPDetalleODC, ProcesoCompletoSAPResponse, SolicitudesTransferencia } from '../types'
 import DespachosTable from '../components/DespachosTable.vue'
 import OrdenCompraTable from '../components/OrdenCompraTable.vue'
 import SkeletonTable from '../components/SkeletonTable.vue'
 import LoadingSpinner from '../components/LoadingSpinner.vue'
 import IntegracionSAPModal from '../components/IntegracionSAPModal.vue'
 import OdcSapVolverButton from '@/components/OdcSapVolverButton.vue'
-import type { AjusteDetalle, IntegracionSAPDetalle, ProcesoCompletoSAPResponse, SolicitudesTransferencia } from '../types'
 import { useOdcSapVolver } from '../../../composables/useOdcSapVolver'
 import QuickTablePagination from '@/components/QuickTablePagination.vue'
 import { ejecutarProcesoCompletoSap } from '../composables/ejecutarProcesoCompletoSap'
+import { useListadoAutoRefresh } from '../composables/useListadoAutoRefresh'
 import { isTransientClientError, SAP_MAY_STILL_PROCESSING_MESSAGE } from '../utils/httpErrors'
 import { isProcesoTransientError } from '../utils/procesoAsyncHelpers'
 
@@ -344,11 +296,15 @@ const toast = useToast()
 const route = useRoute()
 const { target: odcSapVolverTarget, title: odcSapVolverTitle } = useOdcSapVolver()
 
+type EstadoIntegracionSAP = 'success' | 'partial' | 'error'
+
 // Estados para modal de integración SAP
 const showIntegracionSAPModal = ref(false)
 const integracionSAPDetalle = ref<IntegracionSAPDetalle | null>(null)
 const integracionSAPSolicitudes = ref<SolicitudesTransferencia | null>(null)
-const integracionSAPEstado = ref<'success' | 'partial' | 'error'>('success')
+const integracionSAPEstado = ref<EstadoIntegracionSAP>('success')
+/** ODC adicionales de un pedido mixto (2 ODC del mismo pedido); ver IntegracionSAPModal.vue. */
+const integracionSAPDetallesAdicionales = ref<{ detalle: IntegracionSAPDetalle; solicitudesTransferencia: SolicitudesTransferencia | null }[]>([])
 
 /** Payload para re-ejecutar POST proceso-completo-sap tras fallo transitorio (retry_recommended). */
 const sapRetryContext = ref<{ numeroPedido: string; ajustesDetalle: AjusteDetalle[] } | null>(null)
@@ -357,54 +313,131 @@ const sapRetryLoading = ref(false)
 const showIntegracionSAPRetryCta = computed(() => {
   if (!sapRetryContext.value) return false
   const d = integracionSAPDetalle.value
-  return !!(d && d.retry_recommended === true && !d.success)
+  return !!(d && d.retry_recommended === true && !d.success && !d.queued)
 })
+
+/**
+ * ODC adicionales del pedido (todas menos la primera, ya cubierta por envio_sap). Un
+ * pedido mixto (tiendas de más de una marca en el mismo Excel) genera 2 ODC -- una por
+ * bodega -- que se envían ambas a SAP; sin esto el modal solo mostraba la primera.
+ */
+function getDetallesAdicionalesDesdeRespuesta(
+  response: ProcesoCompletoSAPResponse
+): { detalle: IntegracionSAPDetalle; solicitudesTransferencia: SolicitudesTransferencia | null }[] {
+  const envios = response.envios_sap
+  if (!envios || envios.length <= 1) return []
+  return envios.slice(1).map((envio) => ({
+    detalle: {
+      success: envio.success,
+      oc_id: envio.oc_id ?? '',
+      doc_num: envio.doc_num ?? null,
+      doc_entry: envio.doc_entry ?? null,
+      numero_oc_sap: envio.numero_oc_sap ?? null,
+      message: envio.message ?? null,
+      error: envio.error ?? null,
+      error_message: envio.error ?? null,
+      error_code: envio.error_code ?? null,
+      error_source: null,
+      retry_recommended: envio.retry_recommended ?? null,
+      queued: envio.queued ?? null
+    } as IntegracionSAPDetalle,
+    solicitudesTransferencia: envio.solicitudes_transferencia ?? null
+  }))
+}
+
+function construirDetalleSAPDesdeEnvio(
+  envio: ProcesoCompletoSAPDetalleODC,
+  response: ProcesoCompletoSAPResponse,
+  errorMsg: string | null
+): IntegracionSAPDetalle {
+  return {
+    oc_id: envio.oc_id ?? '',
+    success: !!envio.doc_num,
+    doc_num: envio.doc_num ?? null,
+    doc_entry: envio.doc_entry ?? null,
+    numero_oc_sap: (envio as { numero_oc_sap?: string | null }).numero_oc_sap ?? null,
+    message: envio.message ?? response.message ?? null,
+    error: envio.error ?? errorMsg,
+    error_message: envio.error ?? errorMsg,
+    error_code: (envio as { error_code?: string | null }).error_code ?? null,
+    error_source: (envio as { error_source?: string | null }).error_source ?? null,
+    solicitudes_transferencia: envio.solicitudes_transferencia ?? null,
+    sap_response: null,
+    sap_error_details: null,
+    retry_recommended: envio.retry_recommended ?? null,
+    queued: envio.queued ?? null,
+    proveedor: integracionSAPDetalle.value?.proveedor
+  }
+}
+
+// Un paso previo al envío a SAP (ej. generar ODC) falló: no hay envio_sap en
+// la respuesta. Sin esto, el detalle del intento anterior quedaba pisado en
+// pantalla en vez de reflejar el motivo real de ESTE intento.
+function construirDetalleSAPSinEnvio(
+  response: ProcesoCompletoSAPResponse,
+  errorMsg: string | null
+): IntegracionSAPDetalle {
+  return {
+    oc_id: integracionSAPDetalle.value?.oc_id ?? '',
+    success: false,
+    doc_num: null,
+    doc_entry: null,
+    numero_oc_sap: null,
+    message: response.message ?? null,
+    error: errorMsg,
+    error_message: errorMsg,
+    error_code: null,
+    error_source: null,
+    solicitudes_transferencia: null,
+    sap_response: null,
+    sap_error_details: null,
+    retry_recommended: null,
+    queued: null,
+    proveedor: integracionSAPDetalle.value?.proveedor
+  }
+}
+
+function calcularInnerStatusProcesoCompleto(
+  response: ProcesoCompletoSAPResponse,
+  envio: ProcesoCompletoSAPDetalleODC | undefined
+): EstadoIntegracionSAP {
+  if (response.status === 'success' || response.status === 'partial' || response.status === 'error') {
+    return response.status
+  }
+  if (envio?.doc_num != null) return 'success'
+  if (response.error_detalle) return 'partial'
+  return 'error'
+}
+
+function calcularEstadoIntegracionSAP(
+  innerStatus: 'success' | 'partial' | 'error',
+  solicitudes: SolicitudesTransferencia | null
+): 'success' | 'partial' | 'error' {
+  if (innerStatus === 'success') {
+    return solicitudes && solicitudes.transferencias_errores > 0 ? 'partial' : 'success'
+  }
+  if (innerStatus === 'partial') return 'partial'
+  return 'error'
+}
 
 function aplicarRespuestaProcesoCompletoSAPAlModal(response: ProcesoCompletoSAPResponse) {
   const envio = response.envio_sap
-  const errorMsg = response.error ?? response.message ?? null
+  const errorMsg = response.error_detalle ?? response.message ?? null
   const solicitudes =
     response.solicitudes_transferencia ?? envio?.solicitudes_transferencia ?? null
 
+  integracionSAPDetallesAdicionales.value = getDetallesAdicionalesDesdeRespuesta(response)
+
   if (envio) {
-    integracionSAPDetalle.value = {
-      oc_id: envio.oc_id ?? '',
-      success: !!envio.doc_num,
-      doc_num: envio.doc_num ?? null,
-      doc_entry: envio.doc_entry ?? null,
-      numero_oc_sap: (envio as { numero_oc_sap?: string | null }).numero_oc_sap ?? null,
-      message: envio.message ?? response.message ?? null,
-      error: envio.error ?? errorMsg,
-      error_message: envio.error ?? errorMsg,
-      error_code: (envio as { error_code?: string | null }).error_code ?? null,
-      error_source: (envio as { error_source?: string | null }).error_source ?? null,
-      solicitudes_transferencia: envio.solicitudes_transferencia ?? null,
-      sap_response: null,
-      sap_error_details: null,
-      retry_recommended: envio.retry_recommended ?? null,
-      proveedor: integracionSAPDetalle.value?.proveedor
-    }
+    integracionSAPDetalle.value = construirDetalleSAPDesdeEnvio(envio, response, errorMsg)
+  } else {
+    integracionSAPDetalle.value = construirDetalleSAPSinEnvio(response, errorMsg)
   }
 
   integracionSAPSolicitudes.value = solicitudes
 
-  const innerStatus =
-    response.status === 'success' || response.status === 'partial' || response.status === 'error'
-      ? response.status
-      : envio?.doc_num != null
-        ? 'success'
-        : response.error
-          ? 'partial'
-          : 'error'
-
-  if (innerStatus === 'success') {
-    integracionSAPEstado.value =
-      solicitudes && solicitudes.transferencias_errores > 0 ? 'partial' : 'success'
-  } else if (innerStatus === 'partial') {
-    integracionSAPEstado.value = 'partial'
-  } else {
-    integracionSAPEstado.value = 'error'
-  }
+  const innerStatus = calcularInnerStatusProcesoCompleto(response, envio)
+  integracionSAPEstado.value = calcularEstadoIntegracionSAP(innerStatus, solicitudes)
 }
 
 async function handleRetryProcesoCompletoSAP() {
@@ -421,6 +454,13 @@ async function handleRetryProcesoCompletoSAP() {
       },
     })
     aplicarRespuestaProcesoCompletoSAPAlModal(response)
+    // Sincroniza la tabla/estadísticas con el resultado del reintento -- sin esto la
+    // fila del pedido se queda mostrando el estado/mensaje/hora del intento anterior
+    // hasta que el usuario recarga la página, aunque el modal sí se haya actualizado.
+    await Promise.all([
+      ordenesCompraStore.fetchEstadisticas(),
+      cargarOrdenesCompraPendientes(),
+    ]).catch((err) => console.warn('[handleRetryProcesoCompletoSAP] refresh:', err))
     if (response.envio_sap?.doc_num != null) {
       sapRetryContext.value = null
       toast.success('Envío a SAP', response.message || 'Proceso completado correctamente.')
@@ -444,6 +484,13 @@ async function handleRetryProcesoCompletoSAP() {
       err?.message ??
       'No se pudo reintentar'
     toast.error('Error al reintentar envío a SAP', msg)
+    // Un paso previo (ej. generar ODC) puede haber mutado estado en el backend
+    // antes de que el error se lanzara -- se refresca igual para no dejar la fila
+    // mostrando datos del intento anterior.
+    await Promise.all([
+      ordenesCompraStore.fetchEstadisticas(),
+      cargarOrdenesCompraPendientes(),
+    ]).catch((refreshErr) => console.warn('[handleRetryProcesoCompletoSAP] refresh:', refreshErr))
   } finally {
     sapRetryLoading.value = false
   }
@@ -477,6 +524,7 @@ const pageSizeOC = OC_LIST_PAGE_SIZE
 const totalPagesOCServer = ref(1)
 const searchProcesarOC = ref('')
 let searchDebounceTimer: ReturnType<typeof setTimeout> | null = null
+let ocRequestController: AbortController | null = null
 
 // ⭐ NUEVO: Estados para pedidos confirmados
 const pedidosConfirmados = ref<PedidoCompleto[]>([])
@@ -705,7 +753,7 @@ function formatTimeAgo(date: Date): string {
   const hours = Math.floor(minutes / 60)
   if (hours < 24) return `Hace ${hours}h ${minutes % 60}min`
   
-  return date.toLocaleString('es-ES', { 
+  return date.toLocaleString(APP_LOCALE, { 
     day: '2-digit', 
     month: 'short', 
     hour: '2-digit', 
@@ -772,6 +820,10 @@ async function refrescarDatosOrdenesCompra(maxRetries: number = 1, delayMs: numb
 
 /** Listado paginado en servidor (todos los estados, búsqueda opcional). */
 async function cargarOrdenesCompraPendientes() {
+  ocRequestController?.abort()
+  const controller = new AbortController()
+  ocRequestController = controller
+
   ordenesCompraStore.loading = true
   try {
     const search = searchProcesarOC.value.trim()
@@ -779,8 +831,12 @@ async function cargarOrdenesCompraPendientes() {
       undefined,
       currentPageOC.value,
       OC_LIST_PAGE_SIZE,
-      search ? { search } : undefined
+      search ? { search } : undefined,
+      controller.signal
     )
+
+    // Petición superada por una búsqueda/página más reciente: no pisar datos más nuevos con una respuesta tardía.
+    if (controller.signal.aborted) return
 
     const rows = (response.data ?? []).slice(0, OC_LIST_PAGE_SIZE)
     ordenesCompraStore.ordenesCompra = rows.map((oc) => ({ ...oc }))
@@ -802,13 +858,17 @@ async function cargarOrdenesCompraPendientes() {
 
     await nextTick()
   } catch (error: any) {
+    if (controller.signal.aborted) return
     console.error('Error al cargar órdenes de compra:', error)
     toast.error('Error al cargar órdenes', error.message || 'No se pudieron cargar las órdenes de compra')
     ordenesCompraStore.ordenesCompra = []
     ordenesCompraStore.total = 0
     totalPagesOCServer.value = 1
   } finally {
-    ordenesCompraStore.loading = false
+    // Solo esta petición sigue siendo la vigente: si ya fue reemplazada, la más nueva controla el estado de loading.
+    if (ocRequestController === controller) {
+      ordenesCompraStore.loading = false
+    }
   }
 }
 
@@ -1320,6 +1380,7 @@ async function handleVerDetalleSAP(oc: OrdenCompra) {
     integracionSAPDetalle.value = detalle
     integracionSAPSolicitudes.value =
       response.solicitudes_transferencia ?? envio.solicitudes_transferencia ?? null
+    integracionSAPDetallesAdicionales.value = []
     integracionSAPEstado.value = envio.success ? 'success' : 'error'
     showIntegracionSAPModal.value = true
     return
@@ -1352,16 +1413,158 @@ async function handleVerDetalleSAP(oc: OrdenCompra) {
 
   integracionSAPDetalle.value = detalle
   integracionSAPSolicitudes.value = null
+  integracionSAPDetallesAdicionales.value = []
   integracionSAPEstado.value = 'success'
   showIntegracionSAPModal.value = true
 }
 
+/** "e1; e2; e3" -> ["e1","e2","e3"], recortado y sin vacíos. Usado tanto para errores del backend al integrar como para el catch general. */
+function parsearErroresSeparadosPorPuntoYComa(mensaje: string): string[] {
+  return mensaje.split(';').map(e => e.trim()).filter(e => e.length > 0)
+}
+
+/** Título del error según error_source del backend (BACKEND/SAP_CONNECTION/SAP/otro). Mismo mapeo usado en 2 lugares de handleIntegrarOC. */
+function tituloPorOrigenErrorIntegracion(errorSource: string | undefined | null): string {
+  if (errorSource === 'BACKEND') return 'Error de validación'
+  if (errorSource === 'SAP_CONNECTION') return 'Error de conexión con SAP'
+  if (errorSource === 'SAP') return 'Error de SAP'
+  return 'Error al integrar'
+}
+
+/**
+ * Normaliza la respuesta de integrarSAP a la forma { detalles: [...] } esperada por el resto de
+ * handleIntegrarOC. El backend puede devolver ya "detalles" en metadata, o un formato alternativo
+ * { resultado, oc_id, oc_doc_num } que hay que traducir a la misma forma.
+ */
+function normalizarDetallesIntegracion(response: any): any[] {
+  const metadata = response?.metadata || {}
+  const detalles = metadata.detalles || []
+  if (detalles.length > 0 || !response?.resultado || typeof response.resultado !== 'object' || !response.oc_id) {
+    return detalles
+  }
+
+  const res = response.resultado as { success?: boolean; resultados?: Array<{ doc_entry?: number; doc_num?: number }> }
+  const firstResult = res.resultados?.[0]
+  const envioSap = response.envio_sap ?? response
+  return [{
+    oc_id: response.oc_id as string,
+    success: res.success === true,
+    doc_entry: firstResult?.doc_entry ?? envioSap.doc_entry ?? null,
+    doc_num: firstResult?.doc_num ?? envioSap.doc_num ?? response.oc_doc_num ?? null,
+    numero_oc_sap: envioSap.numero_oc_sap ?? response.numero_oc_sap ?? null,
+    message: 'Enviada exitosamente',
+    error: null,
+    error_message: null,
+    error_code: null,
+    error_source: null,
+    solicitudes_transferencia: {
+      success: res.success === true,
+      pedido_id: response.pedido_id ?? '',
+      total_tiendas: (res as any).total_tiendas ?? (res.resultados?.length ?? 0),
+      transferencias_creadas: (res as any).transferencias_creadas ?? 0,
+      transferencias_errores: (res as any).transferencias_errores ?? 0,
+      resultados: (res as any).resultados ?? []
+    }
+  }]
+}
+
+/** Rama de éxito: campos nuevos de la orden + mensaje del toast ("DocEntry: X, Num ODC: Y"). */
+function construirActualizacionOrdenExito(ordenActual: OrdenCompra, detalle: any): { orden: OrdenCompra; toastMessage: string } {
+  const orden = { ...ordenActual }
+  orden.estado = 'ENVIADA'
+  orden.numero_oc_sap = detalle.numero_oc_sap ?? detalle.doc_num?.toString() ?? null
+  orden.doc_entry = detalle.doc_entry || null
+  orden.doc_num = detalle.doc_num ?? null
+  orden.fecha_procesado = new Date().toISOString()
+  orden.respuesta_sap = detalle.message || 'Enviada exitosamente'
+
+  const numOdc = detalle.numero_oc_sap ?? (detalle.doc_num != null ? String(detalle.doc_num) : null)
+  let toastMessage: string
+  if (detalle.doc_entry) {
+    const numOdcParte = numOdc != null ? `, Num ODC: ${numOdc}` : ''
+    toastMessage = `DocEntry: ${detalle.doc_entry}${numOdcParte}`
+  } else if (numOdc != null) {
+    toastMessage = `Num ODC: ${numOdc}`
+  } else {
+    toastMessage = 'N/A'
+  }
+  return { orden, toastMessage }
+}
+
+/** Rama de error: campos nuevos de la orden + título/mensaje del toast (con "+N más" si hay varios errores). */
+function construirActualizacionOrdenError(ordenActual: OrdenCompra, detalle: any): { orden: OrdenCompra; toastTitle: string; toastMessage: string; erroresAdicionales: string[] } {
+  const orden = { ...ordenActual }
+  orden.estado = 'ERROR'
+  const errorMsg = detalle.error_message || detalle.error || 'Error desconocido'
+  orden.error_message = errorMsg
+  orden.error_source = detalle.error_source || 'BACKEND'
+  orden.error_code = detalle.error_code || null
+  orden.fecha_procesado = new Date().toISOString()
+  orden.respuesta_sap = errorMsg
+
+  const errores = typeof errorMsg === 'string' && errorMsg.includes(';')
+    ? parsearErroresSeparadosPorPuntoYComa(errorMsg)
+    : [errorMsg]
+  const toastTitle = tituloPorOrigenErrorIntegracion(detalle.error_source)
+  const toastMessage = errores.length > 1
+    ? `${errores[0]} (+${errores.length - 1} error(es) más. Ver consola)`
+    : errores[0]
+  return { orden, toastTitle, toastMessage, erroresAdicionales: errores.length > 1 ? errores : [] }
+}
+
+/** Estado general del modal de integración: partial si hay ITR pendientes, error si falló, si no success. */
+function determinarEstadoIntegracion(status: string | undefined, detalleSuccess: boolean, solicitudes: SolicitudesTransferencia | null): EstadoIntegracionSAP {
+  if (status === 'partial' || (detalleSuccess && solicitudes && solicitudes.transferencias_errores > 0)) {
+    return 'partial'
+  }
+  if (status === 'error' || !detalleSuccess) {
+    return 'error'
+  }
+  return 'success'
+}
+
+/** Interpreta un error de integrarSAP (fuera del caso "timeout transitorio", manejado aparte). */
+function interpretarErrorIntegracion(error: any): { title: string; message: string; erroresAdicionales: string[] } {
+  let errorTitle = 'Error al integrar'
+  let errorMessage = error.message || 'No se pudo enviar la orden a SAP'
+  let erroresAdicionales: string[] = []
+
+  if (error.response?.data) {
+    const errorData = error.response.data
+    if (errorData.error) {
+      errorMessage = errorData.error
+      const errores = parsearErroresSeparadosPorPuntoYComa(errorMessage)
+      if (errores.length > 1) {
+        errorMessage = errores[0]
+        erroresAdicionales = errores.slice(1)
+      }
+    } else if (errorData.detail) {
+      errorMessage = typeof errorData.detail === 'string' ? errorData.detail : JSON.stringify(errorData.detail)
+    } else if (errorData.message) {
+      errorMessage = errorData.message
+    }
+
+    if (errorData.error_source) {
+      errorTitle = tituloPorOrigenErrorIntegracion(errorData.error_source)
+    }
+  }
+
+  return { title: errorTitle, message: errorMessage, erroresAdicionales }
+}
+
 /**
  * El usuario reintentó las ITR/ST de una OC ya enviada (no reenvía la ODC).
- * El backend ya invalidó su caché; aquí refrescamos estadísticas y la lista de OCs
- * para que los flags `st_pendientes_reintento` / `mostrar_reintentar_st` queden sincronizados.
+ * Además de refrescar estadísticas y la lista de OCs, invalidamos el detalle de
+ * integración SAP cacheado en memoria para esta OC: si estaba cacheado con el
+ * resumen del envío original (ej. "2 de 6"), un siguiente "Ver detalle SAP" debe
+ * volver a pedirlo al backend en vez de reutilizar el snapshot desactualizado.
  */
-async function handleStReintentado(_payload: { oc: OrdenCompra; result: any }) {
+async function handleStReintentado(payload: { oc: OrdenCompra; result: any }) {
+  if (integracionSAPDetalle.value?.oc_id === payload.oc.oc_id) {
+    integracionSAPDetalle.value = null
+    integracionSAPSolicitudes.value = null
+  }
+
   try {
     await Promise.all([
       ordenesCompraStore.fetchEstadisticas(),
@@ -1373,144 +1576,152 @@ async function handleStReintentado(_payload: { oc: OrdenCompra; result: any }) {
 }
 
 // Funciones de integración individuales
-async function handleIntegrarOC(referenciaDespacho: string, almacenDestinoParam?: string) {
+// ocId identifica sin ambigüedad la ODC a reintentar: un pedido mixto ROLAND/REGIONS genera
+// 2 ODC que comparten la misma referenciaDespacho (número de pedido), así que reintentar solo
+// por referencia podía resolver a la ODC equivocada en backend (find_by_referencia_despacho
+// no filtra por oc_id/estado). Ver OrdenCompraTable.vue::handleIntegrar.
+/**
+ * Actualiza la orden local (array de ordenesCompraStore) con el resultado de integrarSAP y
+ * refresca estadísticas. Por oc_id (sin ambigüedad): con 2 ODC del mismo pedido mixto
+ * compartiendo referencia_despacho, buscar por referencia podía actualizar la fila equivocada.
+ */
+async function actualizarOrdenLocalTrasIntegracion(ocId: string, referenciaDespacho: string, detalle: any): Promise<void> {
+  const ordenIndex = ordenesCompraStore.ordenesCompra.findIndex((oc: any) => oc.oc_id === ocId)
+  if (ordenIndex === -1) return
+
+  const ordenActual = ordenesCompraStore.ordenesCompra[ordenIndex]
+
+  if (detalle.success === true) {
+    const { orden: ordenActualizada, toastMessage } = construirActualizacionOrdenExito(ordenActual, detalle)
+    ordenesCompraStore.ordenesCompra[ordenIndex] = ordenActualizada
+    ordenesCompraStore.ordenesCompra = [...ordenesCompraStore.ordenesCompra]
+    toast.success('Orden enviada', toastMessage)
+    if (import.meta.env.DEV) {
+      console.log(`[handleIntegrarOC] ✅ Estado actualizado localmente: ${referenciaDespacho} → ${ordenActualizada.estado}`)
+    }
+  } else {
+    const { orden: ordenActualizada, toastTitle, toastMessage, erroresAdicionales } = construirActualizacionOrdenError(ordenActual, detalle)
+    ordenesCompraStore.ordenesCompra[ordenIndex] = ordenActualizada
+    ordenesCompraStore.ordenesCompra = [...ordenesCompraStore.ordenesCompra]
+    if (erroresAdicionales.length > 0) {
+      console.warn(`[handleIntegrarOC] Múltiples errores para ${referenciaDespacho}:`, erroresAdicionales)
+    }
+    toast.error(toastTitle, toastMessage)
+    if (import.meta.env.DEV) {
+      console.log(`[handleIntegrarOC] ✅ Estado actualizado localmente: ${referenciaDespacho} → ${ordenActualizada.estado}`)
+    }
+  }
+
+  await nextTick()
+  ordenesCompraStore.fetchEstadisticas()
+}
+
+function logSiFaltaSolicitudesTransferencia(detalle: any, response: any): void {
+  if (!(import.meta.env.DEV && !integracionSAPSolicitudes.value)) return
+  console.debug('[Integración SAP] solicitudes_transferencia no encontrado. Respuesta:', {
+    enDetalle: !!detalle.solicitudes_transferencia,
+    enMetadata: !!response?.metadata?.solicitudes_transferencia,
+    enRaiz: !!response?.solicitudes_transferencia,
+    keysDetalle: Object.keys(detalle),
+    keysMetadata: response?.metadata ? Object.keys(response.metadata) : []
+  })
+}
+
+/** Mostrar modal con resultados de integración (ITR incluidas). */
+async function mostrarModalIntegracion(detalle: any, response: any): Promise<void> {
+  integracionSAPDetalle.value = detalle
+  integracionSAPDetallesAdicionales.value = []
+  // Leer ITR: puede venir en detalle, en metadata o en la raíz de la respuesta (según backend)
+  integracionSAPSolicitudes.value =
+    detalle.solicitudes_transferencia ??
+    response?.metadata?.solicitudes_transferencia ??
+    response?.solicitudes_transferencia ??
+    null
+  logSiFaltaSolicitudesTransferencia(detalle, response)
+
+  // Determinar estado general
+  const status = response?.status || (detalle.success ? 'success' : 'error')
+  integracionSAPEstado.value = determinarEstadoIntegracion(status, detalle.success, integracionSAPSolicitudes.value)
+
+  // Mostrar modal después de un pequeño delay para que el overlay se cierre primero
+  await new Promise(resolve => setTimeout(resolve, 300))
+  showIntegracionSAPModal.value = true
+}
+
+async function manejarErrorIntegracionOC(error: any): Promise<void> {
+  console.error('Error al integrar ODC:', error)
+
+  if (isTransientClientError(error)) {
+    toast.warning('Tiempo de espera agotado', SAP_MAY_STILL_PROCESSING_MESSAGE)
+    await Promise.all([
+      ordenesCompraStore.fetchEstadisticas(),
+      cargarOrdenesCompraPendientes(),
+    ]).catch((err) => console.warn('[handleIntegrarOC] refresh tras timeout:', err))
+    if (ordenCompraTableRef.value?.clearSendingState) {
+      ordenCompraTableRef.value.clearSendingState()
+    }
+    return
+  }
+
+  const { title: errorTitle, message: errorMessage, erroresAdicionales } = interpretarErrorIntegracion(error)
+
+  if (erroresAdicionales.length > 0) {
+    // Si hay múltiples errores, mostrar el primero en el toast y los demás en consola
+    console.warn('Errores adicionales:', erroresAdicionales)
+    toast.error(errorTitle, `${errorMessage} (+${erroresAdicionales.length} error(es) más. Ver consola)`)
+    return // Salir temprano para no mostrar el toast genérico (tampoco se limpia sendingState en este caso)
+  }
+
+  // Solo mostrar toast si no se mostró antes (por errores múltiples)
+  if (!errorMessage.includes('(+')) {
+    toast.error(errorTitle, errorMessage)
+  }
+
+  // En caso de error, SÍ limpiar el estado de envío para que el usuario pueda reintentar
+  if (ordenCompraTableRef.value?.clearSendingState) {
+    ordenCompraTableRef.value.clearSendingState()
+  }
+}
+
+async function handleIntegrarOC(ocId: string, referenciaDespacho: string, almacenDestinoParam?: string) {
   // Verificar que no esté ya ejecutándose
   if (procesoStore.loading || ordenesCompraStore.loading) {
     return
   }
-  
+
   try {
     // Establecer loading en procesoStore para mostrar el overlay
     procesoStore.loading = true
     procesoStore.currentStep = 'integrar-sap'
     procesoStore.progress = 0
-    
+
     // Esperar a que Vue actualice el DOM para que el overlay aparezca
     await nextTick()
-    
+
     const almacenMsg = almacenDestinoParam ? ` (Almacén: ${almacenDestinoParam})` : ''
     toast.info('Enviando orden a SAP...', `Enviando ${referenciaDespacho}${almacenMsg}`)
-    
+
     // Simular progreso mientras se envía
     procesoStore.progress = 50
-    
+
     // ✅ ESPERAR LA RESPUESTA COMPLETA del endpoint (esto toma ~5 segundos)
     // Usar almacén destino del parámetro si se proporciona, sino undefined
-    const response = await mba3ConsultasService.integrarSAP(referenciaDespacho, almacenDestinoParam)
-    
+    // Enviar por ocId (sin ambigüedad) en vez de referenciaDespacho -- ver comentario en la firma.
+    const response = await mba3ConsultasService.integrarSAP(referenciaDespacho, almacenDestinoParam, ocId)
+
     // Completar el progreso
     procesoStore.progress = 100
-    
+
     // ✅ ACTUALIZAR ESTADO LOCAL INMEDIATAMENTE basándose en la respuesta
-    const metadata = response?.metadata || {}
-    let detalles = metadata.detalles || []
-    // Normalizar formato alternativo del backend: { resultado, oc_id, oc_doc_num } → detalle + solicitudes
-    if (detalles.length === 0 && response?.resultado && typeof response.resultado === 'object' && response.oc_id) {
-      const res = response.resultado as { success?: boolean; resultados?: Array<{ doc_entry?: number; doc_num?: number }> }
-      const firstResult = res.resultados?.[0]
-      const resp = response as any
-      const envioSap = resp.envio_sap ?? resp
-      detalles = [{
-        oc_id: response.oc_id as string,
-        success: res.success === true,
-        doc_entry: firstResult?.doc_entry ?? envioSap.doc_entry ?? null,
-        doc_num: firstResult?.doc_num ?? envioSap.doc_num ?? resp.oc_doc_num ?? null,
-        numero_oc_sap: envioSap.numero_oc_sap ?? resp.numero_oc_sap ?? null,
-        message: 'Enviada exitosamente',
-        error: null,
-        error_message: null,
-        error_code: null,
-        error_source: null,
-        solicitudes_transferencia: {
-          success: res.success === true,
-          pedido_id: (response as any).pedido_id ?? '',
-          total_tiendas: (res as any).total_tiendas ?? (res.resultados?.length ?? 0),
-          transferencias_creadas: (res as any).transferencias_creadas ?? 0,
-          transferencias_errores: (res as any).transferencias_errores ?? 0,
-          resultados: (res as any).resultados ?? []
-        }
-      }]
-    }
+    const detalles = normalizarDetallesIntegracion(response)
 
     if (detalles.length > 0) {
-      const detalle = detalles[0]
-      const success = detalle.success === true
-      
-      // Buscar y actualizar la orden en el array local
-      const ordenIndex = ordenesCompraStore.ordenesCompra.findIndex(
-        (oc: any) => oc.referencia_despacho === referenciaDespacho
-      )
-      
-      if (ordenIndex !== -1) {
-        // Crear un nuevo objeto para asegurar reactividad de Vue
-        const ordenActualizada = { ...ordenesCompraStore.ordenesCompra[ordenIndex] }
-        
-        if (success) {
-          ordenActualizada.estado = 'ENVIADA'
-          ordenActualizada.numero_oc_sap = detalle.numero_oc_sap ?? detalle.doc_num?.toString() ?? null
-          ordenActualizada.doc_entry = detalle.doc_entry || null
-          ordenActualizada.doc_num = detalle.doc_num ?? null
-          ordenActualizada.fecha_procesado = new Date().toISOString()
-          ordenActualizada.respuesta_sap = detalle.message || 'Enviada exitosamente'
-          
-          const numOdc = detalle.numero_oc_sap ?? (detalle.doc_num != null ? String(detalle.doc_num) : null)
-          const docInfo = detalle.doc_entry
-            ? `DocEntry: ${detalle.doc_entry}${numOdc != null ? `, Num ODC: ${numOdc}` : ''}`
-            : (numOdc != null ? `Num ODC: ${numOdc}` : 'N/A')
-          toast.success('Orden enviada', docInfo)
-        } else {
-          ordenActualizada.estado = 'ERROR'
-          // Usar error_message si existe, sino error
-          const errorMsg = detalle.error_message || detalle.error || 'Error desconocido'
-          ordenActualizada.error_message = errorMsg
-          ordenActualizada.error_source = detalle.error_source || 'BACKEND'
-          ordenActualizada.error_code = detalle.error_code || null
-          ordenActualizada.fecha_procesado = new Date().toISOString()
-          ordenActualizada.respuesta_sap = errorMsg
-          
-          // Parsear errores múltiples si están separados por ';'
-          const errores = typeof errorMsg === 'string' && errorMsg.includes(';')
-            ? errorMsg.split(';').map(e => e.trim()).filter(e => e.length > 0)
-            : [errorMsg]
-          
-          // Determinar título según el origen del error
-          const errorTitle = detalle.error_source === 'BACKEND' 
-            ? 'Error de validación'
-            : detalle.error_source === 'SAP_CONNECTION'
-            ? 'Error de conexión con SAP'
-            : detalle.error_source === 'SAP'
-            ? 'Error de SAP'
-            : 'Error al integrar'
-          
-          // Mostrar primer error en toast, resto en consola
-          if (errores.length > 1) {
-            console.warn(`[handleIntegrarOC] Múltiples errores para ${referenciaDespacho}:`, errores)
-            toast.error(errorTitle, `${errores[0]} (+${errores.length - 1} error(es) más. Ver consola)`)
-          } else {
-            toast.error(errorTitle, errores[0])
-          }
-        }
-        
-        // Reemplazar la orden en el array (Vue detectará el cambio)
-        ordenesCompraStore.ordenesCompra[ordenIndex] = ordenActualizada
-        
-        // Crear un nuevo array para forzar reactividad
-        ordenesCompraStore.ordenesCompra = [...ordenesCompraStore.ordenesCompra]
-        
-        await nextTick()
-        void ordenesCompraStore.fetchEstadisticas()
-
-        if (import.meta.env.DEV) {
-          console.log(
-            `[handleIntegrarOC] ✅ Estado actualizado localmente: ${referenciaDespacho} → ${ordenActualizada.estado}`
-          )
-        }
-      }
+      await actualizarOrdenLocalTrasIntegracion(ocId, referenciaDespacho, detalles[0])
     }
-    
+
     // Delay para que el usuario vea el cambio en la UI antes de cerrar el overlay
     await new Promise(resolve => setTimeout(resolve, 500))
-    
+
     // ✅ Verificar si hay pedidos cerrados en la respuesta (Fase 6)
     const pedidosCerrados = response?.metadata?.pedidos_cerrados || []
     if (pedidosCerrados.length > 0) {
@@ -1520,42 +1731,12 @@ async function handleIntegrarOC(referenciaDespacho: string, almacenDestinoParam?
       )
       if (import.meta.env.DEV) console.log('📦 Pedidos cerrados después del envío:', pedidosCerrados)
     }
-    
+
     // ⭐ Mostrar modal con resultados de integración
     const envioExitoso = detalles.length > 0 && detalles[0]?.success === true
 
     if (detalles.length > 0) {
-      const detalle = detalles[0]
-      integracionSAPDetalle.value = detalle
-      // Leer ITR: puede venir en detalle, en metadata o en la raíz de la respuesta (según backend)
-      integracionSAPSolicitudes.value =
-        detalle.solicitudes_transferencia ??
-        response?.metadata?.solicitudes_transferencia ??
-        response?.solicitudes_transferencia ??
-        null
-      if (import.meta.env.DEV && !integracionSAPSolicitudes.value) {
-        console.debug('[Integración SAP] solicitudes_transferencia no encontrado. Respuesta:', {
-          enDetalle: !!detalle.solicitudes_transferencia,
-          enMetadata: !!response?.metadata?.solicitudes_transferencia,
-          enRaiz: !!response?.solicitudes_transferencia,
-          keysDetalle: Object.keys(detalle),
-          keysMetadata: response?.metadata ? Object.keys(response.metadata) : []
-        })
-      }
-
-      // Determinar estado general
-      const status = response?.status || (detalle.success ? 'success' : 'error')
-      if (status === 'partial' || (detalle.success && integracionSAPSolicitudes.value && integracionSAPSolicitudes.value.transferencias_errores > 0)) {
-        integracionSAPEstado.value = 'partial'
-      } else if (status === 'error' || !detalle.success) {
-        integracionSAPEstado.value = 'error'
-      } else {
-        integracionSAPEstado.value = 'success'
-      }
-      
-      // Mostrar modal después de un pequeño delay para que el overlay se cierre primero
-      await new Promise(resolve => setTimeout(resolve, 300))
-      showIntegracionSAPModal.value = true
+      await mostrarModalIntegracion(detalles[0], response)
     }
 
     // Refrescar tras envío/reintento exitoso para sincronizar flags de ACCIONES (reintentar/PDF).
@@ -1565,79 +1746,12 @@ async function handleIntegrarOC(referenciaDespacho: string, almacenDestinoParam?
         cargarOrdenesCompraPendientes(),
       ])
     }
-    
+
     // IMPORTANTE: NO limpiar sendingOcId aquí
     // El watch en OrdenCompraTable detectará automáticamente cuando el estado cambie
     // y limpiará sendingOcId solo cuando el estado sea != 'PENDIENTE'
   } catch (error: any) {
-    console.error('Error al integrar ODC:', error)
-
-    if (isTransientClientError(error)) {
-      toast.warning('Tiempo de espera agotado', SAP_MAY_STILL_PROCESSING_MESSAGE)
-      await Promise.all([
-        ordenesCompraStore.fetchEstadisticas(),
-        cargarOrdenesCompraPendientes(),
-      ]).catch((err) => console.warn('[handleIntegrarOC] refresh tras timeout:', err))
-      if (ordenCompraTableRef.value?.clearSendingState) {
-        ordenCompraTableRef.value.clearSendingState()
-      }
-      return
-    }
-    
-    // Mejorar manejo de errores con mensajes más descriptivos
-    let errorTitle = 'Error al integrar'
-    let errorMessage = error.message || 'No se pudo enviar la orden a SAP'
-    
-    // Parsear errores del backend con estructura mejorada
-    if (error.response?.data) {
-      const errorData = error.response.data
-      
-      // Si tiene campo error (string con validaciones - puede tener múltiples errores separados por ';')
-      if (errorData.error) {
-        errorMessage = errorData.error
-        // Parsear errores múltiples si están separados por ';'
-        const errores = errorMessage.split(';').map((e: string) => e.trim()).filter((e: string) => e.length > 0)
-        if (errores.length > 1) {
-          // Si hay múltiples errores, mostrar el primero en el toast y los demás en consola
-          errorMessage = errores[0]
-          console.warn('Errores adicionales:', errores.slice(1))
-          // Mostrar todos los errores en un mensaje expandido
-          toast.error(errorTitle, `${errores[0]} (+${errores.length - 1} error(es) más. Ver consola)`)
-          return // Salir temprano para no mostrar el toast genérico
-        }
-      } 
-      // Si tiene campo detail (FastAPI)
-      else if (errorData.detail) {
-        errorMessage = typeof errorData.detail === 'string' 
-          ? errorData.detail 
-          : JSON.stringify(errorData.detail)
-      }
-      // Si tiene campo message
-      else if (errorData.message) {
-        errorMessage = errorData.message
-      }
-      
-      // Determinar título según el origen del error
-      if (errorData.error_source) {
-        errorTitle = errorData.error_source === 'BACKEND'
-          ? 'Error de validación'
-          : errorData.error_source === 'SAP_CONNECTION'
-          ? 'Error de conexión con SAP'
-          : errorData.error_source === 'SAP'
-          ? 'Error de SAP'
-          : 'Error al integrar'
-      }
-    }
-    
-    // Solo mostrar toast si no se mostró antes (por errores múltiples)
-    if (!errorMessage.includes('(+')) {
-      toast.error(errorTitle, errorMessage)
-    }
-    
-    // En caso de error, SÍ limpiar el estado de envío para que el usuario pueda reintentar
-    if (ordenCompraTableRef.value?.clearSendingState) {
-      ordenCompraTableRef.value.clearSendingState()
-    }
+    await manejarErrorIntegracionOC(error)
   } finally {
     // Asegurar que el loading se limpie
     procesoStore.loading = false
@@ -1945,6 +2059,7 @@ onUnmounted(() => {
     clearTimeout(searchDebounceTimer)
     searchDebounceTimer = null
   }
+  ocRequestController?.abort()
   stopPolling()
   stopTimeDisplayUpdate()
 })
@@ -1960,6 +2075,7 @@ onMounted(async () => {
     const resultado = procesoStore.sapResultadoPendiente
     integracionSAPDetalle.value = resultado.detalle
     integracionSAPSolicitudes.value = resultado.solicitudesTransferencia
+    integracionSAPDetallesAdicionales.value = resultado.detallesAdicionales ?? []
     integracionSAPEstado.value = resultado.estadoGeneral
     if (resultado.ajustesDetalle?.length) {
       sapRetryContext.value = {
@@ -1987,6 +2103,12 @@ watch(() => route.query, async (newQuery) => {
   }
   await nextTick()
 }, { immediate: true })
+
+// Auto-refresh del listado de ODC (SSE relevante, reconexión SSE, foco/visibilidad) -- pieza
+// compartida, mismo patrón que PedidosListView/RedistribucionListadoView. Antes esta vista no
+// tenía ninguna suscripción SSE: ni el toast de "ODC enviada a SAP" (que el backend ya publica
+// desde /integrar-sap) ni el estado ENVIANDO llegaban aquí sin recargar la página a mano.
+useListadoAutoRefresh(cargarOrdenesCompraPendientes, { debugLabel: 'ProcesoCompletoView' })
 
 function getStepStatus(step: string): 'pending' | 'active' | 'completed' | 'error' | 'retry' {
   if (!procesoStore.currentStep && !procesoStore.resultados) return 'pending'

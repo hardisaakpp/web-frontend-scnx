@@ -150,6 +150,27 @@ server {
     }
 
     # =========================
+    # mIAApi — asistente SCNEXUS AI (/mia-api/* -> servicio mIA sin prefijo)
+    # Example:
+    #   /mia-api/v1/preguntar -> http://172.30.152.246:8896/v1/preguntar
+    # Timeout largo: el LLM tarda 2-25 s por respuesta.
+    # =========================
+    location /mia-api/ {
+        rewrite ^/mia-api(.*)$ $1 break;
+        proxy_pass http://172.30.152.246:8896;
+        proxy_http_version 1.1;
+
+        proxy_connect_timeout 30s;
+        proxy_send_timeout 180s;
+        proxy_read_timeout 180s;
+
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    # =========================
     # Articulo Scanner API (/scan-api/* -> backend same path without prefix)
     # Example:
     #   /scan-api/api/v1/warehouses -> http://127.0.0.1:8080/api/v1/warehouses

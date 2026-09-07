@@ -168,13 +168,7 @@
               <label class="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
                 Fecha de Pedido
               </label>
-              <input
-                v-model="formData.cabecera.fecha_pedido"
-                type="date"
-                name="fecha_pedido"
-                autocomplete="on"
-                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-              />
+              <AppDateInput v-model="formData.cabecera.fecha_pedido" />
             </div>
 
             <div>
@@ -194,13 +188,9 @@
                     INMEDIATO
                   </label>
                 </div>
-                <input
+                <AppDateInput
                   v-if="formData.cabecera.fecha_entrega !== 'INMEDIATO'"
                   v-model="formData.cabecera.fecha_entrega"
-                  type="date"
-                  name="fecha_entrega"
-                  autocomplete="on"
-                  class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                 />
                 <div
                   v-else
@@ -515,8 +505,10 @@ import { useToast } from '@/composables/useToast'
 import { mba3ConsultasService } from '../services/mba3ConsultasApi'
 import type { CrearPedidoRequest, DistribucionTiendaRequest, ArticuloRequest, PedidoCompleto } from '../types'
 import { useFileUpload } from '../composables/useFileUpload'
+import type { CorreccionesPlantilla } from '../composables/useFileUpload'
 import UploadErrorModal from '../components/UploadErrorModal.vue'
 import LoadingSpinner from '../components/LoadingSpinner.vue'
+import AppDateInput from '../components/AppDateInput.vue'
 
 const router = useRouter()
 const toast = useToast()
@@ -547,11 +539,11 @@ const {
 } = fileUploadComposable
 
 /**
- * Aplica las correcciones seleccionadas y reintenta el flujo de carga
+ * Aplica las correcciones seleccionadas (código y/o pack/pvp) y reintenta el flujo de carga
  */
-async function aplicarCorreccionesYContinuar(correcciones: Record<string, string>): Promise<void> {
+async function aplicarCorreccionesYContinuar(correcciones: CorreccionesPlantilla): Promise<void> {
   const archivo = archivoOriginalDelComposable.value
-  
+
   if (!archivo) {
     toast.error(
       'Error',
@@ -559,11 +551,11 @@ async function aplicarCorreccionesYContinuar(correcciones: Record<string, string
     )
     return
   }
-  
+
   try {
     // Ocultar modal temporalmente mientras se procesa
     showErrorModal.value = false
-    
+
     // Llamar a la función de reintento con correcciones
     await reintentarConCorrecciones(
       archivo,
