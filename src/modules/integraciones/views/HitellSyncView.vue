@@ -114,7 +114,7 @@
             >
               <td class="px-6 py-4 whitespace-nowrap">
                 <div class="text-sm font-medium text-gray-900 dark:text-white">
-                  {{ doc.docNum !== null ? `N.º ${formatEntero(doc.docNum)}` : 'N.º no registrado' }}
+                  {{ doc.docNum != null ? `N.º ${formatEntero(doc.docNum)}` : 'N.º no registrado' }}
                 </div>
                 <div class="text-xs text-gray-500 dark:text-gray-400">
                   {{ HITELL_DOC_TYPE_LABEL[doc.docType] }} · DocEntry {{ formatEntero(doc.docEntry) }}
@@ -354,7 +354,7 @@ function claveDoc(doc: Pick<HitellSyncStatus, 'docType' | 'docEntry'>): string {
 }
 
 function tituloDoc(doc: HitellSyncStatus): string {
-  return doc.docNum !== null
+  return doc.docNum != null
     ? `Documento SAP N.º ${formatEntero(doc.docNum)}`
     : `${doc.docType} · DocEntry ${formatEntero(doc.docEntry)}`
 }
