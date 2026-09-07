@@ -59,6 +59,13 @@ describe('processUploadError', () => {
       expect(info.message).toBe('Detalle de costo unitario')
     })
 
+    it('CODIGOS_TIENDA_NO_RECONOCIDOS conserva el mensaje original del backend', () => {
+      const e = { response: { data: { error_code: 'CODIGOS_TIENDA_NO_RECONOCIDOS', error: "La columna 'RL-PCH' no coincide con ningún código de tienda o bodega reconocido" } } }
+      const info = processUploadError(e, 'x.xlsx')
+      expect(info.title).toBe('Códigos de tienda no reconocidos')
+      expect(info.message).toBe("La columna 'RL-PCH' no coincide con ningún código de tienda o bodega reconocido")
+    })
+
     it('lee error_code también desde response.data.data (BusinessException anidado)', () => {
       const e = { response: { data: { data: { error_code: 'ARCHIVO_SIN_DATOS' } } } }
       const info = processUploadError(e, 'x.xlsx')

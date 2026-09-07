@@ -7,19 +7,19 @@
         <div class="flex items-center gap-3">
           <h2 class="text-lg font-semibold text-gray-900 dark:text-white transition-colors duration-300">Órdenes de Compra</h2>
         </div>
-      </div>
-      
-      <!-- Selector de Columnas -->
-      <div class="mt-4">
-        <ColumnSelectorPanel
-          :columns="columnsWithVisibility"
-          :is-open="columnVisibility.isOpen.value"
-          :selector-id="columnVisibility.selectorId"
-          @toggle-open="columnVisibility.toggleOpen"
-          @toggle-column="columnVisibility.toggleColumnVisibility"
-          @select-all="() => selectAllTableColumns(availableColumns.map(c => c.key))"
-          @reset="resetTablePreferences"
-        />
+
+        <!-- Selector de Columnas -->
+        <div>
+          <ColumnSelectorPanel
+            :columns="columnsWithVisibility"
+            :is-open="columnVisibility.isOpen.value"
+            :selector-id="columnVisibility.selectorId"
+            @toggle-open="columnVisibility.toggleOpen"
+            @toggle-column="columnVisibility.toggleColumnVisibility"
+            @select-all="() => selectAllTableColumns(availableColumns.map(c => c.key))"
+            @reset="resetTablePreferences"
+          />
+        </div>
       </div>
     </div>
 

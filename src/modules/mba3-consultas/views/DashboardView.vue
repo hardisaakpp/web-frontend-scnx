@@ -1,5 +1,5 @@
 <template>
-  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+  <div class="max-w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
     <div class="space-y-4">
       <!-- Header -->
       <div>
@@ -145,6 +145,44 @@
           </div>
         </button>
 
+        <!-- Listado Pedidos Originales: capability funcionalidades-admin.view (mismo requisito que tenía dentro del desplegable). -->
+        <button
+          v-if="authStore.canViewFuncionalidadesAdmin"
+          @click="$router.push('/mba3-consultas/listado-pedidos-originales')"
+          class="bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700 p-4 hover:border-gray-300 dark:hover:border-gray-600 hover:shadow-sm transition-all text-left"
+        >
+          <div class="flex items-start gap-3">
+            <div class="w-8 h-8 rounded bg-cyan-50 dark:bg-cyan-900/30 flex items-center justify-center flex-shrink-0">
+              <svg class="w-4 h-4 text-cyan-600 dark:text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
+              </svg>
+            </div>
+            <div class="flex-1 min-w-0">
+              <div class="font-medium text-gray-900 dark:text-white text-sm">Pedidos Originales Excel</div>
+              <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">Archivos Excel en storage</div>
+            </div>
+          </div>
+        </button>
+
+        <!-- Destinatarios de Notificaciones: solo rol Admin -->
+        <button
+          v-if="authStore.hasRole('Admin')"
+          @click="$router.push('/mba3-consultas/admin/destinatarios')"
+          class="bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700 p-4 hover:border-gray-300 dark:hover:border-gray-600 hover:shadow-sm transition-all text-left"
+        >
+          <div class="flex items-start gap-3">
+            <div class="w-8 h-8 rounded bg-teal-50 dark:bg-teal-900/30 flex items-center justify-center flex-shrink-0">
+              <svg class="w-4 h-4 text-teal-600 dark:text-teal-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+              </svg>
+            </div>
+            <div class="flex-1 min-w-0">
+              <div class="font-medium text-gray-900 dark:text-white text-sm">Destinatarios de Notificaciones</div>
+              <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">Administrar correos por tipo</div>
+            </div>
+          </div>
+        </button>
+
         <!-- Contenedor colapsable: Órdenes de Compra, ODC con Errores, Reporte de Diferencias -->
         <!-- Único requisito de acceso: permiso funcionalidades-admin.view (reemplaza los permisos internos de cada botón) -->
         <div v-if="authStore.canViewFuncionalidadesAdmin" class="xl:col-span-full lg:col-span-3 md:col-span-2 col-span-1">
@@ -230,24 +268,6 @@
                     </div>
                   </button>
 
-                  <!-- Listado Pedidos Originales: acceso ya controlado por funcionalidades-admin.view en el contenedor -->
-                  <button
-                    @click="showListadoPedidosOriginalesModal = true"
-                    class="bg-gray-50 dark:bg-gray-700/50 rounded border border-gray-200 dark:border-gray-600 p-4 hover:border-gray-300 dark:hover:border-gray-500 hover:shadow-sm transition-all text-left"
-                  >
-                    <div class="flex items-start gap-3">
-                      <div class="w-8 h-8 rounded bg-cyan-50 dark:bg-cyan-900/30 flex items-center justify-center flex-shrink-0">
-                        <svg class="w-4 h-4 text-cyan-600 dark:text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
-                        </svg>
-                      </div>
-                      <div class="flex-1 min-w-0">
-                        <div class="font-medium text-gray-900 dark:text-white text-sm">Listado Pedidos Originales</div>
-                        <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">Archivos Excel en storage</div>
-                      </div>
-                    </div>
-                  </button>
-
                   <!-- Procesamiento SAP: acceso ya controlado por funcionalidades-admin.view en el contenedor. Navega a lista de pedidos. -->
                   <button
                     @click="$router.push('/mba3-consultas/procesamiento-sap')"
@@ -280,25 +300,6 @@
                       <div class="flex-1 min-w-0">
                         <div class="font-medium text-gray-900 dark:text-white text-sm">Homologaciones</div>
                         <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">SKUs no coincidentes</div>
-                      </div>
-                    </div>
-                  </button>
-
-                  <!-- Destinatarios de Notificaciones: solo rol Admin -->
-                  <button
-                    v-if="authStore.hasRole('Admin')"
-                    @click="$router.push('/mba3-consultas/admin/destinatarios')"
-                    class="bg-gray-50 dark:bg-gray-700/50 rounded border border-gray-200 dark:border-gray-600 p-4 hover:border-gray-300 dark:hover:border-gray-500 hover:shadow-sm transition-all text-left"
-                  >
-                    <div class="flex items-start gap-3">
-                      <div class="w-8 h-8 rounded bg-teal-50 dark:bg-teal-900/30 flex items-center justify-center flex-shrink-0">
-                        <svg class="w-4 h-4 text-teal-600 dark:text-teal-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                        </svg>
-                      </div>
-                      <div class="flex-1 min-w-0">
-                        <div class="font-medium text-gray-900 dark:text-white text-sm">Destinatarios de Notificaciones</div>
-                        <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">Administrar correos por tipo</div>
                       </div>
                     </div>
                   </button>
@@ -406,12 +407,6 @@
         </div>
       </div>
     </div>
-
-    <!-- Modal Listado Pedidos Originales -->
-    <ListadoPedidosOriginalesModal
-      :visible="showListadoPedidosOriginalesModal"
-      @close="showListadoPedidosOriginalesModal = false"
-    />
   </div>
 </template>
 
@@ -423,7 +418,6 @@ import { useAuthStore } from '@/stores/auth'
 import { useOrdenesCompraStore } from '../stores/ordenesCompraStore'
 import { mba3ConsultasService } from '../services/mba3ConsultasApi'
 import { useToast } from '@/composables/useToast'
-import ListadoPedidosOriginalesModal from '../components/ListadoPedidosOriginalesModal.vue'
 import LoadingSpinner from '../components/LoadingSpinner.vue'
 
 const router = useRouter()
@@ -440,7 +434,6 @@ const odcConsultasAbierto = ref(false)
 const showProcesamientoSAPModal = ref(false)
 const pedidoProcesamientoSAP = ref('')
 const loadingProcesamientoSAP = ref(false)
-const showListadoPedidosOriginalesModal = ref(false)
 
 function closeProcesamientoSAPModal() {
   showProcesamientoSAPModal.value = false

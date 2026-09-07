@@ -113,7 +113,7 @@
         :es-modo-mabel-trading="false"
         :pedido="pedido"
         :confirmar-deshabilitado="confirmarDeshabilitadoPorEstado"
-        :es-inmediato-sin-fecha="esInmediatoSinFecha"
+        :falta-fecha-entrega="faltaFechaEntrega"
         :hide-confirm-and-download="false"
         :hide-cargar-plantillas="true"
         :show-despachar-y-facturar="true"
@@ -179,11 +179,14 @@
           :show-inmediato-option="false"
           :fecha-pedido-editable="false"
           :puede-editar-fecha-facturacion="puedeEditarFechaFacturacion"
+          :guardando-fecha-pedido="guardandoFechaPedido"
+          :guardando-fecha-entrega="guardandoFechaEntrega"
+          :guardando-fecha-facturacion="guardandoFechaFacturacion"
           @copy-to-clipboard="copyToClipboard"
           @update-fecha-pedido="handleUpdateFechaPedido"
           @update-fecha-entrega="handleUpdateFechaEntrega"
           @update-fecha-facturacion="handleUpdateFechaFacturacion"
-          @update-estado="handleUpdateEstado"
+          @ver-detalle-sap="handleVerDetalleSap"
         />
 
         <!-- ⭐ FASE 4: Ajuste y Redistribución a Tiendas -->
@@ -405,6 +408,15 @@
       @confirmar-con-diferencia="handleConfirmarConDiferencia"
     />
 
+    <!-- Modal de integración SAP: al hacer clic en un "Número OC SAP" de la cabecera -->
+    <IntegracionSAPModal
+      :is-open="showIntegracionSAPModal"
+      :detalle="integracionSAPDetalle"
+      :solicitudes-transferencia="integracionSAPSolicitudes"
+      :estado-general="integracionSAPEstadoGeneral"
+      @close="showIntegracionSAPModal = false"
+    />
+
   </div>
 </template>
 
@@ -457,6 +469,7 @@ import { descargarBlobComoArchivo } from '../utils/downloadHelpers'
 import { useRedistribucion } from '../composables/useRedistribucion'
 import { useProduccionPospuestaActions } from '../composables/useProduccionPospuestaActions'
 import { useProductosPedidoColumnas } from '../composables/useProductosPedidoColumnas'
+import { useVerDetalleSapModal } from '../composables/useVerDetalleSapModal'
 // Componentes
 import PedidoHeaderActions from '../components/PedidoHeaderActions.vue'
 import ProduccionPospuestaActions from '../components/ProduccionPospuestaActions.vue'
@@ -465,6 +478,7 @@ import RedistribucionTiendas from '../components/RedistribucionTiendas.vue'
 import UploadErrorModal from '../components/UploadErrorModal.vue'
 import SimpleConfirmModal from '../components/SimpleConfirmModal.vue'
 import DiferenciaProduccionModal from '../components/DiferenciaProduccionModal.vue'
+import IntegracionSAPModal from '../components/IntegracionSAPModal.vue'
 import LoadingSpinner from '../components/LoadingSpinner.vue'
 import ColumnSelectorDropdown from '../components/ColumnSelectorDropdown.vue'
 
@@ -510,6 +524,16 @@ const showConfirmacionProduccionModal = ref(false)
 const showDiferenciaModal = ref(false)
 const detallesDiferencia = ref<DetalleDiferenciaProduccion[]>([])
 const procesandoDiferencia = ref(false)
+
+// Modal de integración SAP: al hacer clic en un "Número OC SAP" de la cabecera
+// (pedidos con más de una ODC muestran un botón por cada una, ver PedidoCabecera.vue).
+const {
+  showIntegracionSAPModal,
+  integracionSAPDetalle,
+  integracionSAPSolicitudes,
+  integracionSAPEstadoGeneral,
+  handleVerDetalleSap
+} = useVerDetalleSapModal()
 
 // ⭐ Set para rastrear columnas modificadas (formato: "detalleId:columnKey")
 const columnasModificadas = ref<Set<string>>(new Set())
@@ -642,9 +666,10 @@ const confirmarDeshabilitadoPorEstado = computed(() => {
   const estadoId = cabecera.estado_id != null ? Number(cabecera.estado_id) : null
   if (estadoId !== 23) return true
 
-  // Si la fecha de entrega es "INMEDIATO", el usuario debe seleccionar una fecha real antes de confirmar
+  // El usuario debe tener seleccionada una fecha de entrega real: ni vacía/sin
+  // seleccionar, ni el sentinel "INMEDIATO" pendiente de reemplazar por una fecha.
   const fechaEntrega = cabecera.fecha_entrega?.trim()?.toUpperCase()
-  if (fechaEntrega === 'INMEDIATO') return true
+  if (!fechaEntrega || fechaEntrega === 'INMEDIATO') return true
 
   return false
 })
@@ -671,15 +696,17 @@ const despacharYFacturarDeshabilitadoPorFecha = computed(() => {
   return !pedido.value?.cabecera?.fecha_facturacion
 })
 
-// Indica si el botón está deshabilitado específicamente porque el pedido es INMEDIATO y falta seleccionar fecha de entrega
-const esInmediatoSinFecha = computed(() => {
+// Indica si "Confirmar" está deshabilitado porque falta una fecha de entrega real
+// (vacía/sin seleccionar, o todavía "INMEDIATO" sin reemplazar) -- controla el hint
+// visible junto al botón.
+const faltaFechaEntrega = computed(() => {
   const cabecera = pedido.value?.cabecera
   if (!cabecera) return false
   const estadoId = cabecera.estado_id != null ? Number(cabecera.estado_id) : null
   // Solo aplica en el estado donde "Confirmar" está habilitado: Confirmado por Producción (23)
   if (estadoId !== 23) return false
   const fechaEntrega = cabecera.fecha_entrega?.trim()?.toUpperCase()
-  return fechaEntrega === 'INMEDIATO'
+  return !fechaEntrega || fechaEntrega === 'INMEDIATO'
 })
 
 // Deshabilitar "Confirmar Redistribución" usando el flag del backend (incluye CANCELADO y estados ya confirmados)
@@ -868,12 +895,16 @@ async function guardarEdicion() {
 // Funciones de gestión del pedido ahora están en el composable usePedidoDetalle
 
 // ⭐ HU-06: Funciones para actualizar cabecera del pedido
-const { handleUpdateFechaPedido, handleUpdateFechaEntrega } = useFechaPedidoHandlers(pedido, toast, loadPedido)
+const { handleUpdateFechaPedido, handleUpdateFechaEntrega, guardandoFechaPedido, guardandoFechaEntrega } =
+  useFechaPedidoHandlers(pedido, toast, loadPedido)
 
 // Fecha Facturación (req. 1.8): exclusiva de Producción El Rayo, solo en Gestionar Pedido
+const guardandoFechaFacturacion = ref(false)
+
 async function handleUpdateFechaFacturacion(fecha: string | null) {
   if (!pedido.value?.cabecera?.pedido_id) return
 
+  guardandoFechaFacturacion.value = true
   try {
     await mba3ConsultasService.actualizarCabeceraPedido(pedido.value.cabecera.pedido_id, {
       fecha_facturacion: fecha
@@ -890,6 +921,8 @@ async function handleUpdateFechaFacturacion(fecha: string | null) {
     console.error('Error al actualizar fecha de facturación:', e)
     toast.error('Error al actualizar', e.message || 'No se pudo actualizar la fecha de facturación')
     await loadPedido()
+  } finally {
+    guardandoFechaFacturacion.value = false
   }
 }
 

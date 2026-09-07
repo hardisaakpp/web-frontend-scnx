@@ -23,39 +23,31 @@
               Selecciona un pedido para ver la distribución por tienda (solo lectura)
             </p>
           </div>
-        </div>
-        <div class="flex w-full flex-wrap items-center justify-end gap-3">
-          <button
-            @click="cargarPedidos"
-            class="shrink-0 px-4 py-2 bg-indigo-600 dark:bg-indigo-500 text-white rounded-lg hover:bg-indigo-700 dark:hover:bg-indigo-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 text-sm"
-            :disabled="loading"
-          >
-            <svg v-if="!loading" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-            </svg>
-            <LoadingSpinner v-else layout="inline" size="md" color="current" aria-label="Cargando pedidos" />
-            {{ loading ? 'Cargando...' : 'Actualizar' }}
-          </button>
+          <div class="flex flex-wrap items-center gap-3">
+            <ActualizarButton class="shrink-0" :loading="loading" @click="cargarPedidos" />
+          </div>
         </div>
       </div>
 
       <!-- Filtros -->
       <PedidosListFiltrosBar
+        :collapsed="filtrosColapsados"
+        @update:collapsed="guardarFiltrosColapsados"
         v-model:tipoFecha="filtros.tipo_fecha"
         v-model:fechaDesde="filtros.fecha_desde"
         v-model:fechaHasta="filtros.fecha_hasta"
         v-model:proveedorNombre="filtros.proveedor_nombre"
         v-model:numeroPedidoTexto="busquedaNumeroPedido"
-        v-model:creadoPorTexto="busquedaCreadoPor"
+        v-model:creadoPor="filtros.creado_por"
+        v-model:modificadoPor="filtros.modificado_por"
         :estados-disponibles="[]"
+        :creadores-disponibles="creadoresDisponibles"
+        :modificadores-disponibles="modificadoresDisponibles"
         @aplicar="aplicarFiltros"
         @limpiar="limpiarFiltros"
         @numero-pedido-input="handleBusquedaNumeroPedido"
         @numero-pedido-commit="buscarNumeroPedidoInmediato"
         @numero-pedido-clear="limpiarBusquedaNumeroPedido"
-        @creado-por-input="handleBusquedaCreadoPor"
-        @creado-por-commit="buscarCreadoPorInmediato"
-        @creado-por-clear="limpiarBusquedaCreadoPor"
       >
         <template #estado-field>
           <div>
@@ -132,16 +124,25 @@
                 :sort-column="sortColumn"
                 :sort-direction="sortDirection"
                 @toggle-sort="toggleSort"
+                @reset-sort="resetSort"
               />
               <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                 <tr
                   v-for="(pedido, index) in sortedPedidos"
                   :key="pedido.pedido_id"
-                  class="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors cursor-pointer"
+                  :class="[
+                    'transition-colors cursor-pointer',
+                    filaCargandoId === pedido.pedido_id
+                      ? 'bg-indigo-50 dark:bg-indigo-900/30 ring-2 ring-inset ring-indigo-400 dark:ring-indigo-500'
+                      : filaCargandoId
+                        ? 'opacity-50 pointer-events-none'
+                        : 'hover:bg-gray-50 dark:hover:bg-gray-700/50'
+                  ]"
                   @click="abrirRevisar(pedido)"
                 >
                   <td class="px-4 py-4 whitespace-nowrap text-sm text-center text-gray-500 dark:text-gray-400 font-medium">
-                    {{ metadata.offset + index + 1 }}
+                    <LoadingSpinner v-if="filaCargandoId === pedido.pedido_id" size="xs" color="indigo" layout="inline" aria-label="Abriendo pedido" />
+                    <span v-else>{{ metadata.offset + index + 1 }}</span>
                   </td>
                   <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
                     {{ pedido.numero_pedido }}
@@ -217,12 +218,21 @@ import { getEstadoPedidoLabel, getEstadoPedidoBadgeClassFull } from '../utils/es
 import { PAGE_SIZE_OPTIONS } from '../config/pagination'
 import { useDebouncedFilterInput } from '../composables/useDebouncedFilterInput'
 import { usePageSizePreference } from '../composables/usePageSizePreference'
-import { useSortableList, type SortableColumnDef } from '../composables/useSortableList'
+import { usePaginaPreference } from '../composables/usePaginaPreference'
+import { useFiltrosColapsadosPreference } from '../composables/useFiltrosColapsadosPreference'
+import {
+  useSortableList,
+  type SortableColumnDef,
+  DESCRIPCION_COLUMNA_FECHA_PEDIDO,
+  DESCRIPCION_COLUMNA_FECHA_CREACION,
+  DESCRIPCION_COLUMNA_FECHA_MODIFICACION
+} from '../composables/useSortableList'
 import { useOffsetPagination } from '../composables/useOffsetPagination'
 import { useListadoAutoRefresh } from '../composables/useListadoAutoRefresh'
 import OdcSapVolverButton from '@/components/OdcSapVolverButton.vue'
 import QuickTablePagination from '@/components/QuickTablePagination.vue'
 import LoadingSpinner from '../components/LoadingSpinner.vue'
+import ActualizarButton from '../components/ActualizarButton.vue'
 import SortableTableHead from '../components/SortableTableHead.vue'
 import PedidosListFiltrosBar from '../components/PedidosListFiltrosBar.vue'
 import { useOdcSapVolver } from '../../../composables/useOdcSapVolver'
@@ -234,12 +244,16 @@ const toast = useToast()
 const pedidos = ref<PedidoResumido[]>([])
 const loading = ref(false)
 const error = ref<string | null>(null)
+const creadoresDisponibles = ref<string[]>([])
+const modificadoresDisponibles = ref<string[]>([])
 const PAGE_SIZE = 10
 const { pageSize: pageSizeGuardado, guardar: guardarPageSize } = usePageSizePreference('revisar-redistribucion-listado', PAGE_SIZE)
+const { colapsado: filtrosColapsados, guardar: guardarFiltrosColapsados } = useFiltrosColapsadosPreference('revisar-redistribucion-listado')
+const { offset: offsetGuardado, guardar: guardarOffset } = usePaginaPreference('revisar-redistribucion-listado')
 const metadata = ref<PedidosListadoMetadata>({
   total: 0,
   limit: pageSizeGuardado.value,
-  offset: 0,
+  offset: offsetGuardado.value,
   has_more: false
 })
 
@@ -262,9 +276,10 @@ const filtros = ref<PedidosListadoFiltros>({
   proveedor_nombre: '',
   numero_pedido: '',
   creado_por: '',
+  modificado_por: '',
   solo_redistribucion: true,
   limit: PAGE_SIZE,
-  offset: 0
+  offset: offsetGuardado.value
 })
 
 // ========== Búsqueda por Número de Pedido (con debounce, filtra en vivo) ==========
@@ -281,104 +296,142 @@ const {
   }
 })
 
-// ========== Búsqueda por Creado Por (con debounce, filtra en vivo) ==========
-const {
-  texto: busquedaCreadoPor,
-  handleInput: handleBusquedaCreadoPor,
-  commit: buscarCreadoPorInmediato,
-  clear: limpiarBusquedaCreadoPor,
-  dispose: disposeBusquedaCreadoPor
-} = useDebouncedFilterInput((valor) => {
-  if (filtros.value.creado_por !== valor) {
-    filtros.value.creado_por = valor
-    aplicarFiltros()
+async function cargarCreadoresYModificadores() {
+  try {
+    const [creadores, modificadores] = await Promise.all([
+      mba3ConsultasService.getCreadoresPedido(),
+      mba3ConsultasService.getModificadoresPedido()
+    ])
+    creadoresDisponibles.value = creadores.data
+    modificadoresDisponibles.value = modificadores.data
+  } catch (e: any) {
+    console.error('Error al cargar creadores/modificadores:', e)
   }
-})
+}
 
 // Columnas ordenables de la tabla (thead genérico SortableTableHead)
 const pedidosColumns: SortableColumnDef[] = [
   { key: 'numero_pedido', label: 'Número de Pedido' },
-  { key: 'fecha_pedido', label: 'Fecha' },
+  { key: 'fecha_pedido', label: 'Fecha', description: DESCRIPCION_COLUMNA_FECHA_PEDIDO },
   { key: 'proveedor_nombre', label: 'Proveedor' },
   { key: 'estado', label: 'Estado', align: 'center' },
   { key: 'comprador_nombre', label: 'Comprador' },
-  { key: 'creado_en', label: 'Fecha Creación' },
-  { key: 'modificado_fecha', label: 'Fecha Modificación' },
+  { key: 'creado_en', label: 'Fecha Creación', description: DESCRIPCION_COLUMNA_FECHA_CREACION },
+  { key: 'modificado_fecha', label: 'Fecha Modificación', description: DESCRIPCION_COLUMNA_FECHA_MODIFICACION },
   { key: 'modificado_por', label: 'Modificado Por' },
 ]
 
-const { sortColumn, sortDirection, toggleSort, sortedItems: sortedPedidos } = useSortableList<PedidoResumido>({
+const { sortColumn, sortDirection, toggleSort, resetSort, sortedItems: sortedPedidos } = useSortableList<PedidoResumido>({
   items: pedidos,
-  dateColumns: ['fecha_pedido', 'creado_en', 'modificado_fecha']
+  dateColumns: ['fecha_pedido', 'creado_en', 'modificado_fecha'],
+  storageKey: 'revisar-redistribucion-listado'
 })
 
-async function cargarPedidos() {
-  loading.value = true
+/** Mapea PedidoCompleto -> PedidoResumido para reutilizar la tabla actual (extraído de
+ * obtenerPedidos para reducir su complejidad cognitiva). */
+function mapPedidoCompletoToPedidoResumido(p: PedidoCompleto): PedidoResumido {
+  const c = p.cabecera
+  const root: any = p as any
+
+  // Algunos campos (como modificado_fecha / modificado_por) no vienen en este endpoint.
+  // Usar creado_en / creado_por como fallback razonable.
+  const modificadoFecha =
+    root.modificado_fecha ?? c.modificado_fecha ?? c.creado_en ?? null
+  const modificadoPor =
+    root.modificado_por ?? c.modificado_por ?? c.creado_por ?? null
+
+  // Backend expone comprador como comprador_nombre y también como comprador (alias).
+  const compradorNombre =
+    c.comprador_nombre ?? (c as any).comprador ?? root.comprador_nombre ?? root.comprador ?? null
+
+  return {
+    pedido_id: c.pedido_id,
+    numero_pedido: c.numero_pedido ?? '',
+    fecha_pedido: c.fecha_pedido,
+    fecha_entrega: c.fecha_entrega,
+    forma_pago: c.forma_pago,
+    mensaje: c.mensaje,
+    proveedor_nombre: c.proveedor_nombre,
+    comprador_nombre: compradorNombre,
+    comprador_codigo: c.comprador_codigo,
+    origen_traslado: c.origen_traslado,
+    serie: c.serie,
+    archivo_nombre: c.archivo_nombre,
+    creado_por: c.creado_por,
+    estado: c.estado ?? root.estado ?? '',
+    creado_en: c.creado_en ?? '',
+    modificado_fecha: modificadoFecha,
+    modificado_por: modificadoPor,
+  }
+}
+
+/** Arma los parámetros de getPedidosConfirmados desde los filtros activos (extraído de
+ * obtenerPedidos para reducir su complejidad cognitiva). */
+function construirParametrosPedidosConfirmados(page: number) {
+  return {
+    page,
+    pageSize: metadata.value.limit,
+    fecha_desde: filtros.value.fecha_desde || undefined,
+    fecha_hasta: filtros.value.fecha_hasta || undefined,
+    tipo_fecha: filtros.value.tipo_fecha,
+    proveedor_nombre: filtros.value.proveedor_nombre || undefined,
+    numero_pedido: filtros.value.numero_pedido || undefined,
+    creado_por: filtros.value.creado_por || undefined,
+    modificado_por: filtros.value.modificado_por || undefined,
+  }
+}
+
+interface RespuestaPedidosConfirmados {
+  total: number
+  page: number
+  pageSize: number
+  totalPages: number
+}
+
+/** Arma la metadata de paginación desde la respuesta del backend (extraído de
+ * obtenerPedidos para reducir su complejidad cognitiva). */
+function construirMetadataDesdeRespuesta(response: RespuestaPedidosConfirmados, cantidadPedidos: number) {
+  return {
+    total: response.total || cantidadPedidos,
+    limit: response.pageSize || metadata.value.limit,
+    offset: ((response.page || 1) - 1) * (response.pageSize || metadata.value.limit),
+    has_more: (response.page || 1) < (response.totalPages || 1),
+  }
+}
+
+async function obtenerPedidos() {
   error.value = null
   try {
     // Usar listado de pedidos confirmados (>= 10 y no cancelados) del backend
     const page = Math.floor(metadata.value.offset / metadata.value.limit) + 1
-    const response = await mba3ConsultasService.getPedidosConfirmados({
-      page,
-      pageSize: metadata.value.limit,
-      fecha_desde: filtros.value.fecha_desde || undefined,
-      fecha_hasta: filtros.value.fecha_hasta || undefined,
-      tipo_fecha: filtros.value.tipo_fecha,
-      proveedor_nombre: filtros.value.proveedor_nombre || undefined,
-      numero_pedido: filtros.value.numero_pedido || undefined,
-      creado_por: filtros.value.creado_por || undefined,
-    })
+    const response = await mba3ConsultasService.getPedidosConfirmados(construirParametrosPedidosConfirmados(page))
 
     // Mapear PedidoCompleto → PedidoResumido para reutilizar la tabla actual
-    pedidos.value = (response.data || []).map((p: PedidoCompleto): PedidoResumido => {
-      const c = p.cabecera
-      const root: any = p as any
+    pedidos.value = (response.data || []).map(mapPedidoCompletoToPedidoResumido)
 
-      // Algunos campos (como modificado_fecha / modificado_por) no vienen en este endpoint.
-      // Usar creado_en / creado_por como fallback razonable.
-      const modificadoFecha =
-        root.modificado_fecha ?? c.modificado_fecha ?? c.creado_en ?? null
-      const modificadoPor =
-        root.modificado_por ?? c.modificado_por ?? c.creado_por ?? null
-
-      // Backend expone comprador como comprador_nombre y también como comprador (alias).
-      const compradorNombre =
-        c.comprador_nombre ?? (c as any).comprador ?? root.comprador_nombre ?? root.comprador ?? null
-
-      return {
-        pedido_id: c.pedido_id,
-        numero_pedido: c.numero_pedido ?? '',
-        fecha_pedido: c.fecha_pedido,
-        fecha_entrega: c.fecha_entrega,
-        forma_pago: c.forma_pago,
-        mensaje: c.mensaje,
-        proveedor_nombre: c.proveedor_nombre,
-        comprador_nombre: compradorNombre,
-        comprador_codigo: c.comprador_codigo,
-        origen_traslado: c.origen_traslado,
-        serie: c.serie,
-        archivo_nombre: c.archivo_nombre,
-        creado_por: c.creado_por,
-        estado: c.estado ?? root.estado ?? '',
-        creado_en: c.creado_en ?? '',
-        modificado_fecha: modificadoFecha,
-        modificado_por: modificadoPor,
-      }
-    })
-
-    metadata.value = {
-      total: response.total || pedidos.value.length,
-      limit: response.pageSize || metadata.value.limit,
-      offset: ((response.page || 1) - 1) * (response.pageSize || metadata.value.limit),
-      has_more: (response.page || 1) < (response.totalPages || 1),
-    }
+    metadata.value = construirMetadataDesdeRespuesta(response, pedidos.value.length)
+    guardarOffset(metadata.value.offset)
   } catch (e: any) {
     console.error('Error al cargar pedidos:', e)
     error.value = e.message || 'No se pudieron cargar los pedidos'
     toast.error('Error', error.value ?? undefined)
+  }
+}
+
+// Carga inicial / filtros / paginación: activa el spinner de pantalla completa
+async function cargarPedidos() {
+  loading.value = true
+  try {
+    await obtenerPedidos()
   } finally {
     loading.value = false
   }
+}
+
+/** Refresco en segundo plano (foco/SSE): no toca `loading`, para no desmontar la tabla mientras
+ * el usuario hace clic en una fila (ver useRefetchOnFocus.ts). */
+async function refrescarPedidosSilenciosamente() {
+  await obtenerPedidos()
 }
 
 function aplicarFiltros() {
@@ -394,36 +447,41 @@ function limpiarFiltros() {
     proveedor_nombre: '',
     numero_pedido: '',
     creado_por: '',
+    modificado_por: '',
     solo_redistribucion: true,
     limit: PAGE_SIZE,
     offset: 0
   }
   busquedaNumeroPedido.value = ''
-  busquedaCreadoPor.value = ''
   resetToFirstPage()
 }
 
 /** Navega a la vista de Redistribución del pedido en modo solo lectura */
+const filaCargandoId = ref<string | null>(null)
 function abrirRevisar(pedido: PedidoResumido) {
+  if (filaCargandoId.value) return
+  filaCargandoId.value = pedido.pedido_id
   router.push({
     name: 'mba3-consultas-pedido-redistribucion',
     params: { id: encodeURIComponent(pedido.numero_pedido) },
     query: { soloLectura: '1' }
   })
+    .catch(() => {})
+    .finally(() => { filaCargandoId.value = null })
 }
 
 onMounted(() => {
+  cargarCreadoresYModificadores()
   cargarPedidos()
 })
 
 onUnmounted(() => {
   disposeBusquedaNumeroPedido()
-  disposeBusquedaCreadoPor()
 })
 
 // ⭐ Recarga la lista ante notificación SSE relevante (ej: ODC enviada a SAP, pedido
 // confirmado, cancelado, etc.), reconexión SSE tras una desconexión, o recuperar foco/
 // visibilidad de la pestaña. requireAccion: false -- esta vista recarga ante CUALQUIER
 // notificación no nula, sin exigir metadata.accion (a diferencia de los otros 3 listados).
-useListadoAutoRefresh(cargarPedidos, { requireAccion: false, debugLabel: 'RevisarRedistribucionListadoView' })
+useListadoAutoRefresh(refrescarPedidosSilenciosamente, { requireAccion: false, debugLabel: 'RevisarRedistribucionListadoView' })
 </script>

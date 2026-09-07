@@ -738,6 +738,14 @@ function construirTituloYMensaje(ctx: ContextoTituloYMensaje): { title: string; 
     // backend (Costo sin IVA x Pack). errorMessage ya trae el detalle por producto del backend.
     return { title: 'Discrepancias de Costo Unitario', message: errorMessageActual }
   }
+  if (errorCode === 'CODIGOS_TIENDA_NO_RECONOCIDOS') {
+    // ⭐ Una columna de tienda/bodega en la fila de códigos no matchea ningún formato válido
+    // (ej. 'RL-PCH' en vez de 'TRL-PCH'): sus cantidades no se contabilizan. Título propio para
+    // que no se confunda con un problema de fórmula de TOTAL/SUBTOTAL (esa era la causa real
+    // detrás del mensaje confuso del incidente 2026-09-01). errorMessage ya trae el detalle del
+    // backend con la columna y el código exactos.
+    return { title: 'Códigos de tienda no reconocidos', message: errorMessageActual }
+  }
   if (isSAPError) {
     return construirMensajeSAP(e, errorMessageStr, errorErrors, productos, tiendas, bodegas)
   }

@@ -52,6 +52,7 @@ import type {
   ProcesoCompletoSAPAsyncResponse,
   ProcesoCompletoSAPResultadoPolling,
   EstadosPedidoResponse,
+  UsuariosPedidoResponse,
   SapInfoProductosResponse,
   DiferenciaProduccionResponse,
   ConfirmarConDiferenciaResponse,
@@ -443,6 +444,7 @@ export const pedidosService = {
     estado?: string
     numero_pedido?: string
     creado_por?: string
+    modificado_por?: string
     fecha_desde?: string
     fecha_hasta?: string
     tipo_fecha?: TipoFechaFiltro
@@ -1446,6 +1448,7 @@ export const pedidosService = {
     proveedor_nombre?: string
     numero_pedido?: string
     creado_por?: string
+    modificado_por?: string
   }): Promise<{
     data: PedidoCompleto[]
     total: number
@@ -1596,19 +1599,29 @@ export const pedidosService = {
   },
 
   /**
-   * Obtiene el listado de archivos Excel originales almacenados en MinIO/S3
-   * 
+   * Obtiene el listado paginado de archivos Excel originales almacenados en MinIO/S3
+   *
    * GET /api/plantillas/archivos
-   * 
-   * @param limit Límite de resultados (opcional, default 100)
-   * @param soloActivos Si solo devuelve archivos activos (opcional, default true)
-   * @returns Lista de archivos originales
+   *
+   * @param opciones.limit Límite de resultados por página (opcional, default 50 en backend)
+   * @param opciones.offset Registros a saltar, para paginación (opcional, default 0)
+   * @param opciones.soloActivos Si solo devuelve archivos activos (opcional, default true)
+   * @param opciones.busqueda Filtra por número de pedido o nombre de archivo, aplicado en el
+   *   backend sobre TODOS los archivos (no solo la página actual)
+   * @returns Página de archivos originales + metadata.total (total real, no solo esta página)
    */
-  async getListadoArchivosOriginales(limit?: number, soloActivos?: boolean): Promise<ListadoArchivosOriginalesResponse> {
+  async getListadoArchivosOriginales(opciones?: {
+    limit?: number
+    offset?: number
+    soloActivos?: boolean
+    busqueda?: string
+  }): Promise<ListadoArchivosOriginalesResponse> {
     try {
       const params: Record<string, any> = {}
-      if (limit != null) params.limit = limit
-      if (soloActivos != null) params.solo_activos = soloActivos
+      if (opciones?.limit != null) params.limit = opciones.limit
+      if (opciones?.offset != null) params.offset = opciones.offset
+      if (opciones?.soloActivos != null) params.solo_activos = opciones.soloActivos
+      if (opciones?.busqueda) params.busqueda = opciones.busqueda
 
       const url = buildUrlWithParams('/api/plantillas/archivos', params)
       const response = await mba3Api.get<ListadoArchivosOriginalesResponse>(url)
@@ -1670,6 +1683,38 @@ export const pedidosService = {
     } catch (error: any) {
       console.error('❌ [getEstadosPedido] Error al obtener estados:', error)
       throw createEnrichedError(error, 'Error al obtener los estados de pedido')
+    }
+  },
+
+  /**
+   * Obtiene la lista de usuarios que han creado al menos un pedido, para el
+   * <select> "Creado Por" del contenedor "Filtros de Búsqueda".
+   *
+   * GET /api/pedidos/creadores
+   */
+  async getCreadoresPedido(): Promise<UsuariosPedidoResponse> {
+    try {
+      const response = await mba3Api.get<UsuariosPedidoResponse>('/api/pedidos/creadores')
+      return response.data
+    } catch (error: any) {
+      console.error('❌ [getCreadoresPedido] Error al obtener creadores:', error)
+      throw createEnrichedError(error, 'Error al obtener los creadores de pedido')
+    }
+  },
+
+  /**
+   * Obtiene la lista de usuarios que han modificado al menos un pedido, para
+   * el <select> "Modificado Por" del contenedor "Filtros de Búsqueda".
+   *
+   * GET /api/pedidos/modificadores
+   */
+  async getModificadoresPedido(): Promise<UsuariosPedidoResponse> {
+    try {
+      const response = await mba3Api.get<UsuariosPedidoResponse>('/api/pedidos/modificadores')
+      return response.data
+    } catch (error: any) {
+      console.error('❌ [getModificadoresPedido] Error al obtener modificadores:', error)
+      throw createEnrichedError(error, 'Error al obtener los modificadores de pedido')
     }
   },
 }

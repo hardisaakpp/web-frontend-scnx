@@ -3,253 +3,289 @@
     <OdcSapVolverButton to="/mba3-consultas" title="Volver al Dashboard" class="shrink-0 self-start" />
 
     <!-- Header -->
-    <div class="flex items-center justify-between flex-wrap gap-4">
-      <div>
-        <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Destinatarios de Notificaciones</h1>
-        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-          Correos que reciben cada tipo de notificación del sistema
-        </p>
-      </div>
-      <button
-        @click="$router.push('/mba3-consultas/admin/catalogo-correos')"
-        class="px-4 py-2 text-sm text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors border border-gray-200 dark:border-gray-700"
-      >
-        Catálogo de Correos →
+    <div>
+      <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Destinatarios de Notificaciones</h1>
+      <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+        Busca a la persona para crear su tarjeta y luego arrastra (o toca) los correos del
+        catálogo que le correspondan. Cada persona recibe solo los correos que aparecen en su tarjeta.
+      </p>
+    </div>
+
+    <LoadingSpinner v-if="loadingPersonas" message="Cargando personas..." color="violet" />
+
+    <div v-else-if="errorPersonas" class="p-8 text-center bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+      <p class="text-red-600 dark:text-red-400">{{ errorPersonas }}</p>
+      <button @click="cargarPersonas" class="mt-4 text-violet-600 dark:text-violet-400 hover:underline">
+        Reintentar
       </button>
     </div>
 
-    <!-- Personas y Correos: tabla real que usa el envío de correos -->
-    <div class="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden transition-colors duration-300">
-      <div class="px-4 py-3 border-b border-gray-200 dark:border-gray-700">
-        <h2 class="font-semibold text-gray-900 dark:text-white">Personas y Correos</h2>
-        <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-          Vincula a cada persona con los correos específicos del catálogo que debería recibir.
-          Esta es la tabla que realmente controla el envío: si alguien no aparece aquí para un
-          correo, no lo recibe.
-        </p>
-      </div>
-
-      <LoadingSpinner v-if="loadingPersonas" message="Cargando personas..." color="violet" />
-
-      <div v-else-if="errorPersonas" class="p-8 text-center">
-        <p class="text-red-600 dark:text-red-400">{{ errorPersonas }}</p>
-        <button @click="cargarPersonas" class="mt-4 text-violet-600 dark:text-violet-400 hover:underline">
-          Reintentar
-        </button>
-      </div>
-
-      <template v-else>
-        <!-- Agregar persona -->
-        <form
-          @submit.prevent="agregarPersona"
-          class="px-4 py-3 bg-gray-50 dark:bg-gray-700/30 border-b border-gray-200 dark:border-gray-700 space-y-3"
-        >
-          <div class="flex flex-wrap items-center gap-2">
-            <div class="relative flex-1 min-w-[220px]">
-              <input
-                v-model.trim="nuevaPersonaEmail"
-                type="text"
-                required
-                placeholder="Buscar usuario o escribir un correo externo"
-                class="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-violet-500 focus:border-violet-500"
-                @focus="personaUsuarioDropdownOpen = true"
-                @blur="handlePersonaUsuarioBlur"
-              />
-              <div
-                v-if="personaUsuarioDropdownOpen && nuevaPersonaEmail.length >= 1"
-                class="absolute z-10 mt-1 w-full rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 max-h-48 overflow-y-auto shadow-lg"
+    <div v-else class="flex flex-col lg:flex-row gap-6 items-start">
+      <!-- Personas -->
+      <div class="flex-1 min-w-0 space-y-4">
+        <div class="bg-gray-50 dark:bg-gray-800/60 border border-gray-200 dark:border-gray-700 rounded-lg px-4 py-2.5">
+          <div class="relative">
+            <svg
+              class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-gray-500 pointer-events-none"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-4.35-4.35M18 10.5a7.5 7.5 0 11-15 0 7.5 7.5 0 0115 0z" />
+            </svg>
+            <input
+              v-model.trim="nuevaPersonaEmail"
+              type="text"
+              placeholder="Buscar usuario o escribir un correo externo"
+              class="w-full pl-9 pr-8 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-violet-500 focus:border-violet-500"
+              @focus="personaUsuarioDropdownOpen = true"
+              @blur="handlePersonaUsuarioBlur"
+              @keydown.enter.prevent="manejarEnterBusqueda"
+              @keydown.down.prevent="moverSeleccionSugerencia(1)"
+              @keydown.up.prevent="moverSeleccionSugerencia(-1)"
+            />
+            <button
+              v-if="nuevaPersonaEmail.length > 0"
+              type="button"
+              title="Limpiar"
+              aria-label="Limpiar búsqueda"
+              @click="limpiarBusquedaPersona"
+              class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+            >
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+            <div
+              v-if="personaUsuarioDropdownOpen && nuevaPersonaEmail.length >= 1"
+              class="absolute z-10 mt-1 w-full rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 max-h-48 overflow-y-auto shadow-lg"
+            >
+              <div v-if="!personaUsuarioSugerencias.length" class="px-3 py-2 text-xs text-gray-400 dark:text-gray-500">
+                Sin coincidencias internas — presiona Enter para agregar este correo externo
+              </div>
+              <button
+                v-else
+                v-for="(usuario, index) in personaUsuarioSugerencias"
+                :key="usuario.id"
+                type="button"
+                class="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-600"
+                :class="index === indiceSugerenciaActiva
+                  ? 'bg-violet-50 dark:bg-violet-900/30 text-violet-700 dark:text-violet-300'
+                  : 'text-gray-700 dark:text-gray-200'"
+                @click="elegirPersonaUsuario(usuario)"
               >
-                <div v-if="!personaUsuarioSugerencias.length" class="px-3 py-2 text-xs text-gray-400 dark:text-gray-500">
-                  Sin coincidencias internas — puedes agregar este correo externo directamente
-                </div>
-                <button
-                  v-else
-                  v-for="usuario in personaUsuarioSugerencias"
-                  :key="usuario.id"
-                  type="button"
-                  class="w-full text-left px-3 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600"
-                  @click="elegirPersonaUsuario(usuario)"
+                {{ usuario.label }}
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="flex flex-wrap gap-2">
+          <button
+            type="button"
+            @click="equipoFiltroActivo = null"
+            class="px-3 py-1.5 rounded-full border text-xs font-medium transition-colors"
+            :class="equipoFiltroActivo === null
+              ? 'border-gray-800 bg-gray-800 text-white dark:border-gray-200 dark:bg-gray-200 dark:text-gray-900'
+              : 'border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:border-gray-300 dark:hover:bg-gray-700/60'"
+          >
+            Todos los equipos
+          </button>
+          <button
+            v-for="equipo in equiposDisponibles"
+            :key="equipo.tipo"
+            type="button"
+            @click="equipoFiltroActivo = equipo.tipo"
+            class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-medium transition-colors"
+            :class="equipoFiltroActivo === equipo.tipo
+              ? equipo.paleta.seleccionado
+              : 'border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:border-gray-300 dark:hover:bg-gray-700/60'"
+          >
+            <span class="h-1.5 w-1.5 rounded-full shrink-0" :class="equipo.paleta.punto"></span>
+            {{ equipo.etiqueta }}
+          </button>
+        </div>
+
+        <div
+          v-if="personasAgrupadasFiltradas.length === 0"
+          class="p-12 text-center bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700"
+        >
+          <p class="text-gray-500 dark:text-gray-400">
+            {{ personasAgrupadas.length === 0 ? 'Sin personas registradas' : 'Ninguna persona tiene correos de este equipo' }}
+          </p>
+        </div>
+
+        <div v-else class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4" @dragover.prevent="manejarDragOverGeneral">
+          <div
+            v-for="persona in personasAgrupadasFiltradas"
+            :key="persona.email"
+            class="relative bg-white dark:bg-gray-800 rounded-lg border p-4 transition-all"
+            :class="[
+              personaCardEnDragOver === persona.email
+                ? (dropBloqueado(persona)
+                    ? 'border-red-400 dark:border-red-500 ring-2 ring-red-200 dark:ring-red-900/50'
+                    : 'border-violet-400 dark:border-violet-500 ring-2 ring-violet-200 dark:ring-violet-900/50')
+                : 'border-gray-200 dark:border-gray-700',
+              procesandoPersonaId === persona.email ? 'opacity-60' : '',
+              correoEnCurso() && dropBloqueado(persona) ? 'cursor-not-allowed' : '',
+            ]"
+            @dragover.prevent.stop="manejarDragOverTarjeta(persona, $event)"
+            @dragleave="salirDeTarjeta(persona.email)"
+            @drop.prevent="soltarEnTarjeta(persona)"
+            @click="clicEnTarjeta(persona)"
+          >
+            <div class="flex items-start justify-between gap-2">
+              <div class="flex items-center gap-2.5 min-w-0">
+                <span
+                  class="shrink-0 h-9 w-9 rounded-full flex items-center justify-center text-xs font-semibold"
+                  :class="avatarPaletaPersona(persona)
+                    ? `${avatarPaletaPersona(persona)!.circulo} text-white`
+                    : 'border-2 border-gray-300 dark:border-gray-600 text-gray-400 dark:text-gray-500'"
                 >
-                  {{ usuario.label }}
+                  {{ inicialesDe(persona.nombre) }}
+                </span>
+                <div class="min-w-0">
+                  <p class="text-sm font-semibold text-gray-900 dark:text-white truncate">{{ persona.nombre }}</p>
+                  <p class="text-xs text-gray-500 dark:text-gray-400 truncate">{{ persona.email }}</p>
+                </div>
+              </div>
+              <div class="flex items-center gap-1.5 shrink-0">
+                <LoadingSpinner
+                  v-if="procesandoPersonaId === persona.email"
+                  size="xs"
+                  color="violet"
+                  layout="inline"
+                  ariaLabel="Guardando"
+                />
+                <button
+                  type="button"
+                  title="Eliminar persona"
+                  aria-label="Eliminar persona"
+                  :disabled="procesandoPersonaId === persona.email"
+                  @click.stop="eliminarPersona(persona)"
+                  class="p-1 text-red-500 hover:text-red-700 dark:hover:text-red-400 rounded disabled:opacity-50"
+                >
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
                 </button>
               </div>
             </div>
-          </div>
 
-          <div>
-            <div class="flex items-center justify-between mb-1.5">
-              <p class="text-xs font-medium text-gray-600 dark:text-gray-300">Correos que recibirá</p>
-              <span v-if="nuevaPersonaCorreoIds.length" class="text-xs font-medium text-violet-600 dark:text-violet-400">
-                {{ nuevaPersonaCorreoIds.length }} seleccionado{{ nuevaPersonaCorreoIds.length === 1 ? '' : 's' }}
+            <div class="mt-3 pt-3 border-t border-gray-100 dark:border-gray-700 flex flex-wrap gap-1.5">
+              <span v-if="persona.correos.length === 0" class="text-xs text-gray-400 dark:text-gray-500">
+                Sin correos asignados
               </span>
-            </div>
-            <div class="space-y-3 max-h-56 overflow-y-auto p-3 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800">
-              <div v-for="grupo in catalogoAgrupado" :key="grupo.tipo">
-                <p class="text-[11px] font-semibold uppercase tracking-wide text-gray-400 dark:text-gray-500 mb-1.5">
-                  {{ etiquetaTipo(grupo.tipo) }}
-                </p>
-                <div class="flex flex-wrap gap-1.5">
-                  <label
-                    v-for="correo in grupo.correos"
-                    :key="correo.id"
-                    :title="correo.descripcion || undefined"
-                    class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-xs cursor-pointer transition-colors select-none"
-                    :class="nuevaPersonaCorreoIds.includes(correo.id)
-                      ? 'border-violet-500 bg-violet-50 dark:bg-violet-900/30 text-violet-700 dark:text-violet-300'
-                      : 'border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:border-violet-300 hover:bg-violet-50/60 dark:hover:bg-gray-700'"
-                  >
-                    <input type="checkbox" :value="correo.id" v-model="nuevaPersonaCorreoIds" class="sr-only" />
-                    <span
-                      class="flex items-center justify-center h-3.5 w-3.5 rounded-full border shrink-0 transition-colors"
-                      :class="nuevaPersonaCorreoIds.includes(correo.id) ? 'bg-violet-600 border-violet-600' : 'border-gray-300 dark:border-gray-500'"
-                    >
-                      <svg v-if="nuevaPersonaCorreoIds.includes(correo.id)" class="h-2.5 w-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
-                      </svg>
-                    </span>
-                    {{ correo.tipo_correo }}
-                  </label>
-                </div>
-              </div>
-              <span v-if="tiposCorreoCatalogo.length === 0" class="text-xs text-gray-400 dark:text-gray-500">
-                No hay correos en el catálogo todavía.
+              <span
+                v-for="correo in persona.correos"
+                :key="correo.id"
+                :title="correo.descripcion || undefined"
+                class="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs"
+                :class="paletaTipoNotificacion(correo.tipo_notificacion).badge"
+              >
+                <span class="h-1.5 w-1.5 rounded-full shrink-0" :class="paletaTipoNotificacion(correo.tipo_notificacion).punto"></span>
+                {{ correo.tipo_correo }}
+                <button
+                  type="button"
+                  title="Quitar este correo"
+                  :disabled="procesandoPersonaId === correo.id"
+                  @click.stop="quitarCorreoDePersona(correo)"
+                  class="text-current opacity-60 hover:opacity-100 disabled:opacity-40"
+                >
+                  ×
+                </button>
               </span>
             </div>
           </div>
-
-          <div class="flex justify-end">
-            <button
-              type="submit"
-              :disabled="agregandoPersona"
-              class="px-4 py-2 bg-violet-600 text-white text-sm font-medium rounded-lg hover:bg-violet-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              Agregar persona
-            </button>
-          </div>
-        </form>
-
-        <div class="overflow-x-auto">
-          <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-            <thead class="bg-gray-50 dark:bg-gray-700/50">
-              <tr>
-                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Nombre</th>
-                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Email</th>
-                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Tipo</th>
-                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Correos</th>
-                <th class="px-4 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Acciones</th>
-              </tr>
-            </thead>
-            <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
-              <tr v-if="personasAgrupadas.length === 0">
-                <td colspan="5" class="px-4 py-4 text-sm text-gray-400 dark:text-gray-500 text-center">
-                  Sin personas registradas
-                </td>
-              </tr>
-              <tr v-for="persona in personasAgrupadas" :key="persona.email" class="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
-                <td class="px-4 py-3 text-sm text-gray-900 dark:text-white whitespace-nowrap">{{ persona.nombre }}</td>
-                <td class="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">{{ persona.email }}</td>
-                <td class="px-4 py-3">
-                  <div class="flex flex-wrap gap-1">
-                    <span
-                      v-for="tipo in tiposDePersona(persona)"
-                      :key="tipo"
-                      class="px-2 py-1 text-xs font-medium rounded-full bg-indigo-100 dark:bg-indigo-900/30 text-indigo-800 dark:text-indigo-300 whitespace-nowrap"
-                    >
-                      {{ etiquetaTipo(tipo) }}
-                    </span>
-                  </div>
-                </td>
-                <td class="px-4 py-3">
-                  <div class="flex flex-wrap gap-1.5 items-center">
-                    <span
-                      v-for="correo in persona.correos"
-                      :key="correo.id"
-                      :title="correo.descripcion || undefined"
-                      class="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-violet-100 dark:bg-violet-900/30 text-violet-800 dark:text-violet-300 text-xs"
-                    >
-                      {{ correo.tipo_correo }}
-                      <button
-                        type="button"
-                        title="Quitar este correo"
-                        :disabled="procesandoPersonaId === correo.id"
-                        @click="quitarCorreoDePersona(correo)"
-                        class="text-violet-500 hover:text-violet-800 dark:hover:text-violet-100 disabled:opacity-50"
-                      >
-                        ×
-                      </button>
-                    </span>
-                    <div class="relative">
-                      <button
-                        type="button"
-                        :disabled="procesandoPersonaId === persona.email"
-                        @click="toggleCorreoDropdown(persona.email, $event)"
-                        @blur="handleCorreoDropdownBlur"
-                        class="inline-flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-full border border-dashed border-violet-300 dark:border-violet-600 text-violet-600 dark:text-violet-400 hover:bg-violet-50 dark:hover:bg-violet-900/20 disabled:opacity-50 transition-colors"
-                      >
-                        <span class="text-sm leading-none">+</span> Correo
-                      </button>
-                      <!-- Teleport a <body>: la tarjeta "Personas y Correos" tiene overflow-hidden
-                           (para redondear las esquinas de la tabla), así que un desplegable
-                           absolute anidado adentro quedaba recortado. Con posición fixed calculada
-                           desde el botón, ya no depende de ningún overflow de sus ancestros. -->
-                      <Teleport to="body">
-                        <div
-                          v-if="correoDropdownAbierto === persona.email && correoDropdownPosition"
-                          ref="correoDropdownRef"
-                          class="fixed z-50 w-96 max-w-[90vw] rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 overflow-y-auto shadow-lg"
-                          :style="{
-                            top: correoDropdownPosition.top !== undefined ? correoDropdownPosition.top + 'px' : undefined,
-                            bottom: correoDropdownPosition.bottom !== undefined ? correoDropdownPosition.bottom + 'px' : undefined,
-                            right: correoDropdownPosition.right + 'px',
-                            maxHeight: correoDropdownPosition.maxHeight + 'px',
-                          }"
-                        >
-                          <div v-if="!correosDisponiblesPara(persona).length" class="px-3 py-2 text-xs text-gray-400 dark:text-gray-500">
-                            Ya tiene todos los correos del catálogo
-                          </div>
-                          <button
-                            v-else
-                            v-for="correo in correosDisponiblesPara(persona)"
-                            :key="correo.id"
-                            type="button"
-                            class="w-full text-left px-3 py-2 text-xs text-gray-700 dark:text-gray-200 hover:bg-violet-50 dark:hover:bg-gray-600 leading-snug"
-                            @click="agregarCorreoAPersona(persona, String(correo.id)); correoDropdownAbierto = null"
-                          >
-                            <span class="font-medium text-indigo-600 dark:text-indigo-400">{{ etiquetaTipo(correo.tipo_notificacion) }}</span>
-                            · {{ correo.tipo_correo }}
-                          </button>
-                        </div>
-                      </Teleport>
-                    </div>
-                  </div>
-                </td>
-                <td class="px-4 py-3 text-right whitespace-nowrap">
-                  <button
-                    :disabled="procesandoPersonaId === persona.email"
-                    @click="eliminarPersona(persona)"
-                    class="text-sm text-red-600 dark:text-red-400 hover:underline font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    Eliminar
-                  </button>
-                </td>
-              </tr>
-            </tbody>
-          </table>
         </div>
-      </template>
-    </div>
+      </div>
 
+      <!-- Catálogo de correos -->
+      <aside
+        class="w-full lg:w-80 shrink-0 bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 overflow-hidden lg:sticky lg:top-4"
+        :class="{ 'catalogo-destacado': catalogoResaltado }"
+      >
+        <div class="px-4 py-3 border-b border-gray-200 dark:border-gray-700 space-y-3">
+          <div class="flex items-center justify-between gap-2">
+            <h2 class="font-semibold text-gray-900 dark:text-white">Catálogo de correos</h2>
+            <span class="text-xs text-gray-400 dark:text-gray-500 whitespace-nowrap">
+              {{ catalogoFiltradoCount }} de {{ totalCatalogoCount }}
+            </span>
+          </div>
+          <div class="relative">
+            <svg
+              class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-gray-500 pointer-events-none"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+            </svg>
+            <input
+              v-model.trim="busquedaCatalogo"
+              type="search"
+              placeholder="Buscar correo o tipo"
+              class="w-full pl-9 pr-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-violet-500 focus:border-violet-500"
+            />
+          </div>
+        </div>
+
+        <div class="p-3 space-y-3 max-h-[28rem] overflow-y-auto">
+          <div v-for="grupo in catalogoFiltrado" :key="grupo.tipo">
+            <p class="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-gray-400 dark:text-gray-500 mb-1.5 px-1">
+              <span class="h-1.5 w-1.5 rounded-full shrink-0" :class="paletaTipoNotificacion(grupo.tipo).punto"></span>
+              {{ etiquetaTipo(grupo.tipo) }}
+            </p>
+            <div class="space-y-1">
+              <button
+                v-for="correo in grupo.correos"
+                :key="correo.id"
+                type="button"
+                draggable="true"
+                :title="correo.descripcion || undefined"
+                @dragstart="iniciarDrag(correo, $event)"
+                @dragend="finalizarDrag"
+                @click="alternarSeleccionCorreo(correo)"
+                class="w-full flex items-center justify-between gap-2 px-3 py-2 rounded-lg border text-left text-xs cursor-grab active:cursor-grabbing transition-colors"
+                :class="correoSeleccionadoParaVincular?.id === correo.id
+                  ? paletaTipoNotificacion(grupo.tipo).seleccionado
+                  : paletaTipoNotificacion(grupo.tipo).sutil"
+              >
+                <span class="truncate">{{ correo.tipo_correo }}</span>
+              </button>
+            </div>
+          </div>
+          <p v-if="totalCatalogoCount === 0" class="text-xs text-gray-400 dark:text-gray-500 text-center py-4">
+            No hay correos en el catálogo todavía.
+          </p>
+          <p v-else-if="catalogoFiltrado.length === 0" class="text-xs text-gray-400 dark:text-gray-500 text-center py-4">
+            Ningún correo coincide con la búsqueda.
+          </p>
+        </div>
+
+        <div class="px-4 py-3 border-t border-gray-200 dark:border-gray-700">
+          <button
+            type="button"
+            @click="$router.push('/mba3-consultas/admin/catalogo-correos')"
+            class="text-xs font-medium text-violet-600 dark:text-violet-400 hover:underline"
+          >
+            → Gestionar catálogo
+          </button>
+        </div>
+      </aside>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, watch, nextTick } from 'vue'
 import { useToast } from '@/composables/useToast'
 import api from '@/services/api'
 import { notificacionTipoCorreoService, type TipoCorreo } from '../services/domains/notificacionTipoCorreo'
 import { notificacionPersonaCorreoService, type PersonaCorreoRow } from '../services/domains/notificacionPersonaCorreo'
 import LoadingSpinner from '../components/LoadingSpinner.vue'
 import OdcSapVolverButton from '@/components/OdcSapVolverButton.vue'
+import { inicialesDe } from '@/utils/iniciales'
 
 const toast = useToast()
 
@@ -265,12 +301,91 @@ function etiquetaTipo(tipo: string): string {
   return ETIQUETAS_TIPO[tipo] || tipo
 }
 
+// Orden estable para las píldoras de filtro y los grupos del catálogo (mismo orden semántico
+// que ETIQUETAS_TIPO, EL RAYO/OPERACIONES primero).
+const ORDEN_TIPOS_NOTIFICACION = ['OPERACIONES', 'MABEL_TRADING', 'HOMOLOGACIONES', 'PRODUCCION_ELRAYO', 'TECNICOS']
+
+// Colores por tipo_notificacion, alineados a la paleta por permiso ya establecida en
+// styleHelpers.ts (mabel.view = verde/esmeralda/teal, produccion-elrayo.view = ámbar,
+// odcsap.view = púrpura): OPERACIONES notifica a EL RAYO (odcsap.view), MABEL_TRADING y
+// HOMOLOGACIONES son funcionalidades de mabel.view (mismo tono distinto matiz para
+// distinguirlas entre sí), PRODUCCION_ELRAYO es produccion-elrayo.view. TECNICOS no
+// depende de un permiso de negocio (son notificaciones de error interno/soporte), así
+// que usa 'vermilion', reservado en tailwind.config.js a estados de error.
+interface PaletaTipoNotificacion {
+  badge: string
+  texto: string
+  seleccionado: string
+  circulo: string
+  punto: string
+  // Tonalidad muy tenue para el estado "sin seleccionar" de los botones del catálogo:
+  // solo insinúa el color del equipo (fondo/borde clarísimos), sin competir con
+  // `seleccionado`/`badge` que sí deben leerse como un color fuerte y decidido.
+  sutil: string
+}
+
+const PALETA_TIPO_NOTIFICACION: Record<string, PaletaTipoNotificacion> = {
+  MABEL_TRADING: {
+    badge: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300',
+    texto: 'text-emerald-600 dark:text-emerald-400',
+    seleccionado: 'border-emerald-500 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300',
+    circulo: 'bg-emerald-600 border-emerald-600',
+    punto: 'bg-emerald-500',
+    sutil: 'border-emerald-100 dark:border-emerald-900/40 bg-emerald-50/60 dark:bg-emerald-900/10 text-gray-700 dark:text-gray-200 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 hover:border-emerald-200 dark:hover:border-emerald-800',
+  },
+  HOMOLOGACIONES: {
+    badge: 'bg-teal-100 text-teal-800 dark:bg-teal-900/30 dark:text-teal-300',
+    texto: 'text-teal-600 dark:text-teal-400',
+    seleccionado: 'border-teal-500 bg-teal-50 dark:bg-teal-900/30 text-teal-700 dark:text-teal-300',
+    circulo: 'bg-teal-600 border-teal-600',
+    punto: 'bg-teal-500',
+    sutil: 'border-teal-100 dark:border-teal-900/40 bg-teal-50/60 dark:bg-teal-900/10 text-gray-700 dark:text-gray-200 hover:bg-teal-50 dark:hover:bg-teal-900/20 hover:border-teal-200 dark:hover:border-teal-800',
+  },
+  OPERACIONES: {
+    badge: 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300',
+    texto: 'text-purple-600 dark:text-purple-400',
+    seleccionado: 'border-purple-500 bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300',
+    circulo: 'bg-purple-600 border-purple-600',
+    punto: 'bg-purple-500',
+    sutil: 'border-purple-100 dark:border-purple-900/40 bg-purple-50/60 dark:bg-purple-900/10 text-gray-700 dark:text-gray-200 hover:bg-purple-50 dark:hover:bg-purple-900/20 hover:border-purple-200 dark:hover:border-purple-800',
+  },
+  PRODUCCION_ELRAYO: {
+    badge: 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-200',
+    texto: 'text-amber-600 dark:text-amber-400',
+    seleccionado: 'border-amber-500 bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300',
+    circulo: 'bg-amber-600 border-amber-600',
+    punto: 'bg-amber-500',
+    sutil: 'border-amber-100 dark:border-amber-900/40 bg-amber-50/60 dark:bg-amber-900/10 text-gray-700 dark:text-gray-200 hover:bg-amber-50 dark:hover:bg-amber-900/20 hover:border-amber-200 dark:hover:border-amber-800',
+  },
+  TECNICOS: {
+    badge: 'bg-vermilion-100 text-vermilion-800 dark:bg-vermilion-900/30 dark:text-vermilion-200',
+    texto: 'text-vermilion-600 dark:text-vermilion-400',
+    seleccionado: 'border-vermilion-500 bg-vermilion-50 dark:bg-vermilion-900/30 text-vermilion-700 dark:text-vermilion-300',
+    circulo: 'bg-vermilion-600 border-vermilion-600',
+    punto: 'bg-vermilion-500',
+    sutil: 'border-vermilion-100 dark:border-vermilion-900/40 bg-vermilion-50/60 dark:bg-vermilion-900/10 text-gray-700 dark:text-gray-200 hover:bg-vermilion-50 dark:hover:bg-vermilion-900/20 hover:border-vermilion-200 dark:hover:border-vermilion-800',
+  },
+}
+
+const PALETA_TIPO_NOTIFICACION_DEFECTO: PaletaTipoNotificacion = {
+  badge: 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300',
+  texto: 'text-gray-600 dark:text-gray-400',
+  seleccionado: 'border-gray-500 bg-gray-50 dark:bg-gray-900/30 text-gray-700 dark:text-gray-300',
+  circulo: 'bg-gray-600 border-gray-600',
+  punto: 'bg-gray-400',
+  sutil: 'border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:border-gray-300 dark:hover:bg-gray-700/60',
+}
+
+function paletaTipoNotificacion(tipo: string): PaletaTipoNotificacion {
+  return PALETA_TIPO_NOTIFICACION[tipo] || PALETA_TIPO_NOTIFICACION_DEFECTO
+}
+
 function extraerMensajeError(err: any, fallback: string): string {
   return err?.response?.data?.detail || err?.message || fallback
 }
 
 // Búsqueda de usuarios existentes en Core/AD (GET /Users/list, solo Admin), usada por
-// el formulario de "Personas y Correos". No reemplaza el texto libre: hay destinatarios
+// el formulario de "Nueva persona". No reemplaza el texto libre: hay destinatarios
 // externos (proveedores, El Rayo) sin cuenta en AD.
 interface UsuarioOption {
   id: string
@@ -315,27 +430,72 @@ const personasCorreo = ref<PersonaCorreoRow[]>([])
 const tiposCorreoCatalogo = ref<TipoCorreo[]>([])
 const nuevaPersonaNombre = ref('')
 const nuevaPersonaEmail = ref('')
-const nuevaPersonaCorreoIds = ref<number[]>([])
-const agregandoPersona = ref(false)
 const procesandoPersonaId = ref<number | string | null>(null)
 const personaUsuarioDropdownOpen = ref(false)
 
 const personaUsuarioSugerencias = computed<UsuarioOption[]>(() => {
   const query = nuevaPersonaEmail.value.toLowerCase().trim()
   if (!query) return []
-  return usuarios.value.filter((u) => u.label.toLowerCase().includes(query)).slice(0, 8)
+  const yaAgregados = emailsPersonasAgregadas.value
+  return usuarios.value
+    .filter((u) => !yaAgregados.has(u.email.toLowerCase()) && u.label.toLowerCase().includes(query))
+    .slice(0, 8)
 })
 
+// Índice resaltado en el desplegable de sugerencias; se reinicia a la primera
+// opción cada vez que cambia la lista (nueva búsqueda).
+const indiceSugerenciaActiva = ref(0)
+
+watch(personaUsuarioSugerencias, () => {
+  indiceSugerenciaActiva.value = 0
+})
+
+function moverSeleccionSugerencia(delta: number) {
+  const total = personaUsuarioSugerencias.value.length
+  if (total === 0) return
+  indiceSugerenciaActiva.value = (indiceSugerenciaActiva.value + delta + total) % total
+}
+
 function elegirPersonaUsuario(usuario: UsuarioOption) {
-  nuevaPersonaEmail.value = usuario.email
-  nuevaPersonaNombre.value = usuario.fullName || usuario.email
-  personaUsuarioDropdownOpen.value = false
+  agregarPersonaPendiente(usuario.fullName || usuario.email, usuario.email)
+  limpiarBusquedaPersona()
 }
 
 function handlePersonaUsuarioBlur() {
   setTimeout(() => {
     personaUsuarioDropdownOpen.value = false
   }, 150)
+}
+
+// Buscador de personas (barra superior): Enter sobre un correo externo sin
+// coincidencias en AD crea la tarjeta pendiente igual que elegir una sugerencia.
+function iniciarAltaDesdeBusqueda() {
+  const email = nuevaPersonaEmail.value.trim()
+  if (!email) return
+  if (!email.includes('@')) {
+    toast.error('Correo inválido', `'${email}' no parece un email válido`)
+    return
+  }
+  agregarPersonaPendiente(nuevaPersonaNombre.value, email)
+  limpiarBusquedaPersona()
+}
+
+// La sugerencia resaltada (flechas arriba/abajo, primera por defecto) se confirma
+// con Enter igual que si se le hiciera clic. Sin sugerencias, Enter cae al alta
+// por correo externo.
+function manejarEnterBusqueda() {
+  const sugerenciaActiva = personaUsuarioSugerencias.value[indiceSugerenciaActiva.value]
+  if (sugerenciaActiva) {
+    elegirPersonaUsuario(sugerenciaActiva)
+    return
+  }
+  iniciarAltaDesdeBusqueda()
+}
+
+function limpiarBusquedaPersona() {
+  nuevaPersonaEmail.value = ''
+  nuevaPersonaNombre.value = ''
+  personaUsuarioDropdownOpen.value = false
 }
 
 interface GrupoCatalogo {
@@ -358,6 +518,16 @@ interface PersonaAgrupada {
   correos: PersonaCorreoRow[]
 }
 
+// orden_flujo vive en el catálogo (TipoCorreo), no en cada fila persona-correo,
+// así que hay que resolverlo por tipo_correo_id. Sin orden asignado, al final.
+const ordenFlujoPorCorreoId = computed<Map<number, number>>(() => {
+  const mapa = new Map<number, number>()
+  for (const correo of tiposCorreoCatalogo.value) {
+    mapa.set(correo.id, correo.orden_flujo ?? Number.MAX_SAFE_INTEGER)
+  }
+  return mapa
+})
+
 const personasAgrupadas = computed<PersonaAgrupada[]>(() => {
   const map = new Map<string, PersonaAgrupada>()
   for (const row of personasCorreo.value) {
@@ -366,7 +536,57 @@ const personasAgrupadas = computed<PersonaAgrupada[]>(() => {
     }
     map.get(row.email)!.correos.push(row)
   }
+  const ordenFlujo = ordenFlujoPorCorreoId.value
+  for (const persona of map.values()) {
+    persona.correos.sort(
+      (a, b) => (ordenFlujo.get(a.tipo_correo_id) ?? Number.MAX_SAFE_INTEGER) - (ordenFlujo.get(b.tipo_correo_id) ?? Number.MAX_SAFE_INTEGER)
+    )
+  }
   return Array.from(map.values())
+})
+
+// Personas pendientes: tarjeta creada al elegir/escribir a alguien en el buscador,
+// antes de que tenga ningún correo asignado (avatar gris = sin correo aún). No
+// existen en el backend todavía — se persisten recién al arrastrar/tocar su primer
+// correo (agregarCorreoAPersona), momento en que recargarPersonasCorreo() las quita
+// de aquí porque ya aparecen en personasAgrupadas.
+const personasPendientes = ref<PersonaAgrupada[]>([])
+
+// Orden estable de aparición de las tarjetas: independiente del orden que devuelva
+// el backend, para que una persona NO cambie de posición en el grid justo cuando
+// pasa de "pendiente" a persistida (al recibir su primer correo).
+const ordenPersonas = ref<string[]>([])
+
+function registrarOrdenPersona(email: string) {
+  if (!ordenPersonas.value.includes(email)) {
+    ordenPersonas.value.push(email)
+  }
+}
+
+watch(
+  personasAgrupadas,
+  (lista) => {
+    for (const persona of lista) registrarOrdenPersona(persona.email)
+  },
+  { immediate: true }
+)
+
+function agregarPersonaPendiente(nombre: string, email: string) {
+  const emailNorm = email.trim()
+  if (!emailNorm) return
+  const yaExiste = emailsPersonasAgregadas.value.has(emailNorm.toLowerCase())
+  if (yaExiste) return
+  personasPendientes.value.push({ email: emailNorm, nombre: nombre.trim() || emailNorm, correos: [] })
+  registrarOrdenPersona(emailNorm)
+  resaltarCatalogo()
+}
+
+// Personas que ya tienen tarjeta (persistidas o pendientes): se ocultan del
+// buscador de personas para no ofrecer "agregar" a alguien que ya está agregado.
+const emailsPersonasAgregadas = computed<Set<string>>(() => {
+  const emails = personasAgrupadas.value.map((p) => p.email.toLowerCase())
+  const pendientes = personasPendientes.value.map((p) => p.email.toLowerCase())
+  return new Set([...emails, ...pendientes])
 })
 
 function correosDisponiblesPara(persona: PersonaAgrupada): TipoCorreo[] {
@@ -374,71 +594,176 @@ function correosDisponiblesPara(persona: PersonaAgrupada): TipoCorreo[] {
   return tiposCorreoCatalogo.value.filter((c) => !yaAsignados.has(c.id))
 }
 
-function tiposDePersona(persona: PersonaAgrupada): string[] {
-  return Array.from(new Set(persona.correos.map((c) => c.tipo_notificacion)))
+function personaTieneCorreo(persona: PersonaAgrupada, correoId: number): boolean {
+  return persona.correos.some((c) => c.tipo_correo_id === correoId)
 }
 
-interface CorreoDropdownPosition {
-  right: number
-  maxHeight: number
-  top?: number
-  bottom?: number
+// ── Catálogo: búsqueda y contador por correo ──
+const busquedaCatalogo = ref('')
+
+// Resalta el panel del catálogo (animación CSS, ver <style>) justo al crear una
+// tarjeta nueva, para indicar visualmente el siguiente paso: arrastrar/tocar un correo.
+// Se mantiene pulsando en bucle hasta que el usuario interactúa con la interfaz
+// (clic/toque o teclado), momento en que se apaga sola.
+const catalogoResaltado = ref(false)
+let resaltarCatalogoTimeoutId: ReturnType<typeof setTimeout> | null = null
+
+function detenerResaltadoCatalogo() {
+  catalogoResaltado.value = false
+  window.removeEventListener('pointerdown', detenerResaltadoCatalogo)
+  window.removeEventListener('keydown', detenerResaltadoCatalogo)
 }
 
-const DROPDOWN_MAX_HEIGHT = 288 // equivalente a max-h-72
-const DROPDOWN_MIN_ESPACIO = 150 // debajo del botón, por debajo de esto se prueba abrir hacia arriba
+async function resaltarCatalogo() {
+  if (resaltarCatalogoTimeoutId !== null) {
+    clearTimeout(resaltarCatalogoTimeoutId)
+    resaltarCatalogoTimeoutId = null
+  }
+  catalogoResaltado.value = false
+  await nextTick()
+  catalogoResaltado.value = true
+  // El registro de los listeners se retrasa al siguiente ciclo del event loop (macrotask,
+  // no microtask) para no capturar el propio clic/Enter que acaba de crear la tarjeta
+  // (que también dispara pointerdown/keydown) como si fuera la interacción que la apaga.
+  resaltarCatalogoTimeoutId = setTimeout(() => {
+    resaltarCatalogoTimeoutId = null
+    window.addEventListener('pointerdown', detenerResaltadoCatalogo)
+    window.addEventListener('keydown', detenerResaltadoCatalogo)
+  }, 0)
+}
 
-const correoDropdownAbierto = ref<string | null>(null)
-const correoDropdownPosition = ref<CorreoDropdownPosition | null>(null)
-const correoDropdownRef = ref<HTMLElement | null>(null)
+const totalCatalogoCount = computed(() => tiposCorreoCatalogo.value.length)
 
-function toggleCorreoDropdown(email: string, event: MouseEvent) {
-  if (correoDropdownAbierto.value === email) {
-    correoDropdownAbierto.value = null
-    correoDropdownPosition.value = null
+const catalogoFiltrado = computed<GrupoCatalogo[]>(() => {
+  const texto = busquedaCatalogo.value.trim().toLowerCase()
+  return catalogoAgrupado.value
+    .map((grupo) => ({
+      tipo: grupo.tipo,
+      correos: grupo.correos.filter((correo) => {
+        if (!texto) return true
+        return (
+          correo.tipo_correo.toLowerCase().includes(texto) ||
+          etiquetaTipo(correo.tipo_notificacion).toLowerCase().includes(texto)
+        )
+      }),
+    }))
+    .filter((grupo) => grupo.correos.length > 0)
+})
+
+const catalogoFiltradoCount = computed(() =>
+  catalogoFiltrado.value.reduce((total, grupo) => total + grupo.correos.length, 0)
+)
+
+const equiposDisponibles = computed(() => {
+  const presentes = new Set(tiposCorreoCatalogo.value.map((c) => c.tipo_notificacion))
+  return ORDEN_TIPOS_NOTIFICACION
+    .filter((tipo) => presentes.has(tipo))
+    .map((tipo) => ({ tipo, etiqueta: etiquetaTipo(tipo), paleta: paletaTipoNotificacion(tipo) }))
+})
+
+// ── Filtro de equipo (píldoras) sobre las tarjetas de personas ──
+const equipoFiltroActivo = ref<string | null>(null)
+
+const personasAgrupadasFiltradas = computed(() => {
+  const persistidas = equipoFiltroActivo.value
+    ? personasAgrupadas.value.filter((persona) =>
+        persona.correos.some((correo) => correo.tipo_notificacion === equipoFiltroActivo.value)
+      )
+    : personasAgrupadas.value
+
+  // Se combinan pendientes + persistidas (una persona pasa de un grupo al otro sin
+  // duplicarse) y se ordenan según ordenPersonas, para que la tarjeta no cambie de
+  // posición al recibir su primer correo. Las pendientes no tienen equipo por el
+  // cual filtrarlas: siempre se muestran.
+  const porEmail = new Map<string, PersonaAgrupada>()
+  for (const persona of personasPendientes.value) porEmail.set(persona.email, persona)
+  for (const persona of persistidas) porEmail.set(persona.email, persona)
+
+  const indicePorEmail = new Map(ordenPersonas.value.map((email, indice) => [email, indice]))
+  return Array.from(porEmail.values()).sort(
+    (a, b) => (indicePorEmail.get(a.email) ?? Number.MAX_SAFE_INTEGER) - (indicePorEmail.get(b.email) ?? Number.MAX_SAFE_INTEGER)
+  )
+})
+
+function avatarPaletaPersona(persona: PersonaAgrupada): PaletaTipoNotificacion | null {
+  const primero = persona.correos[0]
+  return primero ? paletaTipoNotificacion(primero.tipo_notificacion) : null
+}
+
+// ── Vincular un correo con una persona: arrastrar y soltar, o tocar y tocar ──
+const correoArrastrando = ref<TipoCorreo | null>(null)
+const correoSeleccionadoParaVincular = ref<TipoCorreo | null>(null)
+const personaCardEnDragOver = ref<string | null>(null)
+
+function iniciarDrag(correo: TipoCorreo, event: DragEvent) {
+  correoArrastrando.value = correo
+  if (event.dataTransfer) {
+    event.dataTransfer.effectAllowed = 'copy'
+    event.dataTransfer.setData('text/plain', String(correo.id))
+  }
+}
+
+function finalizarDrag() {
+  correoArrastrando.value = null
+  personaCardEnDragOver.value = null
+}
+
+function salirDeTarjeta(email: string) {
+  if (personaCardEnDragOver.value === email) personaCardEnDragOver.value = null
+}
+
+// Correo que se está por vincular en este momento (arrastrando o ya seleccionado por
+// tap), para saber si la tarjeta bajo el cursor ya lo tiene y bloquear el drop.
+function correoEnCurso(): TipoCorreo | null {
+  return correoArrastrando.value ?? correoSeleccionadoParaVincular.value
+}
+
+function dropBloqueado(persona: PersonaAgrupada): boolean {
+  const correo = correoEnCurso()
+  return correo ? personaTieneCorreo(persona, correo.id) : false
+}
+
+function manejarDragOverTarjeta(persona: PersonaAgrupada, event: DragEvent) {
+  personaCardEnDragOver.value = persona.email
+  if (!event.dataTransfer) return
+  event.dataTransfer.dropEffect = dropBloqueado(persona) ? 'none' : 'copy'
+}
+
+// Cursor "permitido" por defecto en todo el área de tarjetas (huecos entre tarjetas,
+// bordes del grid). Sin esto, el navegador muestra el símbolo prohibido por defecto en
+// cualquier zona sin su propio handler de dragover, dando la falsa sensación de que el
+// correo no se puede soltar en ningún lado. manejarDragOverTarjeta usa .stop para que,
+// al estar sobre una tarjeta puntual, su propio cálculo (permitido/bloqueado) prevalezca.
+function manejarDragOverGeneral(event: DragEvent) {
+  if (event.dataTransfer) event.dataTransfer.dropEffect = 'copy'
+}
+
+async function vincularCorreoConPersona(persona: PersonaAgrupada, correo: TipoCorreo) {
+  if (personaTieneCorreo(persona, correo.id)) {
+    toast.error('Correo ya asignado', `${persona.nombre} ya recibe "${correo.tipo_correo}"`)
     return
   }
-  const boton = event.currentTarget as HTMLElement
-  const rect = boton.getBoundingClientRect()
-  const gap = 4
-  const espacioAbajo = window.innerHeight - rect.bottom - gap
-  const espacioArriba = rect.top - gap
-  const abrirHaciaArriba = espacioAbajo < DROPDOWN_MIN_ESPACIO && espacioArriba > espacioAbajo
-
-  correoDropdownPosition.value = {
-    right: window.innerWidth - rect.right,
-    maxHeight: Math.max(120, Math.min(DROPDOWN_MAX_HEIGHT, abrirHaciaArriba ? espacioArriba : espacioAbajo)),
-    ...(abrirHaciaArriba ? { bottom: window.innerHeight - rect.top + gap } : { top: rect.bottom + gap }),
-  }
-  correoDropdownAbierto.value = email
+  await agregarCorreoAPersona(persona, String(correo.id))
 }
 
-function handleCorreoDropdownBlur() {
-  setTimeout(() => {
-    correoDropdownAbierto.value = null
-    correoDropdownPosition.value = null
-  }, 150)
+async function soltarEnTarjeta(persona: PersonaAgrupada) {
+  const correo = correoArrastrando.value
+  personaCardEnDragOver.value = null
+  correoArrastrando.value = null
+  if (!correo) return
+  await vincularCorreoConPersona(persona, correo)
 }
 
-// Cierra el desplegable teleportado si el usuario hace scroll de la página (su
-// posición fixed quedaría desalineada del botón que lo abrió). El scroll interno
-// de la lista (overflow-y-auto) también dispara 'scroll' en la fase de captura de
-// window, así que se ignora cuando el evento viene de dentro del propio desplegable.
-function handleWindowScrollCierraCorreoDropdown(event: Event) {
-  if (correoDropdownAbierto.value === null) return
-  const target = event.target as Node | null
-  if (correoDropdownRef.value && target && correoDropdownRef.value.contains(target)) return
-  correoDropdownAbierto.value = null
-  correoDropdownPosition.value = null
+function alternarSeleccionCorreo(correo: TipoCorreo) {
+  correoSeleccionadoParaVincular.value = correoSeleccionadoParaVincular.value?.id === correo.id ? null : correo
 }
 
-onMounted(() => {
-  window.addEventListener('scroll', handleWindowScrollCierraCorreoDropdown, true)
-})
-
-onBeforeUnmount(() => {
-  window.removeEventListener('scroll', handleWindowScrollCierraCorreoDropdown, true)
-})
+async function clicEnTarjeta(persona: PersonaAgrupada) {
+  const correo = correoSeleccionadoParaVincular.value
+  if (!correo) return
+  correoSeleccionadoParaVincular.value = null
+  await vincularCorreoConPersona(persona, correo)
+}
 
 async function cargarPersonas() {
   loadingPersonas.value = true
@@ -464,36 +789,10 @@ async function cargarPersonas() {
 // backend después de cada alta.
 async function recargarPersonasCorreo() {
   personasCorreo.value = await notificacionPersonaCorreoService.getPersonasCorreo()
-}
-
-async function agregarPersona() {
-  const email = nuevaPersonaEmail.value.trim()
-  const nombre = nuevaPersonaNombre.value.trim() || email
-  if (!email || nuevaPersonaCorreoIds.value.length === 0) {
-    toast.error('Datos incompletos', 'Busca o escribe un correo y selecciona al menos un correo a enviar')
-    return
-  }
-  if (!email.includes('@')) {
-    toast.error('Correo inválido', `'${email}' no parece un email válido`)
-    return
-  }
-
-  agregandoPersona.value = true
-  try {
-    for (const tipoCorreoId of nuevaPersonaCorreoIds.value) {
-      await notificacionPersonaCorreoService.crearLink(nombre, email, tipoCorreoId)
-    }
-    await recargarPersonasCorreo()
-    toast.success('Persona agregada', `${nombre} (${email})`)
-    nuevaPersonaNombre.value = ''
-    nuevaPersonaEmail.value = ''
-    nuevaPersonaCorreoIds.value = []
-  } catch (err: any) {
-    toast.error('No se pudo agregar', extraerMensajeError(err, 'Error desconocido'))
-    await recargarPersonasCorreo()
-  } finally {
-    agregandoPersona.value = false
-  }
+  // Una pendiente que acaba de recibir su primer correo ya viene en la respuesta:
+  // deja de ser "pendiente" y pasa a mostrarse desde personasAgrupadas.
+  const emailsReales = new Set(personasCorreo.value.map((row) => row.email.toLowerCase()))
+  personasPendientes.value = personasPendientes.value.filter((p) => !emailsReales.has(p.email.toLowerCase()))
 }
 
 async function agregarCorreoAPersona(persona: PersonaAgrupada, tipoCorreoIdStr: string) {
@@ -524,6 +823,12 @@ async function quitarCorreoDePersona(correo: PersonaCorreoRow) {
 }
 
 async function eliminarPersona(persona: PersonaAgrupada) {
+  // Pendiente (sin correo asignado aún): solo existe en el cliente, nada que borrar en el backend.
+  if (persona.correos.length === 0) {
+    personasPendientes.value = personasPendientes.value.filter((p) => p.email !== persona.email)
+    return
+  }
+
   if (!window.confirm(`¿Eliminar a ${persona.nombre} (${persona.email}) y todos sus correos asignados?`)) {
     return
   }
@@ -544,4 +849,37 @@ onMounted(() => {
   cargarUsuarios()
   cargarPersonas()
 })
+
+onBeforeUnmount(() => {
+  if (resaltarCatalogoTimeoutId !== null) clearTimeout(resaltarCatalogoTimeoutId)
+  window.removeEventListener('pointerdown', detenerResaltadoCatalogo)
+  window.removeEventListener('keydown', detenerResaltadoCatalogo)
+})
 </script>
+
+<style scoped>
+/* Guía visual: resalta el panel del catálogo al crear una tarjeta de persona nueva,
+   para indicar que el siguiente paso es asignarle un correo. Efecto neón (tres capas
+   de box-shadow: anillo nítido + resplandor medio + halo difuso amplio, como un foco
+   encendiéndose) en vez de un simple anillo, para que realmente contraste y capte la
+   atención; pulsa en bucle hasta que el usuario interactúa con la interfaz
+   (ver detenerResaltadoCatalogo). */
+@keyframes destacar-catalogo {
+  0%,
+  100% {
+    box-shadow:
+      0 0 0 0 rgba(253, 224, 71, 0),
+      0 0 0 0 rgba(251, 191, 36, 0),
+      0 0 0 0 rgba(245, 158, 11, 0);
+  }
+  50% {
+    box-shadow:
+      0 0 0 3px rgba(253, 224, 71, 0.95),
+      0 0 22px 8px rgba(251, 191, 36, 0.55),
+      0 0 45px 18px rgba(245, 158, 11, 0.3);
+  }
+}
+.catalogo-destacado {
+  animation: destacar-catalogo 1.4s ease-in-out infinite;
+}
+</style>

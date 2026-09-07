@@ -109,9 +109,10 @@
       <!-- Contenido del modal con scroll -->
       <div class="overflow-y-auto flex-1 p-6">
         <!-- El ancho angosto centrado solo aplica a errores simples de mensaje único: los bloques con
-             tarjetas lado a lado (códigos y Pack/PVP) necesitan todo el ancho disponible al maximizar,
+             tarjetas lado a lado (códigos y Pack/PVP), o un mensaje genérico que en realidad es una
+             lista de varias líneas (ver esListaLarga), necesitan todo el ancho disponible al maximizar,
              sin importar si son resolubles en el modal o solo informativos. -->
-        <div :class="['space-y-4', (isModalMaximized && !tieneErroresCodigo && !tieneMismatchesPackPvp) ? 'max-w-3xl mx-auto' : '']">
+        <div :class="['space-y-4', (isModalMaximized && !tieneErroresCodigo && !tieneMismatchesPackPvp && !esListaLarga) ? 'max-w-3xl mx-auto' : '']">
           <!-- Mensaje de protección de datos + archivo (compacto: es contexto, no la acción principal) -->
           <div v-if="showDataProtectionMessage" class="flex items-center gap-2 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded-lg px-3 py-2 transition-colors duration-300">
             <svg class="w-4 h-4 text-blue-600 dark:text-blue-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -375,8 +376,9 @@
             </div>
           </div>
 
-          <!-- Mensaje de error principal (se oculta si ya mostramos un error específico) -->
-          <div v-if="!shouldHideGenericMessage" 
+          <!-- Mensaje de error principal, caso simple (se oculta si ya mostramos un error específico,
+               o si en realidad es una lista larga: ver el bloque de abajo). -->
+          <div v-if="!shouldHideGenericMessage && !esListaLarga"
                class="bg-white dark:bg-gray-900 border-2 border-red-200 dark:border-red-800 rounded-lg p-4 transition-colors duration-300">
             <div class="flex items-start gap-3">
               <svg class="w-5 h-5 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -387,6 +389,33 @@
                 <p class="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-line leading-relaxed">{{ uploadErrorInfo?.message }}</p>
               </div>
             </div>
+          </div>
+
+          <!-- Mensaje de error principal, caso lista larga (ej. una línea por columna de tienda
+               inválida o por fila con TOTAL/SUBTOTAL desfasado): la intro queda como párrafo simple,
+               pero la lista se reparte en columnas al maximizar en vez de quedar en un párrafo
+               angosto sin usar el espacio disponible (ver esListaLarga, incidente 2026-09-01). -->
+          <div v-if="!shouldHideGenericMessage && esListaLarga"
+               class="bg-white dark:bg-gray-900 border-2 border-red-200 dark:border-red-800 rounded-lg p-4 transition-colors duration-300">
+            <div class="flex items-start gap-3 mb-3">
+              <svg class="w-5 h-5 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <div class="flex-1">
+                <p class="text-sm font-semibold text-gray-900 dark:text-white mb-1">Descripción del problema</p>
+                <p v-if="mensajePartes.intro" class="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">{{ mensajePartes.intro }}</p>
+              </div>
+            </div>
+            <!-- Sin columns-*: con pocos ítems (1-2) ese layout igual reserva 2-3 columnas y el
+                 párrafo queda encajonado en el ancho de una sola, dejando espacio vacío al lado
+                 (bug real detectado en vivo). Cada línea es un bloque simple a todo el ancho. -->
+            <ul class="space-y-2">
+              <li
+                v-for="(linea, idx) in mensajePartes.items"
+                :key="idx"
+                class="text-sm text-gray-700 dark:text-gray-300 leading-relaxed"
+              >{{ linea }}</li>
+            </ul>
           </div>
 
           <!-- Lista de errores detallados (si existen) -->
@@ -416,6 +445,7 @@
                    (no grid) porque cada tarjeta tiene alto variable (sugerencias, motivos expandibles, info
                    MBA3) — con grid, una fila con una tarjeta larga dejaría huecos vacíos junto a las cortas. -->
               <ul
+                ref="erroresListRef"
                 :class="isModalMaximized ? 'columns-1 xl:columns-2 2xl:columns-3 gap-4 p-4' : 'divide-y divide-gray-200 dark:divide-gray-700'"
               >
                 <li
@@ -605,7 +635,7 @@
                                 </div>
                                 
                                 <!-- Motivos expandibles -->
-                                <details v-if="sugerencia.motivos && sugerencia.motivos.length > 0" class="mt-2">
+                                <details v-if="sugerencia.motivos && sugerencia.motivos.length > 0" class="mt-2" @toggle="onMotivosToggle">
                                   <summary class="cursor-pointer text-xs font-medium text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-200">
                                     Motivos de la sugerencia ({{ sugerencia.motivos.length }})
                                   </summary>
@@ -856,7 +886,25 @@ const emit = defineEmits<{
 // Estado interno del modal
 const isModalMaximized = ref(false)
 const modalRef = ref<HTMLDialogElement | null>(null)
+const erroresListRef = ref<HTMLUListElement | null>(null)
 const mostrarConfirmacionDescarte = ref(false)
+
+/**
+ * Al expandir/colapsar "Motivos de la sugerencia" dentro de la lista tipo masonry
+ * (columns-1 xl:columns-2 2xl:columns-3, ver plantilla), el <details> cambia de alto después
+ * de que el navegador ya repartió las columnas — algunos navegadores no reempaquetan las
+ * columnas siguientes hasta el próximo resize, dejando huecos o solapamientos. Forzamos un
+ * reflow síncrono del contenedor alternando column-count (incidente 2026-09-01).
+ */
+function onMotivosToggle(): void {
+  if (!isModalMaximized.value) return
+  const contenedor = erroresListRef.value
+  if (!contenedor) return
+  const columnCountOriginal = contenedor.style.columnCount
+  contenedor.style.columnCount = 'auto'
+  contenedor.getBoundingClientRect()
+  contenedor.style.columnCount = columnCountOriginal
+}
 
 // ⭐ Funcionalidad de sugerencias SAP
 const sugerenciasPorCodigo = ref<Record<string, SugerenciaSkuSap[]>>({})
@@ -981,6 +1029,30 @@ const getErrorStyle = computed(() => {
     titleColor: 'text-red-900 dark:text-red-200'
   }
 })
+
+/**
+ * Divide uploadErrorInfo.message en una intro (antes del primer "\n\n") y una lista de líneas
+ * (el resto, partido por "\n" simple) — así es como el backend arma mensajes con un renglón por
+ * columna/fila con error (ver PedidoService._validar_codigos_tienda_reconocidos y
+ * _validar_calculo_total_subtotal en mba3-consultas).
+ */
+const mensajePartes = computed(() => {
+  const msg = props.uploadErrorInfo?.message || ''
+  const separador = msg.indexOf('\n\n')
+  if (separador === -1) return { intro: msg, items: [] as string[] }
+  const intro = msg.slice(0, separador).trim()
+  const items = msg.slice(separador + 2).split('\n').map(l => l.trim()).filter(Boolean)
+  return { intro, items }
+})
+
+/**
+ * True cuando el mensaje genérico es en realidad una lista con formato "intro:\n\n" + una línea
+ * por ítem (ej. una por columna de tienda inválida o por fila con TOTAL/SUBTOTAL desfasado), aunque
+ * sea de un solo ítem. En ese caso, al maximizar, el contenido usa todo el ancho disponible en vez
+ * de quedar centrado en un párrafo angosto (ver incidente 2026-09-01: 'Códigos de tienda no
+ * reconocidos'). Un mensaje simple sin esa forma (sin "\n\n") sigue centrado y angosto al maximizar.
+ */
+const esListaLarga = computed(() => mensajePartes.value.items.length > 0)
 
 /**
  * ⭐ Computed: Determina si se debe ocultar el mensaje genérico

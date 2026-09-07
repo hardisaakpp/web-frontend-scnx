@@ -197,7 +197,7 @@
           <LoadingSpinner v-else layout="inline" size="md" color="current" aria-label="Confirmando pedido" />
           {{ confirmando ? 'Confirmando...' : 'Confirmar' }}
         </button>
-        <p v-if="esInmediatoSinFecha" class="text-xs text-amber-600 dark:text-amber-400">
+        <p v-if="faltaFechaEntrega" class="text-xs text-amber-600 dark:text-amber-400">
           Seleccione una fecha de entrega para confirmar
         </p>
       </div>
@@ -252,8 +252,8 @@ const props = defineProps<{
   pedido: any
   /** Deshabilita "Confirmar" cuando el pedido ya tiene respuesta cargada o está confirmado (ver docs/FRONTEND.md §2) */
   confirmarDeshabilitado?: boolean
-  /** Indica si el botón está deshabilitado porque el pedido es INMEDIATO y falta seleccionar fecha de entrega */
-  esInmediatoSinFecha?: boolean
+  /** Indica si falta una fecha de entrega real (vacía, o todavía "INMEDIATO" sin reemplazar) */
+  faltaFechaEntrega?: boolean
   hideConfirmAndDownload?: boolean
   showCrearPedido?: boolean
   hideCargarPlantillas?: boolean

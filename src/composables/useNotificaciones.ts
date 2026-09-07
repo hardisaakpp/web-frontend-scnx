@@ -20,6 +20,7 @@
 
 import { ref, type Ref } from '@vue/reactivity'
 import { onUnmounted } from '@vue/runtime-core'
+import { useRoute } from 'vue-router'
 import { useToast } from '@/composables/useToast'
 import { useAuthStore } from '@/stores/auth'
 import { MBA3_API_BASE_URL } from '@/config/apiBaseUrls'
@@ -123,6 +124,18 @@ export const reconnectedAfterGap: Ref<number> = ref(0)
 /** Intervalo de reconexión en milisegundos (5 segundos) */
 const RECONNECT_INTERVAL = 5000
 
+/** Prefijo de ruta del módulo MBA3 Consultas. Las notificaciones SSE se entregan por
+ * permiso (odcsap.view/mabel.view/produccion-elrayo.view), no por módulo activo -- un
+ * usuario con esos permisos puede estar navegando en cualquier otro módulo (Pyg,
+ * Inventario, Caja Chica, etc.) cuando llega el evento, ya que la conexión SSE es
+ * única para toda la sesión (se abre una vez en MainLayout.vue, no se reabre/cierra
+ * al cambiar de módulo). El toast solo debe verse dentro de este módulo. */
+const MBA3_CONSULTAS_ROUTE_PREFIX = '/mba3-consultas'
+
+function estaEnModuloMba3Consultas(routePath: string): boolean {
+  return routePath === MBA3_CONSULTAS_ROUTE_PREFIX || routePath.startsWith(`${MBA3_CONSULTAS_ROUTE_PREFIX}/`)
+}
+
 /** Techo del backoff: nunca esperar más de 30s entre reintentos. No hay límite de
  * intentos -- un backend caído (ej. reinicio del contenedor en desarrollo) no debe
  * dejar al cliente sin reconectar nunca más; antes de este cambio, tras 10 intentos
@@ -133,6 +146,7 @@ const RECONNECT_MAX_DELAY_MS = 30000
 export function useNotificaciones() {
   const toast = useToast()
   const authStore = useAuthStore()
+  const route = useRoute()
 
   /** Estado de la conexión SSE */
   const isConnected = ref(false)
@@ -289,21 +303,28 @@ export function useNotificaciones() {
     }
   }
 
+  /** Cuerpo del caso 'connected' de handleSSEEvent, extraído para reducir su complejidad cognitiva. */
+  function handleSSEConnected(data: Record<string, unknown>) {
+    isConnected.value = true
+    if (disconnectWarningShown) {
+      disconnectWarningShown = false
+      if (estaEnModuloMba3Consultas(route.path)) {
+        toast.success('Notificaciones reconectadas', 'La conexión en tiempo real se restableció.')
+      }
+      reconnectedAfterGap.value++
+    }
+    if (import.meta.env.DEV) {
+      console.log('📢 [Notificaciones] Conectado al stream SSE:', data)
+    }
+  }
+
   /**
    * Procesa un evento SSE recibido.
    */
   function handleSSEEvent(eventType: string, data: Record<string, unknown>) {
     switch (eventType) {
       case 'connected':
-        isConnected.value = true
-        if (disconnectWarningShown) {
-          disconnectWarningShown = false
-          toast.success('Notificaciones reconectadas', 'La conexión en tiempo real se restableció.')
-          reconnectedAfterGap.value++
-        }
-        if (import.meta.env.DEV) {
-          console.log('📢 [Notificaciones] Conectado al stream SSE:', data)
-        }
+        handleSSEConnected(data)
         break
 
       case 'notification':
@@ -354,6 +375,13 @@ export function useNotificaciones() {
     // Actualizar ref global para que las vistas puedan reaccionar
     lastNotification.value = notification
 
+    if (!estaEnModuloMba3Consultas(route.path)) {
+      if (import.meta.env.DEV) {
+        console.debug('📢 [Notificaciones] Toast omitido (usuario fuera de mba3-consultas):', route.path)
+      }
+      return
+    }
+
     // Mostrar toast según el tipo
     const duration = notification.type === 'error' ? 10000 : 7000
 
@@ -384,10 +412,12 @@ export function useNotificaciones() {
 
     if (!disconnectWarningShown) {
       disconnectWarningShown = true
-      toast.warning(
-        'Notificaciones desconectadas',
-        'Se perdió la conexión en tiempo real. Reintentando automáticamente...'
-      )
+      if (estaEnModuloMba3Consultas(route.path)) {
+        toast.warning(
+          'Notificaciones desconectadas',
+          'Se perdió la conexión en tiempo real. Reintentando automáticamente...'
+        )
+      }
     }
 
     reconnectAttempts.value++

@@ -8,6 +8,10 @@
  * cada columna es accesible por índice (`item[column]`) y es comparable como fecha o como texto.
  * Los 4 listados actuales lo usan con PedidoResumido y con las mismas 3 columnas de fecha
  * ('fecha_pedido', 'creado_en', 'modificado_fecha'), pero nada aquí depende de esos nombres.
+ *
+ * `storageKey` (opcional) persiste el ordenamiento elegido en localStorage bajo `${storageKey}-sort`,
+ * mismo criterio que usePageSizePreference.ts, para que se mantenga al recargar o volver de ver el
+ * detalle de un pedido.
  */
 import { ref, computed, type Ref, type ComputedRef } from '@vue/reactivity'
 
@@ -26,7 +30,31 @@ export interface SortableColumnDef {
   label: string
   /** Alineación del contenido del <th> (y de las flechas de orden). Por defecto 'left'. */
   align?: 'left' | 'center'
+  /** Tooltip (atributo title nativo) que se muestra al pasar el mouse sobre el encabezado, para
+   * aclarar a qué corresponde la columna cuando el label por sí solo puede ser ambiguo (ej. las 3
+   * columnas de fecha del pedido). */
+  description?: string
 }
+
+/**
+ * Descripciones de las 3 columnas de fecha compartidas por los 4 listados de pedidos del módulo,
+ * para el tooltip del encabezado (ver `description` en SortableColumnDef). Semántica tomada de los
+ * campos del backend: fecha_pedido (Pydantic: "Fecha del pedido"), creado_en/modificado_fecha
+ * (mba3-consultas/src/utils/audit_context.py: metadatos de auditoría con DEFAULT de la BD).
+ */
+export const DESCRIPCION_COLUMNA_FECHA_PEDIDO =
+  'Fecha del pedido (la del documento/Excel original), no la fecha en que se cargó al sistema'
+export const DESCRIPCION_COLUMNA_FECHA_CREACION =
+  'Fecha en que se creó el registro de este pedido en el sistema'
+export const DESCRIPCION_COLUMNA_FECHA_MODIFICACION =
+  'Fecha de la última modificación realizada a este pedido'
+
+/**
+ * Hint del gesto de "triple clic para restablecer el orden" (ver `resetSort` más abajo), agregado
+ * al `title` de cada columna en SortableTableHead.vue para que el gesto sea descubrible sin agregar
+ * un botón adicional a las 4 vistas.
+ */
+export const HINT_TRIPLE_CLIC_RESET_ORDEN = 'Triple clic en el encabezado para quitar el ordenamiento'
 
 export interface UseSortableListOptions<T> {
   /** Array a ordenar (fuente de datos ya cargada/filtrada por la vista). */
@@ -36,6 +64,32 @@ export interface UseSortableListOptions<T> {
    * texto. Por defecto ninguna (todas las columnas se comparan como texto case-insensitive).
    */
   dateColumns?: string[]
+  /**
+   * Si se pasa, persiste en localStorage la columna/dirección de ordenamiento elegida (mismo
+   * criterio que usePageSizePreference: una clave por listado) y la restaura al montar.
+   */
+  storageKey?: string
+}
+
+interface OrdenGuardado {
+  column: string
+  direction: 'asc' | 'desc'
+}
+
+function leerOrdenGuardado(storageKey: string | undefined): OrdenGuardado | null {
+  if (!storageKey) return null
+  try {
+    const guardado = localStorage.getItem(`${storageKey}-sort`)
+    if (guardado) {
+      const parsed = JSON.parse(guardado)
+      if (typeof parsed.column === 'string' && (parsed.direction === 'asc' || parsed.direction === 'desc')) {
+        return { column: parsed.column, direction: parsed.direction }
+      }
+    }
+  } catch (error) {
+    console.error(`Error leyendo orden guardado (${storageKey}):`, error)
+  }
+  return null
 }
 
 /**
@@ -69,9 +123,24 @@ function compareAsText(valA: any, valB: any, dir: SortDirection): number {
  * de la tabla en lugar del array original.
  */
 export function useSortableList<T>(options: UseSortableListOptions<T>) {
-  const sortColumn = ref<string | null>(null)
-  const sortDirection = ref<SortDirection>(null)
+  const guardado = leerOrdenGuardado(options.storageKey)
+  const sortColumn = ref<string | null>(guardado?.column ?? null)
+  const sortDirection = ref<SortDirection>(guardado?.direction ?? null)
   const dateColumns = options.dateColumns ?? []
+
+  function guardarOrden() {
+    if (!options.storageKey) return
+    try {
+      if (sortColumn.value && sortDirection.value) {
+        const valor: OrdenGuardado = { column: sortColumn.value, direction: sortDirection.value }
+        localStorage.setItem(`${options.storageKey}-sort`, JSON.stringify(valor))
+      } else {
+        localStorage.removeItem(`${options.storageKey}-sort`)
+      }
+    } catch (error) {
+      console.error(`Error guardando orden (${options.storageKey}):`, error)
+    }
+  }
 
   /** Alterna el ordenamiento de una columna: sin orden -> asc -> desc -> sin orden. */
   function toggleSort(column: string) {
@@ -86,6 +155,18 @@ export function useSortableList<T>(options: UseSortableListOptions<T>) {
       sortColumn.value = column
       sortDirection.value = 'asc'
     }
+    guardarOrden()
+  }
+
+  /**
+   * Quita el ordenamiento sin importar qué columna estaba activa (vuelve al orden por defecto que
+   * entrega el backend). Disparado por el gesto de triple clic en el encabezado (ver
+   * SortableTableHead.vue), independiente de en qué columna se haga el triple clic.
+   */
+  function resetSort() {
+    sortColumn.value = null
+    sortDirection.value = null
+    guardarOrden()
   }
 
   const sortedItems = computed((): T[] => {
@@ -111,5 +192,5 @@ export function useSortableList<T>(options: UseSortableListOptions<T>) {
     })
   })
 
-  return { sortColumn, sortDirection, toggleSort, sortedItems }
+  return { sortColumn, sortDirection, toggleSort, resetSort, sortedItems }
 }

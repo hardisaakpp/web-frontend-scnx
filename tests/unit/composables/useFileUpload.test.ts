@@ -8,6 +8,7 @@ import {
 } from '@/modules/mba3-consultas/composables/useFileUpload'
 import { useToast } from '@/composables/useToast'
 import { pedidosService } from '@/modules/mba3-consultas/services/domains/pedidos'
+import { MAX_EXCEL_UPLOAD_SIZE_BYTES } from '@/config/uploadLimits'
 
 // Mocks
 vi.mock('@/composables/useToast')
@@ -122,9 +123,10 @@ describe('useFileUpload', () => {
 
     it('should reject file exceeding size limit', () => {
       const { validateFile } = useFileUpload()
-      // Create a file larger than 10MB (mock size)
-      const largeContent = new Array(11 * 1024 * 1024).fill('a').join('')
-      const file = new File([largeContent], 'test.xlsx', { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
+      // Tamaño simulado vía Object.defineProperty (evita asignar el límite real en memoria,
+      // y no queda desactualizado si MAX_EXCEL_UPLOAD_SIZE_BYTES vuelve a cambiar).
+      const file = new File(['contenido'], 'test.xlsx', { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
+      Object.defineProperty(file, 'size', { value: MAX_EXCEL_UPLOAD_SIZE_BYTES + 1 })
 
       const result = validateFile(file)
 
@@ -160,7 +162,7 @@ describe('useFileUpload', () => {
 
       await uploadFile(file)
 
-      expect(pedidosService.uploadPlantilla).toHaveBeenCalledWith(file)
+      expect(pedidosService.uploadPlantilla).toHaveBeenCalledWith(file, expect.any(Function))
     })
 
     it('should call uploadPlantilla service with success', async () => {
@@ -170,14 +172,15 @@ describe('useFileUpload', () => {
       })
       const file = new File(['content'], 'test.xlsx', { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
 
-      vi.mocked(pedidosService.uploadPlantilla).mockResolvedValue({
+      const mockResponse = {
         success: true,
         numero_pedido: 'P-12.48 - 01 - 2026'
-      } as any)
+      }
+      vi.mocked(pedidosService.uploadPlantilla).mockResolvedValue(mockResponse as any)
 
       await uploadFile(file)
 
-      expect(mockOnSuccess).toHaveBeenCalledWith('P-12.48 - 01 - 2026')
+      expect(mockOnSuccess).toHaveBeenCalledWith('P-12.48 - 01 - 2026', mockResponse)
     })
 
     it('should set error info on upload error', async () => {

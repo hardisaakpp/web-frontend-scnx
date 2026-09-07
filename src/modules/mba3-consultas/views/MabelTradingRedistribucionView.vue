@@ -231,6 +231,7 @@
         :copy-feedback="copyFeedback"
         :default-expanded="soloLectura"
         @copy-to-clipboard="copyToClipboard"
+        @ver-detalle-sap="handleVerDetalleSap"
       />
 
       <div
@@ -291,6 +292,15 @@
         </div>
       </div>
     </div>
+
+    <!-- Modal de integración SAP: al hacer clic en un "Número OC SAP" de la cabecera -->
+    <IntegracionSAPModal
+      :is-open="showIntegracionSAPModal"
+      :detalle="integracionSAPDetalle"
+      :solicitudes-transferencia="integracionSAPSolicitudes"
+      :estado-general="integracionSAPEstadoGeneral"
+      @close="showIntegracionSAPModal = false"
+    />
   </div>
 </template>
 
@@ -304,9 +314,11 @@ import type { AjusteDetalle, PedidoCompleto, IntegracionSAPDetalle, ProcesoCompl
 import type { ProductoRedistribucion, DistribucionTiendaEditada } from '../utils/redistribucionHelpers'
 import { usePedidoDetalle } from '../composables/usePedidoDetalle'
 import { useRedistribucion } from '../composables/useRedistribucion'
+import { useVerDetalleSapModal } from '../composables/useVerDetalleSapModal'
 import { useProcesoStore } from '../stores/procesoStore'
 import PedidoCabecera from '../components/PedidoCabecera.vue'
 import RedistribucionTiendas from '../components/RedistribucionTiendas.vue'
+import IntegracionSAPModal from '../components/IntegracionSAPModal.vue'
 import OdcSapVolverButton from '@/components/OdcSapVolverButton.vue'
 import LoadingSpinner from '../components/LoadingSpinner.vue'
 import { useOdcSapVolver } from '../../../composables/useOdcSapVolver'
@@ -430,6 +442,16 @@ const redistribucion = useRedistribucion({
   loadPedido: () => pedidoDetalle.loadPedido(),
   loadReporteDiferencias: () => pedidoDetalle.loadReporteDiferencias()
 })
+
+// Modal de integración SAP: al hacer clic en un "Número OC SAP" de la cabecera
+// (pedidos con más de una ODC muestran un botón por cada una, ver PedidoCabecera.vue).
+const {
+  showIntegracionSAPModal,
+  integracionSAPDetalle,
+  integracionSAPSolicitudes,
+  integracionSAPEstadoGeneral,
+  handleVerDetalleSap
+} = useVerDetalleSapModal()
 
 // Computed para validar si se puede confirmar
 const puedeConfirmarRedistribucion = computed(() => {
@@ -932,10 +954,12 @@ watch(
       return
     }
     
-    // ⭐ CRÍTICO: Cargar columnas modificadas ANTES de inicializar la redistribución
-    // Esto hereda el resaltado del flujo anterior (Detalle del Pedido - EL RAYO)
-    // Debe ejecutarse primero para que el resaltado esté disponible cuando se rendericen los productos
-    cargarColumnasModificadasDesdeStorage()
+    // Las columnas modificadas y sus roles (ODCSAP/PRODUCCION_ELRAYO) ya se cargaron desde el
+    // backend en loadPedido() (usePedidoDetalle -> cargarModificacionesConFallback), que solo cae a
+    // sessionStorage si el backend no tiene datos. No repetir esa carga aquí: sessionStorage no
+    // incluye rol_modificador, y si el navegador tiene una copia vieja de una visita anterior a este
+    // mismo pedido, pisaba el Set correcto recién cargado (bug: el resaltado por rol en
+    // Redistribución caía siempre a ámbar aunque la última edición fuera de odcsap.view).
     const columnasAntes = columnasModificadas.value.size
     if (import.meta.env.DEV) console.log(`🎨 [MabelTradingRedistribucionView] Columnas modificadas ANTES de inicializar: ${columnasAntes}`)
     
@@ -976,7 +1000,6 @@ watch(
     if (newId && newId !== oldId) {
       await loadPedido()
       pedidoIdInput.value = ''
-      cargarColumnasModificadasDesdeStorage()
     }
     // Solo cargar último pedido cuando seguimos en la ruta de redistribución de pedido sin id.
     // No ejecutar al navegar fuera (dashboard, etc.): comprobar path para evitar toast/redirect indebidos.
@@ -1015,7 +1038,6 @@ onMounted(async () => {
   if (numeroPedido.value) {
     await loadPedido()
     await refreshPendingOdcSapState()
-    cargarColumnasModificadasDesdeStorage()
     if (import.meta.env.DEV) console.log(`🎨 [MabelTradingRedistribucionView] Estado final de columnas modificadas: ${columnasModificadas.value.size} modificaciones`)
     if (columnasModificadas.value.size > 0) {
       if (import.meta.env.DEV) console.log(`   Columnas modificadas: ${Array.from(columnasModificadas.value).join(', ')}`)

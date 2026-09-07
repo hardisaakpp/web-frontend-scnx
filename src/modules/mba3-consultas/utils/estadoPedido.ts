@@ -102,23 +102,62 @@ export function getEstadoPedidoBadgeClassFull(estado: string): string {
   return `${BADGE_BASE_CLASSES} ${colorFinal}`
 }
 
-/** Estados que requieren acción del proveedor -- mismo array literal en los 4 listados. */
-export const ESTADOS_QUE_REQUIEREN_ACCION = [
-  'PENDIENTE_CONFIRMACION_PROVEEDOR',
-  'RESPUESTA_PROVEEDOR_CARGADA',
-  'CONFIRMADO_PROVEEDOR'
+/**
+ * Estados que requieren acción específicamente en Cargar Plantilla (Mabel Trading): el pedido ya fue
+ * "transaccionado" por otro actor (Producción confirma/pospone, Administración El Rayo envía la ODC
+ * a SAP) y vuelve a la cancha de Mabel Trading para una decisión o acción final -- botón
+ * Aceptar/Rechazar en Producción Pospuesta, botón Finalizado en Despachar y Facturar (ambos solo en
+ * CargarPlantillaView.vue). El histórico "estados de respuesta del proveedor"
+ * (PENDIENTE_CONFIRMACION_PROVEEDOR/RESPUESTA_PROVEEDOR_CARGADA/CONFIRMADO_PROVEEDOR) se eliminó de
+ * este archivo: ese flujo de aprobación quedó sin conectar a ningún endpoint
+ * (PedidoAjusteService.procesar_confirmacion_proveedor huérfano en el backend) y sus 2 estados con
+ * id propio ya están desactivados (migraciones 654/656) -- no se alcanzan en la práctica.
+ */
+export const ESTADOS_QUE_REQUIEREN_ACCION_CARGAR_PLANTILLA = [
+  'PRODUCCION_POSPUESTA',
+  'PRODUCCION POSPUESTA',
+  'DESPACHAR_Y_FACTURAR',
+  'DESPACHAR Y FACTURAR'
 ] as const
 
+/** true si el estado es uno de los que requiere acción de Mabel Trading en Cargar Plantilla. */
+export function requiereAccionPedidoCargarPlantilla(estado: string): boolean {
+  return (ESTADOS_QUE_REQUIEREN_ACCION_CARGAR_PLANTILLA as readonly string[]).includes(estado)
+}
+
 /**
- * true si el estado es uno de los que requiere acción del proveedor. Función PURA sobre el string
- * de estado -- no consulta pedidos.value ni ningún otro estado externo. El contador visible en
- * pantalla (`contadorPedidosPendientes`) es simplemente
- * `pedidos.value.filter(p => requiereAccionPedido(p.estado)).length` envuelto en un `computed()`
- * en la vista consumidora -- no amerita su propio composable.
- *
- * Opcional: RevisarRedistribucionListadoView.vue (solo lectura) hoy NO usa requiereAccion ni
- * contadorPedidosPendientes -- no hay nada que forzar aquí, la vista simplemente no la importa.
+ * Estados que requieren acción del usuario odcsap.view en el listado de Pedidos (EL RAYO,
+ * PedidosListView.vue): el pedido ya fue confirmado por Producción o enviado a SAP y vuelve a la
+ * cancha de Administración El Rayo para revisar/continuar el flujo. Distinto de
+ * ESTADOS_QUE_REQUIEREN_ACCION_CARGAR_PLANTILLA (propio de Mabel Trading) y de
+ * ESTADOS_QUE_REQUIEREN_ACCION_REDISTRIBUCION (propio de la vista de Redistribución) -- cada
+ * listado tiene su propio significado de "requiere acción", sin un array compartido entre los 3.
  */
-export function requiereAccionPedido(estado: string): boolean {
-  return (ESTADOS_QUE_REQUIEREN_ACCION as readonly string[]).includes(estado)
+export const ESTADOS_QUE_REQUIEREN_ACCION_PEDIDOS = [
+  'CONFIRMADO POR PRODUCCION',
+  'CONFIRMADO_POR_PRODUCCION',
+  'CONFIRMADO_ENVIADO'
+] as const
+
+/** true si el estado es uno de los que requiere acción del usuario odcsap.view en el listado de Pedidos. */
+export function requiereAccionPedidoListado(estado: string): boolean {
+  return (ESTADOS_QUE_REQUIEREN_ACCION_PEDIDOS as readonly string[]).includes(estado)
+}
+
+/**
+ * Estados que requieren acción del usuario mabel.view en el listado de Redistribución
+ * (RedistribucionListadoView.vue): el pedido ya fue confirmado por EL RAYO o aceptado desde
+ * Producción Pospuesta (botón "Aceptar") y está listo para que Mabel Trading distribuya
+ * cantidades por tienda. Ver ESTADOS_QUE_REQUIEREN_ACCION_PEDIDOS arriba para el porqué de no
+ * compartir un único array entre los 3 listados.
+ */
+export const ESTADOS_QUE_REQUIEREN_ACCION_REDISTRIBUCION = [
+  'CONFIRMADO POR EL RAYO',
+  'LISTO PARA REDISTRIBUCION',
+  'LISTO_PARA_REDISTRIBUCION'
+] as const
+
+/** true si el estado es uno de los que requiere acción del usuario mabel.view en Redistribución. */
+export function requiereAccionPedidoRedistribucion(estado: string): boolean {
+  return (ESTADOS_QUE_REQUIEREN_ACCION_REDISTRIBUCION as readonly string[]).includes(estado)
 }

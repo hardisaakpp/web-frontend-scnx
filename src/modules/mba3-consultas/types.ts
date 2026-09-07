@@ -991,10 +991,13 @@ export interface PedidoCabecera {
   /** ODC(s) del pedido (disponible cuando estado_id = 12 CONFIRMADO_ENVIADO). Trae más
    * de un elemento cuando el pedido mezcla tiendas de más de una bodega/CD (ver
    * origen_traslado_detectado) -- el frontend usa esto para mostrar un botón
-   * "Generar TXT MBA3" por ODC en vez de uno solo. */
+   * "Generar TXT MBA3" por ODC en vez de uno solo, y para abrir el modal de
+   * integración SAP de cada ODC (oc_id) desde PedidoCabecera.vue. */
   ordenes_compra?: Array<{
+    oc_id: string
     codigo_bodega: string | null
     numero_oc_sap: string | null
+    doc_entry: number | null
     estado: string | null
   }>
 }
@@ -1129,6 +1132,7 @@ export interface DistribucionTienda {
   tienda_codigo: string
   tienda_nombre: string
   cantidad: number
+  agregada_manualmente?: boolean
 }
 
 export interface AjusteDetalle {
@@ -1162,6 +1166,7 @@ export interface DistribucionTiendaItemResponse {
   cantidad_asignada: number
   cantidad_solicitada?: number
   cantidad_confirmada?: number
+  agregada_manualmente?: boolean
 }
 
 export interface ProductoDistribucionResponse {
@@ -1525,10 +1530,11 @@ export interface SolicitudTransferenciaResultado {
   error: string | null
 }
 
-/** Una entrada por ITR para la tabla del modal (DocNum + código tienda) */
+/** Una entrada por ITR para la tabla del modal (DocNum + tienda) */
 export interface ItrPorTienda {
   doc_num: number
   tienda_codigo: string
+  tienda_nombre?: string | null
 }
 
 /**
@@ -1606,7 +1612,7 @@ export interface TienePedidosResponse {
 }
 
 /** Columna de fecha sobre la que aplica fecha_desde/fecha_hasta (default: 'pedido') */
-export type TipoFechaFiltro = 'pedido' | 'entrega' | 'facturacion'
+export type TipoFechaFiltro = 'pedido' | 'creacion' | 'modificacion' | 'entrega' | 'facturacion'
 
 export interface PedidosListadoFiltros {
   estado?: string
@@ -1616,6 +1622,7 @@ export interface PedidosListadoFiltros {
   proveedor_nombre?: string
   numero_pedido?: string
   creado_por?: string
+  modificado_por?: string
   limit?: number
   offset?: number
   /** Si true, excluye BORRADOR, NUEVO PEDIDO, GESTIONAR PEDIDO y CANCELADO (solo muestra estado_id >= 4 y != 19) */
@@ -1639,6 +1646,14 @@ export interface EstadoPedidoOption {
 export interface EstadosPedidoResponse {
   status: string
   data: EstadoPedidoOption[]
+}
+
+/** Respuesta de /api/pedidos/creadores y /api/pedidos/modificadores: lista de
+ * valores distintos de creado_por/modificado_por, para alimentar los <select>
+ * "Creado Por"/"Modificado Por" del contenedor "Filtros de Búsqueda". */
+export interface UsuariosPedidoResponse {
+  status: string
+  data: string[]
 }
 
 // ========== HU-08: Exportación de Pedidos a Formato MBA ==========
@@ -1695,7 +1710,7 @@ export interface InfoArchivoPlantilla {
   hash_md5?: string | null
   fecha_subida: string
   subido_por: string
-  descargas_count: number
+  descargas: number
   ultima_descarga?: string | null
 }
 
@@ -1761,18 +1776,19 @@ export interface ArchivoOriginalItem {
   hash_md5?: string | null
   fecha_subida: string
   subido_por: string
-  descargas_count: number
+  descargas: number
   ultima_descarga?: string | null
   activo: boolean
 }
 
 /**
- * Respuesta del endpoint GET /api/plantillas/archivos
+ * Respuesta del endpoint GET /api/plantillas/archivos (paginado offset/limit, mismo shape de
+ * metadata que PedidosListadoMetadata -- el backend puede incluir además storage_habilitado).
  */
 export interface ListadoArchivosOriginalesResponse {
   status: 'success'
   data: ArchivoOriginalItem[]
-  total: number
+  metadata: PedidosListadoMetadata
   message?: string
 }
 

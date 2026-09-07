@@ -114,81 +114,64 @@
             <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">
               Selecciona un pedido para cargar plantilla Excel, editar o continuar el flujo
             </p>
-            <!-- Contador de pedidos pendientes -->
-            <div v-if="contadorPedidosPendientes > 0" class="mt-2">
-              <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800">
-                <svg class="w-4 h-4 text-orange-600 dark:text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                </svg>
-                <span class="text-sm font-semibold text-orange-800 dark:text-orange-200">
-                  {{ contadorPedidosPendientes }} pedido{{ contadorPedidosPendientes !== 1 ? 's' : '' }} requieren acción
-                </span>
-              </div>
-            </div>
+            <RequiereAccionToggleButton
+              :contador="contadorPedidosPendientes"
+              :activo="filtroSoloPendientes"
+              titulo-inactivo="Filtrar para ver solo pedidos en estados: Producción Pospuesta, Despachar y Facturar"
+              @toggle="filtroSoloPendientes = !filtroSoloPendientes; aplicarFiltroPendientes()"
+            />
           </div>
-        </div>
-        <div class="flex w-full flex-wrap items-center justify-end gap-3">
-          <!-- Temporalmente oculto: Crear pedido -->
-          <button
-            v-if="false"
-            @click="router.push('/mba3-consultas/pedidos/crear')"
-            class="px-4 py-2 bg-emerald-600 dark:bg-emerald-500 text-white rounded-lg hover:bg-emerald-700 dark:hover:bg-emerald-600 transition-colors text-sm font-medium flex items-center gap-2"
-          >
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-            </svg>
-            Crear pedido
-          </button>
-          <button
-            @click="openFileSelector"
-            :disabled="uploading"
-            class="px-4 py-2 bg-emerald-600 dark:bg-emerald-500 text-white rounded-lg hover:bg-emerald-700 dark:hover:bg-emerald-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium flex items-center gap-2"
-            title="Cargar plantilla Excel"
-          >
-            <svg v-if="!uploading" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-            </svg>
-            <LoadingSpinner v-else layout="inline" size="md" color="current" aria-label="Cargando plantilla Excel" />
-            {{ uploading ? 'Cargando...' : 'Cargar Plantillas Excel' }}
-          </button>
-          <button
-            @click="cargarPedidos"
-            class="px-4 py-2 bg-indigo-600 dark:bg-indigo-500 text-white rounded-lg hover:bg-indigo-700 dark:hover:bg-indigo-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 text-sm"
-            :disabled="loading"
-          >
-            <svg v-if="!loading" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-            </svg>
-            <LoadingSpinner v-else layout="inline" size="md" color="current" aria-label="Cargando pedidos" />
-            {{ loading ? 'Cargando...' : 'Actualizar' }}
-          </button>
+          <div class="flex flex-wrap items-center gap-3">
+            <!-- Temporalmente oculto: Crear pedido -->
+            <button
+              v-if="false"
+              @click="router.push('/mba3-consultas/pedidos/crear')"
+              class="px-4 py-2 bg-emerald-600 dark:bg-emerald-500 text-white rounded-lg hover:bg-emerald-700 dark:hover:bg-emerald-600 transition-colors text-sm font-medium flex items-center gap-2"
+            >
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+              </svg>
+              Crear pedido
+            </button>
+            <button
+              @click="openFileSelector"
+              :disabled="uploading"
+              class="px-4 py-2 bg-emerald-600 dark:bg-emerald-500 text-white rounded-lg hover:bg-emerald-700 dark:hover:bg-emerald-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium flex items-center gap-2"
+              title="Cargar plantilla Excel"
+            >
+              <svg v-if="!uploading" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+              </svg>
+              <LoadingSpinner v-else layout="inline" size="md" color="current" aria-label="Cargando plantilla Excel" />
+              {{ uploading ? 'Cargando...' : 'Cargar Plantillas Excel' }}
+            </button>
+            <ActualizarButton :loading="loading" @click="cargarPedidos" />
+          </div>
         </div>
       </div>
 
       <!-- Filtros (misma estructura que PedidosListView) -->
       <PedidosListFiltrosBar
+        :collapsed="filtrosColapsados"
+        @update:collapsed="guardarFiltrosColapsados"
         v-model:estado="filtros.estado"
         v-model:tipoFecha="filtros.tipo_fecha"
         v-model:fechaDesde="filtros.fecha_desde"
         v-model:fechaHasta="filtros.fecha_hasta"
         v-model:proveedorNombre="filtros.proveedor_nombre"
-        v-model:filtroSoloPendientes="filtroSoloPendientes"
         v-model:numeroPedidoTexto="busquedaNumeroPedido"
-        v-model:creadoPorTexto="busquedaCreadoPor"
+        v-model:creadoPor="filtros.creado_por"
+        v-model:modificadoPor="filtros.modificado_por"
         :estados-disponibles="estadosDisponibles"
-        :show-quick-filter="true"
-        :contador-pedidos-pendientes="contadorPedidosPendientes"
+        :creadores-disponibles="creadoresDisponibles"
+        :modificadores-disponibles="modificadoresDisponibles"
         numero-pedido-placeholder="Buscar por número de pedido (ej: P-12.08)"
         @aplicar="aplicarFiltros"
         @limpiar="limpiarFiltros"
         @estado-change="actualizarFiltroPendientes"
-        @toggle-filtro-pendientes="aplicarFiltroPendientes"
         @numero-pedido-input="handleBusquedaNumeroPedido"
         @numero-pedido-commit="buscarNumeroPedidoInmediato"
         @numero-pedido-clear="limpiarBusquedaNumeroPedidoTexto"
-        @creado-por-input="handleBusquedaCreadoPor"
-        @creado-por-commit="buscarCreadoPorInmediato"
-        @creado-por-clear="limpiarBusquedaCreadoPorTexto"
       />
 
       <!-- Tabla de Pedidos -->
@@ -265,19 +248,26 @@
                 :sort-column="sortColumn"
                 :sort-direction="sortDirection"
                 @toggle-sort="toggleSort"
+                @reset-sort="resetSort"
               />
               <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                 <tr
                   v-for="(pedido, index) in sortedPedidos"
                   :key="pedido.pedido_id"
                   :class="[
-                    'hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors cursor-pointer',
-                    requiereAccionPedido(pedido.estado) ? 'bg-orange-50/30 dark:bg-orange-900/10 border-l-4 border-orange-500 dark:border-orange-400' : ''
+                    'transition-colors cursor-pointer',
+                    filaCargandoId === pedido.pedido_id
+                      ? 'bg-indigo-50 dark:bg-indigo-900/30 ring-2 ring-inset ring-indigo-400 dark:ring-indigo-500'
+                      : filaCargandoId
+                        ? 'opacity-50 pointer-events-none'
+                        : 'hover:bg-gray-50 dark:hover:bg-gray-700/50',
+                    requiereAccionPedidoCargarPlantilla(pedido.estado) ? 'bg-orange-50/30 dark:bg-orange-900/10 border-l-4 border-orange-500 dark:border-orange-400' : ''
                   ]"
                   @click="abrirPedido(pedido)"
                 >
                   <td class="px-4 py-4 whitespace-nowrap text-sm text-center text-gray-500 dark:text-gray-400 font-medium">
-                    {{ metadata.offset + index + 1 }}
+                    <LoadingSpinner v-if="filaCargandoId === pedido.pedido_id" size="xs" color="indigo" layout="inline" aria-label="Abriendo pedido" />
+                    <span v-else>{{ metadata.offset + index + 1 }}</span>
                   </td>
                   <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
                     {{ pedido.numero_pedido }}
@@ -298,7 +288,7 @@
                   <td class="px-6 py-4 whitespace-nowrap text-center">
                     <div class="flex items-center justify-center gap-2">
                       <span :class="getEstadoPedidoBadgeClassFull(pedido.estado)">{{ getEstadoPedidoLabel(pedido.estado) }}</span>
-                      <span v-if="requiereAccionPedido(pedido.estado)" class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300" title="Requiere acción">!</span>
+                      <span v-if="requiereAccionPedidoCargarPlantilla(pedido.estado)" class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300" title="Requiere acción">!</span>
                     </div>
                   </td>
                   <td class="px-6 py-4 text-sm text-gray-700 dark:text-gray-300">{{ pedido.comprador_nombre || '-' }}</td>
@@ -358,8 +348,10 @@ import UploadErrorModal from '../components/UploadErrorModal.vue'
 import OdcSapVolverButton from '@/components/OdcSapVolverButton.vue'
 import QuickTablePagination from '@/components/QuickTablePagination.vue'
 import LoadingSpinner from '../components/LoadingSpinner.vue'
+import ActualizarButton from '../components/ActualizarButton.vue'
 import SortableTableHead from '../components/SortableTableHead.vue'
 import PedidosListFiltrosBar from '../components/PedidosListFiltrosBar.vue'
+import RequiereAccionToggleButton from '../components/RequiereAccionToggleButton.vue'
 import { useOdcSapVolver } from '../../../composables/useOdcSapVolver'
 import type { PedidoResumido, PedidosListadoFiltros, PedidosListadoMetadata, PlantillasPedidosResponse, EstadoPedidoOption } from '../types'
 import { formatDate, formatDateTime } from '../utils/formatters'
@@ -367,8 +359,16 @@ import { esProveedorElRayo } from '../utils/styleHelpers'
 import { PAGE_SIZE_OPTIONS } from '../config/pagination'
 import { useFiltroTextoConDebounce } from '../composables/useFiltroTextoConDebounce'
 import { usePageSizePreference } from '../composables/usePageSizePreference'
-import { getEstadoPedidoLabel, getEstadoPedidoBadgeClassFull, ESTADOS_QUE_REQUIEREN_ACCION, requiereAccionPedido } from '../utils/estadoPedido'
-import { useSortableList, type SortableColumnDef } from '../composables/useSortableList'
+import { usePaginaPreference } from '../composables/usePaginaPreference'
+import { useFiltrosColapsadosPreference } from '../composables/useFiltrosColapsadosPreference'
+import { getEstadoPedidoLabel, getEstadoPedidoBadgeClassFull, ESTADOS_QUE_REQUIEREN_ACCION_CARGAR_PLANTILLA, requiereAccionPedidoCargarPlantilla } from '../utils/estadoPedido'
+import {
+  useSortableList,
+  type SortableColumnDef,
+  DESCRIPCION_COLUMNA_FECHA_PEDIDO,
+  DESCRIPCION_COLUMNA_FECHA_CREACION,
+  DESCRIPCION_COLUMNA_FECHA_MODIFICACION
+} from '../composables/useSortableList'
 import { useOffsetPagination } from '../composables/useOffsetPagination'
 import { useListadoAutoRefresh } from '../composables/useListadoAutoRefresh'
 
@@ -416,12 +416,16 @@ const pedidos = ref<PedidoResumido[]>([])
 const loading = ref(false)
 const error = ref<string | null>(null)
 const estadosDisponibles = ref<EstadoPedidoOption[]>([])
+const creadoresDisponibles = ref<string[]>([])
+const modificadoresDisponibles = ref<string[]>([])
 const PAGE_SIZE = 10
 const { pageSize: pageSizeGuardado, guardar: guardarPageSize } = usePageSizePreference('cargar-plantilla-listado', PAGE_SIZE)
+const { colapsado: filtrosColapsados, guardar: guardarFiltrosColapsados } = useFiltrosColapsadosPreference('cargar-plantilla-listado')
+const { offset: offsetGuardado, guardar: guardarOffset } = usePaginaPreference('cargar-plantilla-listado')
 const metadata = ref<PedidosListadoMetadata>({
   total: 0,
   limit: pageSizeGuardado.value,
-  offset: 0,
+  offset: offsetGuardado.value,
   has_more: false
 })
 
@@ -436,8 +440,9 @@ const filtros = ref<PedidosListadoFiltros>({
   proveedor_nombre: '',
   numero_pedido: '',
   creado_por: '',
+  modificado_por: '',
   limit: PAGE_SIZE,
-  offset: 0
+  offset: offsetGuardado.value
 })
 
 const { totalPages, currentPage, resetToFirstPage, setPageSize } = useOffsetPagination(metadata, cargarPedidos, {
@@ -454,32 +459,24 @@ const {
   dispose: disposeBusquedaNumeroPedido
 } = useFiltroTextoConDebounce(filtros, 'numero_pedido', aplicarFiltros)
 
-// ========== Búsqueda por Creado Por (con debounce, filtra en vivo) ==========
-const {
-  texto: busquedaCreadoPor,
-  handleInput: handleBusquedaCreadoPor,
-  commit: buscarCreadoPorInmediato,
-  clear: limpiarBusquedaCreadoPorTexto,
-  dispose: disposeBusquedaCreadoPor
-} = useFiltroTextoConDebounce(filtros, 'creado_por', aplicarFiltros)
-
 const columnasTabla: SortableColumnDef[] = [
   { key: 'numero_pedido', label: 'Número de Pedido' },
-  { key: 'fecha_pedido', label: 'Fecha Pedido' },
+  { key: 'fecha_pedido', label: 'Fecha Pedido', description: DESCRIPCION_COLUMNA_FECHA_PEDIDO },
   { key: 'proveedor_nombre', label: 'Proveedor' },
   { key: 'estado', label: 'Estado', align: 'center' },
   { key: 'comprador_nombre', label: 'Comprador' },
-  { key: 'creado_en', label: 'Fecha Creación' },
-  { key: 'modificado_fecha', label: 'Fecha Modificación' },
+  { key: 'creado_en', label: 'Fecha Creación', description: DESCRIPCION_COLUMNA_FECHA_CREACION },
+  { key: 'modificado_fecha', label: 'Fecha Modificación', description: DESCRIPCION_COLUMNA_FECHA_MODIFICACION },
   { key: 'modificado_por', label: 'Modificado Por' }
 ]
 
-const { sortColumn, sortDirection, toggleSort, sortedItems: sortedPedidos } = useSortableList<PedidoResumido>({
+const { sortColumn, sortDirection, toggleSort, resetSort, sortedItems: sortedPedidos } = useSortableList<PedidoResumido>({
   items: pedidos,
-  dateColumns: ['fecha_pedido', 'creado_en', 'modificado_fecha']
+  dateColumns: ['fecha_pedido', 'creado_en', 'modificado_fecha'],
+  storageKey: 'cargar-plantilla-listado'
 })
 
-const contadorPedidosPendientes = computed(() => pedidos.value.filter(p => requiereAccionPedido(p.estado)).length)
+const contadorPedidosPendientes = computed(() => pedidos.value.filter(p => requiereAccionPedidoCargarPlantilla(p.estado)).length)
 
 async function cargarEstados() {
   try {
@@ -490,8 +487,20 @@ async function cargarEstados() {
   }
 }
 
-async function cargarPedidos() {
-  loading.value = true
+async function cargarCreadoresYModificadores() {
+  try {
+    const [creadores, modificadores] = await Promise.all([
+      mba3ConsultasService.getCreadoresPedido(),
+      mba3ConsultasService.getModificadoresPedido()
+    ])
+    creadoresDisponibles.value = creadores.data
+    modificadoresDisponibles.value = modificadores.data
+  } catch (e: any) {
+    console.error('Error al cargar creadores/modificadores:', e)
+  }
+}
+
+async function obtenerPedidos() {
   error.value = null
   try {
     // ⭐ Usar getPlantillasPedidos en lugar de getPedidosListado
@@ -500,6 +509,7 @@ async function cargarPedidos() {
       estado: filtros.value.estado || undefined,
       numero_pedido: filtros.value.numero_pedido || undefined,
       creado_por: filtros.value.creado_por || undefined,
+      modificado_por: filtros.value.modificado_por || undefined,
       fecha_desde: filtros.value.fecha_desde || undefined,
       fecha_hasta: filtros.value.fecha_hasta || undefined,
       tipo_fecha: filtros.value.tipo_fecha,
@@ -509,19 +519,34 @@ async function cargarPedidos() {
     })
     pedidos.value = response.data
     metadata.value = response.metadata
+    guardarOffset(metadata.value.offset)
   } catch (e: any) {
     console.error('Error al cargar pedidos:', e)
     error.value = e.message || 'No se pudieron cargar los pedidos'
     toast.error('Error', error.value ?? undefined)
+  }
+}
+
+// Carga inicial / filtros / paginación: activa el spinner de pantalla completa
+async function cargarPedidos() {
+  loading.value = true
+  try {
+    await obtenerPedidos()
   } finally {
     loading.value = false
   }
 }
 
+/** Refresco en segundo plano (foco/SSE): no toca `loading`, para no desmontar la tabla mientras
+ * el usuario hace clic en una fila (ver useRefetchOnFocus.ts). */
+async function refrescarPedidosSilenciosamente() {
+  await obtenerPedidos()
+}
+
 function aplicarFiltroPendientes() {
   if (filtroSoloPendientes.value) {
     const estadoAnterior = filtros.value.estado
-    if (estadoAnterior && (ESTADOS_QUE_REQUIEREN_ACCION as readonly string[]).includes(estadoAnterior)) {
+    if (estadoAnterior && (ESTADOS_QUE_REQUIEREN_ACCION_CARGAR_PLANTILLA as readonly string[]).includes(estadoAnterior)) {
       filtros.value.estado = ''
     }
   }
@@ -530,7 +555,7 @@ function aplicarFiltroPendientes() {
 
 function actualizarFiltroPendientes() {
   const estadoActual = filtros.value.estado
-  if (estadoActual && !(ESTADOS_QUE_REQUIEREN_ACCION as readonly string[]).includes(estadoActual)) {
+  if (estadoActual && !(ESTADOS_QUE_REQUIEREN_ACCION_CARGAR_PLANTILLA as readonly string[]).includes(estadoActual)) {
     filtroSoloPendientes.value = false
   }
 }
@@ -548,32 +573,37 @@ function limpiarFiltros() {
     proveedor_nombre: '',
     numero_pedido: '',
     creado_por: '',
+    modificado_por: '',
     limit: PAGE_SIZE,
     offset: 0
   }
-  // Mantener en sync los inputs de búsqueda con debounce (Número de Pedido, Creado Por)
+  // Mantener en sync el input de búsqueda con debounce (Número de Pedido)
   busquedaNumeroPedido.value = ''
-  busquedaCreadoPor.value = ''
   filtroSoloPendientes.value = false
   resetToFirstPage()
 }
 
 /** Navega a la vista Cargar Plantilla con el pedido seleccionado (sin llamar a gestionarPedido) */
+const filaCargandoId = ref<string | null>(null)
 function abrirPedido(pedido: PedidoResumido) {
+  if (filaCargandoId.value) return
+  filaCargandoId.value = pedido.pedido_id
   router.push(`/mba3-consultas/cargar-plantilla/${encodeURIComponent(pedido.numero_pedido)}`)
+    .catch(() => {})
+    .finally(() => { filaCargandoId.value = null })
 }
 
 // Recargar listado automáticamente ante notificaciones SSE relevantes, reconexión tras gap, y
 // recuperación de foco/visibilidad de la pestaña (ver useListadoAutoRefresh.ts).
-useListadoAutoRefresh(cargarPedidos)
+useListadoAutoRefresh(refrescarPedidosSilenciosamente)
 
 onMounted(() => {
   cargarEstados()
+  cargarCreadoresYModificadores()
   cargarPedidos()
 })
 
 onUnmounted(() => {
   disposeBusquedaNumeroPedido()
-  disposeBusquedaCreadoPor()
 })
 </script>

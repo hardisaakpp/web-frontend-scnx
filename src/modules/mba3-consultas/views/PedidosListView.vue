@@ -25,57 +25,41 @@
                 : 'Visualiza y filtra pedidos según estado, fechas, proveedor y más'
               }}
             </p>
-            <!-- Contador de pedidos pendientes -->
-            <div v-if="contadorPedidosPendientes > 0" class="mt-2">
-              <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800">
-                <svg class="w-4 h-4 text-orange-600 dark:text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                </svg>
-                <span class="text-sm font-semibold text-orange-800 dark:text-orange-200">
-                  {{ contadorPedidosPendientes }} pedido{{ contadorPedidosPendientes !== 1 ? 's' : '' }} {{ esModoElRayo ? 'requieren tu acción' : 'requieren acción' }}
-                </span>
-              </div>
-            </div>
+            <RequiereAccionToggleButton
+              :contador="contadorPedidosPendientes"
+              :activo="filtroSoloPendientes"
+              :sufijo="esModoElRayo ? 'requieren tu acción' : 'requieren acción'"
+              titulo-inactivo="Filtrar para ver solo pedidos en estados: Confirmado por Producción, Confirmado y Enviado"
+              @toggle="filtroSoloPendientes = !filtroSoloPendientes; aplicarFiltroPendientes()"
+            />
           </div>
-        </div>
-        <div class="flex w-full flex-wrap items-center justify-end gap-3">
-          <button
-            @click="cargarPedidos"
-            class="px-4 py-2 bg-indigo-600 dark:bg-indigo-500 text-white rounded-lg hover:bg-indigo-700 dark:hover:bg-indigo-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 text-sm"
-            :disabled="loading"
-          >
-            <svg v-if="!loading" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-            </svg>
-            <LoadingSpinner v-else layout="inline" size="md" color="current" aria-label="Cargando pedidos" />
-            {{ loading ? 'Cargando...' : 'Actualizar' }}
-          </button>
+          <div class="flex flex-wrap items-center gap-3">
+            <ActualizarButton :loading="loading" @click="cargarPedidos" />
+          </div>
         </div>
       </div>
 
       <!-- Filtros -->
       <PedidosListFiltrosBar
+        :collapsed="filtrosColapsados"
+        @update:collapsed="guardarFiltrosColapsados"
         v-model:estado="filtros.estado"
         v-model:tipo-fecha="filtros.tipo_fecha"
         v-model:fecha-desde="filtros.fecha_desde"
         v-model:fecha-hasta="filtros.fecha_hasta"
         v-model:proveedor-nombre="filtros.proveedor_nombre"
-        v-model:filtro-solo-pendientes="filtroSoloPendientes"
         v-model:numero-pedido-texto="busquedaNumeroPedido"
-        v-model:creado-por-texto="busquedaCreadoPor"
+        v-model:creado-por="filtros.creado_por"
+        v-model:modificado-por="filtros.modificado_por"
         :estados-disponibles="estadosDisponibles"
-        :show-quick-filter="esModoElRayo || mostrarFiltroRapido"
-        :contador-pedidos-pendientes="contadorPedidosPendientes"
+        :creadores-disponibles="creadoresDisponibles"
+        :modificadores-disponibles="modificadoresDisponibles"
         @aplicar="aplicarFiltros"
         @limpiar="limpiarFiltros"
         @estado-change="actualizarFiltroPendientes"
-        @toggle-filtro-pendientes="aplicarFiltroPendientes"
         @numero-pedido-input="handleBusquedaNumeroPedido"
         @numero-pedido-commit="buscarNumeroPedidoInmediato"
         @numero-pedido-clear="limpiarBusquedaNumeroPedidoTexto"
-        @creado-por-input="handleBusquedaCreadoPor"
-        @creado-por-commit="buscarCreadoPorInmediato"
-        @creado-por-clear="limpiarBusquedaCreadoPorTexto"
       />
 
       <!-- Tabla de Pedidos -->
@@ -159,19 +143,26 @@
               :sort-column="sortColumn"
               :sort-direction="sortDirection"
               @toggle-sort="toggleSort"
+              @reset-sort="resetSort"
             />
             <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
               <tr
                 v-for="(pedido, index) in sortedPedidos"
                 :key="pedido.pedido_id"
                 :class="[
-                  'hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors cursor-pointer',
-                  requiereAccionPedido(pedido.estado) && esModoElRayo ? 'bg-orange-50/30 dark:bg-orange-900/10 border-l-4 border-orange-500 dark:border-orange-400' : ''
+                  'transition-colors cursor-pointer',
+                  verDetalleCargandoId === pedido.pedido_id
+                    ? 'bg-indigo-50 dark:bg-indigo-900/30 ring-2 ring-inset ring-indigo-400 dark:ring-indigo-500'
+                    : verDetalleCargandoId
+                      ? 'opacity-50 pointer-events-none'
+                      : 'hover:bg-gray-50 dark:hover:bg-gray-700/50',
+                  requiereAccionPedidoListado(pedido.estado) && esModoElRayo ? 'bg-orange-50/30 dark:bg-orange-900/10 border-l-4 border-orange-500 dark:border-orange-400' : ''
                 ]"
                 @click="verDetalle(pedido.pedido_id)"
               >
                 <td class="px-4 py-4 whitespace-nowrap text-sm text-center text-gray-500 dark:text-gray-400 font-medium">
-                  {{ metadata.offset + index + 1 }}
+                  <LoadingSpinner v-if="verDetalleCargandoId === pedido.pedido_id" size="xs" color="indigo" layout="inline" aria-label="Abriendo pedido" />
+                  <span v-else>{{ metadata.offset + index + 1 }}</span>
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
                   {{ pedido.numero_pedido }}
@@ -194,7 +185,7 @@
                     <span :class="getEstadoPedidoBadgeClassFull(pedido.estado)">
                       {{ getEstadoPedidoLabel(pedido.estado) }}
                     </span>
-                    <span v-if="requiereAccionPedido(pedido.estado)" class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300" title="Requiere acción">
+                    <span v-if="requiereAccionPedidoListado(pedido.estado)" class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300" title="Requiere acción">
                       !
                     </span>
                   </div>
@@ -248,18 +239,28 @@ import { mba3ConsultasService, extractErrorMessage } from '../services/mba3Consu
 import type { PedidosListadoResponse, PedidoResumido, PedidosListadoFiltros, PedidosListadoMetadata, EstadoPedidoOption } from '../types'
 import { formatDate, formatDateTime } from '../utils/formatters'
 import { esProveedorElRayo } from '../utils/styleHelpers'
-import { getEstadoPedidoLabel, getEstadoPedidoBadgeClassFull, requiereAccionPedido } from '../utils/estadoPedido'
+import { getEstadoPedidoLabel, getEstadoPedidoBadgeClassFull, requiereAccionPedidoListado, ESTADOS_QUE_REQUIEREN_ACCION_PEDIDOS } from '../utils/estadoPedido'
 import { PAGE_SIZE_OPTIONS } from '../config/pagination'
 import { useFiltroTextoConDebounce } from '../composables/useFiltroTextoConDebounce'
 import { usePageSizePreference } from '../composables/usePageSizePreference'
-import { useSortableList, type SortableColumnDef } from '../composables/useSortableList'
+import { usePaginaPreference } from '../composables/usePaginaPreference'
+import { useFiltrosColapsadosPreference } from '../composables/useFiltrosColapsadosPreference'
+import {
+  useSortableList,
+  type SortableColumnDef,
+  DESCRIPCION_COLUMNA_FECHA_PEDIDO,
+  DESCRIPCION_COLUMNA_FECHA_CREACION,
+  DESCRIPCION_COLUMNA_FECHA_MODIFICACION
+} from '../composables/useSortableList'
 import { useOffsetPagination } from '../composables/useOffsetPagination'
 import { useListadoAutoRefresh } from '../composables/useListadoAutoRefresh'
 import OdcSapVolverButton from '@/components/OdcSapVolverButton.vue'
 import QuickTablePagination from '@/components/QuickTablePagination.vue'
 import LoadingSpinner from '../components/LoadingSpinner.vue'
+import ActualizarButton from '../components/ActualizarButton.vue'
 import SortableTableHead from '../components/SortableTableHead.vue'
 import PedidosListFiltrosBar from '../components/PedidosListFiltrosBar.vue'
+import RequiereAccionToggleButton from '../components/RequiereAccionToggleButton.vue'
 import { useOdcSapVolver } from '../../../composables/useOdcSapVolver'
 
 const router = useRouter()
@@ -271,12 +272,16 @@ const pedidos = ref<PedidoResumido[]>([])
 const loading = ref(false)
 const error = ref<string | null>(null)
 const estadosDisponibles = ref<EstadoPedidoOption[]>([])
+const creadoresDisponibles = ref<string[]>([])
+const modificadoresDisponibles = ref<string[]>([])
 const PAGE_SIZE = 10
 const { pageSize: pageSizeGuardado, guardar: guardarPageSize } = usePageSizePreference('pedidos-listado', PAGE_SIZE)
+const { colapsado: filtrosColapsados, guardar: guardarFiltrosColapsados } = useFiltrosColapsadosPreference('pedidos-listado')
+const { offset: offsetGuardado, guardar: guardarOffset } = usePaginaPreference('pedidos-listado')
 const metadata = ref<PedidosListadoMetadata>({
   total: 0,
   limit: pageSizeGuardado.value,
-  offset: 0,
+  offset: offsetGuardado.value,
   has_more: false
 })
 
@@ -297,7 +302,11 @@ const esProduccionElRayo = computed(() => {
 
 // Filtro rápido para pedidos pendientes
 const filtroSoloPendientes = ref(false)
-const mostrarFiltroRapido = ref(true) // Mostrar siempre el filtro rápido
+// Oculto en Producción El Rayo (req. 1.8): esa pantalla solo gestiona pedidos en NUEVO_PEDIDO/
+// GESTIONAR_PEDIDO, ninguno de los estados "requiere acción" (proveedor) aplica ahí. Detectado por
+// ruta (esProduccionElRayo), no por permiso -- mismo criterio ya usado en este archivo para no
+// afectar /mba3-consultas/pedidos si un rol llegara a tener ambos permisos.
+const mostrarFiltroRapido = computed(() => !esProduccionElRayo.value)
 
 const filtros = ref<PedidosListadoFiltros>({
   estado: '',
@@ -307,13 +316,12 @@ const filtros = ref<PedidosListadoFiltros>({
   proveedor_nombre: '',
   numero_pedido: '',
   creado_por: '',
+  modificado_por: '',
   limit: PAGE_SIZE,
-  offset: 0
+  offset: offsetGuardado.value
 })
 
-// Cargar pedidos
-async function cargarPedidos() {
-  loading.value = true
+async function obtenerPedidos() {
   error.value = null
 
   try {
@@ -327,13 +335,28 @@ async function cargarPedidos() {
 
     pedidos.value = response.data
     metadata.value = response.metadata
+    guardarOffset(metadata.value.offset)
   } catch (e: any) {
     console.error('Error al cargar pedidos:', e)
     error.value = e.message || 'No se pudieron cargar los pedidos'
     toast.error('Error', error.value ?? undefined)
+  }
+}
+
+// Cargar pedidos (carga inicial / filtros / paginación): activa el spinner de pantalla completa
+async function cargarPedidos() {
+  loading.value = true
+  try {
+    await obtenerPedidos()
   } finally {
     loading.value = false
   }
+}
+
+/** Refresco en segundo plano (foco/SSE): no toca `loading`, para no desmontar la tabla mientras
+ * el usuario hace clic en una fila (ver useRefetchOnFocus.ts). */
+async function refrescarPedidosSilenciosamente() {
+  await obtenerPedidos()
 }
 
 // Paginación offset/limit (piezas compartidas)
@@ -351,20 +374,21 @@ const {
 const aplicarFiltros = resetToFirstPage
 
 // Ordenamiento de columnas (pieza compartida)
-const { sortColumn, sortDirection, toggleSort, sortedItems: sortedPedidos } = useSortableList<PedidoResumido>({
+const { sortColumn, sortDirection, toggleSort, resetSort, sortedItems: sortedPedidos } = useSortableList<PedidoResumido>({
   items: pedidos,
-  dateColumns: ['fecha_pedido', 'creado_en', 'modificado_fecha']
+  dateColumns: ['fecha_pedido', 'creado_en', 'modificado_fecha'],
+  storageKey: 'pedidos-listado'
 })
 
 // Columnas ordenables del thead (para SortableTableHead)
 const columnasPedidos: SortableColumnDef[] = [
   { key: 'numero_pedido', label: 'Número de Pedido' },
-  { key: 'fecha_pedido', label: 'Fecha Pedido' },
+  { key: 'fecha_pedido', label: 'Fecha Pedido', description: DESCRIPCION_COLUMNA_FECHA_PEDIDO },
   { key: 'proveedor_nombre', label: 'Proveedor' },
   { key: 'estado', label: 'Estado', align: 'center' },
   { key: 'comprador_nombre', label: 'Comprador' },
-  { key: 'creado_en', label: 'Fecha Creación' },
-  { key: 'modificado_fecha', label: 'Fecha Modificación' },
+  { key: 'creado_en', label: 'Fecha Creación', description: DESCRIPCION_COLUMNA_FECHA_CREACION },
+  { key: 'modificado_fecha', label: 'Fecha Modificación', description: DESCRIPCION_COLUMNA_FECHA_MODIFICACION },
   { key: 'modificado_por', label: 'Modificado Por' }
 ]
 
@@ -377,17 +401,8 @@ const {
   dispose: disposeBusquedaNumeroPedido
 } = useFiltroTextoConDebounce(filtros, 'numero_pedido', aplicarFiltros)
 
-// ========== Búsqueda por Creado Por (con debounce, filtra en vivo) ==========
-const {
-  texto: busquedaCreadoPor,
-  handleInput: handleBusquedaCreadoPor,
-  commit: buscarCreadoPorInmediato,
-  clear: limpiarBusquedaCreadoPorTexto,
-  dispose: disposeBusquedaCreadoPor
-} = useFiltroTextoConDebounce(filtros, 'creado_por', aplicarFiltros)
-
 // Contador de pedidos pendientes (computado desde los pedidos cargados)
-const contadorPedidosPendientes = computed(() => pedidos.value.filter(p => requiereAccionPedido(p.estado)).length)
+const contadorPedidosPendientes = computed(() => pedidos.value.filter(p => requiereAccionPedidoListado(p.estado)).length)
 
 // Cargar estados disponibles para el dropdown de filtros
 async function cargarEstados() {
@@ -400,6 +415,21 @@ async function cargarEstados() {
   }
 }
 
+// Cargar creadores/modificadores disponibles para los <select> "Creado Por"/"Modificado Por"
+async function cargarCreadoresYModificadores() {
+  try {
+    const [creadores, modificadores] = await Promise.all([
+      mba3ConsultasService.getCreadoresPedido(),
+      mba3ConsultasService.getModificadoresPedido()
+    ])
+    creadoresDisponibles.value = creadores.data
+    modificadoresDisponibles.value = modificadores.data
+  } catch (e: any) {
+    console.error('Error al cargar creadores/modificadores:', e)
+    // Si falla, los dropdowns quedarán vacíos pero no bloquea la UI
+  }
+}
+
 // Aplicar filtro de pedidos pendientes
 function aplicarFiltroPendientes() {
   if (filtroSoloPendientes.value) {
@@ -407,7 +437,7 @@ function aplicarFiltroPendientes() {
     // para obtener todos los pedidos y luego filtrar en el frontend por los estados que requieren acción
     // Esto permite mostrar todos los pedidos pendientes independientemente de su estado específico
     const estadoAnterior = filtros.value.estado
-    const estadosPendientes = ['PENDIENTE_CONFIRMACION_PROVEEDOR', 'RESPUESTA_PROVEEDOR_CARGADA', 'CONFIRMADO_PROVEEDOR']
+    const estadosPendientes = ESTADOS_QUE_REQUIEREN_ACCION_PEDIDOS as readonly string[]
 
     // Solo limpiar el estado si estaba filtrando por uno de los estados pendientes
     if (estadoAnterior && estadosPendientes.includes(estadoAnterior)) {
@@ -416,7 +446,7 @@ function aplicarFiltroPendientes() {
   } else {
     // Si se desactiva, limpiar el filtro de estado solo si estaba activo por el filtro rápido
     const estadoActual = filtros.value.estado
-    const estadosPendientes = ['PENDIENTE_CONFIRMACION_PROVEEDOR', 'RESPUESTA_PROVEEDOR_CARGADA', 'CONFIRMADO_PROVEEDOR']
+    const estadosPendientes = ESTADOS_QUE_REQUIEREN_ACCION_PEDIDOS as readonly string[]
 
     // No limpiar si el usuario había seleccionado manualmente un estado
     // Solo limpiar si el estado actual es uno de los pendientes (probablemente activado por el filtro rápido)
@@ -431,7 +461,7 @@ function aplicarFiltroPendientes() {
 // Actualizar filtro pendientes cuando cambia el estado manualmente
 function actualizarFiltroPendientes() {
   const estadoActual = filtros.value.estado
-  const estadosPendientes = ['PENDIENTE_CONFIRMACION_PROVEEDOR', 'RESPUESTA_PROVEEDOR_CARGADA', 'CONFIRMADO_PROVEEDOR']
+  const estadosPendientes = ESTADOS_QUE_REQUIEREN_ACCION_PEDIDOS as readonly string[]
 
   // Si el estado seleccionado no es uno de los pendientes, desactivar el filtro rápido
   if (estadoActual && !estadosPendientes.includes(estadoActual)) {
@@ -449,11 +479,11 @@ function limpiarFiltros() {
     proveedor_nombre: '',
     numero_pedido: '',
     creado_por: '',
+    modificado_por: '',
     limit: PAGE_SIZE,
     offset: 0
   }
   busquedaNumeroPedido.value = ''
-  busquedaCreadoPor.value = ''
   filtroSoloPendientes.value = false
   resetToFirstPage()
 }
@@ -461,6 +491,7 @@ function limpiarFiltros() {
 // Ver detalle del pedido: llama POST .../gestionar (estado GESTIONAR_PEDIDO) y navega
 const verDetalleCargandoId = ref<string | null>(null)
 async function verDetalle(pedidoId: string) {
+  if (verDetalleCargandoId.value) return
   verDetalleCargandoId.value = pedidoId
   try {
     await mba3ConsultasService.gestionarPedido(pedidoId)
@@ -475,8 +506,11 @@ async function verDetalle(pedidoId: string) {
 // Cargar datos al montar
 onMounted(() => {
   cargarEstados()
-  // Si es modo El Rayo, activar filtro de pendientes por defecto
-  if (esModoElRayo.value) {
+  cargarCreadoresYModificadores()
+  // Si es modo El Rayo, activar filtro de pendientes por defecto -- salvo en Producción El Rayo,
+  // donde el filtro rápido está oculto (ver mostrarFiltroRapido arriba): activarlo ahí dejaría un
+  // filtro aplicado sin ningún control visible para quitarlo.
+  if (esModoElRayo.value && mostrarFiltroRapido.value) {
     filtroSoloPendientes.value = true
     aplicarFiltroPendientes()
   } else {
@@ -486,7 +520,6 @@ onMounted(() => {
 
 onUnmounted(() => {
   disposeBusquedaNumeroPedido()
-  disposeBusquedaCreadoPor()
 })
 
 // Watch para detectar cambios en query params
@@ -501,5 +534,5 @@ watch(
 )
 
 // Auto-refresh del listado (SSE relevante, reconexión SSE, foco/visibilidad) -- pieza compartida
-useListadoAutoRefresh(cargarPedidos, { debugLabel: 'PedidosListView' })
+useListadoAutoRefresh(refrescarPedidosSilenciosamente, { debugLabel: 'PedidosListView' })
 </script>

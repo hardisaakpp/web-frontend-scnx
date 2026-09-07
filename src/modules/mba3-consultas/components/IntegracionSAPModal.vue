@@ -201,7 +201,7 @@
                       </div>
                     </div>
 
-                    <!-- Tabla: solo tienda_codigo y doc_num; se muestra siempre que haya al menos 1 ITR
+                    <!-- Tabla: doc_num, tienda_nombre y tienda_codigo; se muestra siempre que haya al menos 1 ITR
                          (antes exigía > 1, así que con exactamente 1 ITR nunca se mostraba su DocNum). -->
                     <div v-else-if="bloque.filasItr.length >= 1" class="rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
                       <div class="overflow-x-auto max-h-64 overflow-y-auto">
@@ -209,6 +209,7 @@
                           <thead class="bg-gray-100 dark:bg-gray-800/80 sticky top-0">
                             <tr>
                               <th scope="col" class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">DocNum</th>
+                              <th scope="col" class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Nombre de Tienda</th>
                               <th scope="col" class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Tienda</th>
                             </tr>
                           </thead>
@@ -220,6 +221,9 @@
                             >
                               <td class="px-4 py-2 whitespace-nowrap font-medium text-gray-900 dark:text-white">
                                 {{ fila.doc_num }}
+                              </td>
+                              <td class="px-4 py-2 whitespace-nowrap text-gray-700 dark:text-gray-300">
+                                {{ fila.tienda_nombre || '—' }}
                               </td>
                               <td class="px-4 py-2 whitespace-nowrap text-gray-700 dark:text-gray-300">
                                 {{ fila.tienda_codigo }}
@@ -330,7 +334,11 @@ function calcularFilasItr(st: SolicitudesTransferencia | null) {
   const res = st.resultados ?? []
   return res
     .filter((r: { doc_num?: number | null }) => r.doc_num != null)
-    .map((r: { doc_num: number | null; tienda_codigo: string }) => ({ doc_num: r.doc_num!, tienda_codigo: r.tienda_codigo }))
+    .map((r: { doc_num: number | null; tienda_codigo: string; tienda_nombre?: string | null }) => ({
+      doc_num: r.doc_num!,
+      tienda_codigo: r.tienda_codigo,
+      tienda_nombre: r.tienda_nombre
+    }))
 }
 
 // Mensaje de éxito: "con DocNum" solo cuando hay exactamente 1 solicitud de transferencia (ITR)
