@@ -14,22 +14,16 @@
       </template>
     </IntegracionesTabs>
 
-    <!-- Resumen -->
-    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-      <div
-        v-for="tarjeta in resumen"
-        :key="tarjeta.label"
-        class="bg-white dark:bg-gray-800 rounded-lg shadow-md border border-gray-200 dark:border-gray-700 px-5 py-4"
-      >
-        <p class="text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">{{ tarjeta.label }}</p>
-        <p class="mt-1 text-2xl font-bold" :class="tarjeta.clase">{{ formatEntero(tarjeta.valor) }}</p>
-      </div>
+    <div class="rounded-lg border border-sky-200 dark:border-sky-800 bg-sky-50 dark:bg-sky-900/20 px-4 py-3 text-sm text-sky-900 dark:text-sky-100">
+      Cada transferencia de stock o entrada de mercadería que SAP confirma se avisa a HITELL (WEBPOS). Aquí quedan
+      tanto las que se integraron como las que HITELL rechazó; estas últimas se pueden reintegrar una vez corregida
+      la causa en HITELL. Por defecto se muestran los últimos {{ DIAS_POR_DEFECTO }} días.
     </div>
 
     <!-- Filtros -->
     <form
-      class="bg-white dark:bg-gray-800 rounded-lg shadow-md border border-gray-200 dark:border-gray-700 px-6 py-4 grid grid-cols-1 md:grid-cols-5 gap-4"
-      @submit.prevent="cargar"
+      class="bg-white dark:bg-gray-800 rounded-lg shadow-md border border-gray-200 dark:border-gray-700 px-6 py-4 grid grid-cols-1 md:grid-cols-6 gap-4"
+      @submit.prevent="buscar"
     >
       <label class="block">
         <span class="text-xs font-medium text-gray-600 dark:text-gray-300">Resultado</span>
@@ -57,23 +51,17 @@
         </select>
       </label>
       <label class="block">
-        <span class="text-xs font-medium text-gray-600 dark:text-gray-300">DocEntry SAP</span>
-        <input
-          v-model.number="filters.docEntry"
-          type="number"
-          min="1"
-          placeholder="Ej. 587065"
-          :class="inputClass"
-        />
+        <span class="text-xs font-medium text-gray-600 dark:text-gray-300">N.º documento SAP</span>
+        <input v-model.number="filters.docNum" type="number" min="1" placeholder="DocNum" :class="inputClass" />
+      </label>
+      <label class="block">
+        <span class="text-xs font-medium text-gray-600 dark:text-gray-300">Desde</span>
+        <input v-model="filters.desde" type="date" :class="inputClass" />
       </label>
       <div class="flex items-end gap-2">
         <label class="block flex-1">
-          <span class="text-xs font-medium text-gray-600 dark:text-gray-300">Máximo</span>
-          <select v-model.number="filters.top" :class="inputClass">
-            <option :value="100">100</option>
-            <option :value="200">200</option>
-            <option :value="500">500</option>
-          </select>
+          <span class="text-xs font-medium text-gray-600 dark:text-gray-300">Hasta</span>
+          <input v-model="filters.hasta" type="date" :class="inputClass" />
         </label>
         <button
           type="submit"
@@ -87,13 +75,9 @@
 
     <!-- Tabla -->
     <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md border border-gray-200 dark:border-gray-700">
-      <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between flex-wrap gap-2">
-        <div>
-          <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Documentos notificados a HITELL</h2>
-          <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
-            {{ formatEntero(entries.length) }} documento(s). Los rechazados se pueden reintegrar una vez corregida la causa en HITELL.
-          </p>
-        </div>
+      <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+        <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Documentos notificados a HITELL</h2>
+        <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">{{ formatEntero(total) }} documento(s)</p>
       </div>
 
       <div v-if="error" class="p-6">
@@ -114,7 +98,7 @@
         <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
           <thead class="bg-gray-50 dark:bg-gray-900">
             <tr>
-              <th :class="thClass">Documento</th>
+              <th :class="thClass">Documento SAP</th>
               <th :class="thClass">Resultado</th>
               <th :class="thClass">Motivo</th>
               <th :class="thClass">Intentos</th>
@@ -124,15 +108,17 @@
           </thead>
           <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
             <tr
-              v-for="doc in pagina"
+              v-for="doc in entries"
               :key="claveDoc(doc)"
               class="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
             >
               <td class="px-6 py-4 whitespace-nowrap">
                 <div class="text-sm font-medium text-gray-900 dark:text-white">
-                  {{ doc.docType }} · DocEntry {{ formatEntero(doc.docEntry) }}
+                  {{ doc.docNum !== null ? `N.º ${formatEntero(doc.docNum)}` : 'N.º no registrado' }}
                 </div>
-                <div class="text-xs text-gray-500 dark:text-gray-400">{{ HITELL_DOC_TYPE_LABEL[doc.docType] }}</div>
+                <div class="text-xs text-gray-500 dark:text-gray-400">
+                  {{ HITELL_DOC_TYPE_LABEL[doc.docType] }} · DocEntry {{ formatEntero(doc.docEntry) }}
+                </div>
               </td>
               <td class="px-6 py-4 whitespace-nowrap">
                 <EstadoBadge :label="HITELL_RESULT_LABEL[doc.result]" :tone="toneHitell(doc.result)" />
@@ -175,18 +161,18 @@
       </div>
 
       <div
-        v-if="totalPaginas > 1"
+        v-if="totalPages > 1"
         class="px-6 py-4 border-t border-gray-200 dark:border-gray-700 flex items-center justify-between flex-wrap gap-4"
       >
         <div class="text-sm text-gray-700 dark:text-gray-300">
-          Página {{ page }} de {{ totalPaginas }} ({{ formatEntero(entries.length) }} documentos)
+          Página {{ filters.page }} de {{ totalPages }} ({{ formatEntero(total) }} documentos)
         </div>
         <QuickTablePagination
-          :model-value="page"
-          :total-pages="totalPaginas"
+          :model-value="filters.page"
+          :total-pages="totalPages"
           :disabled="loading"
           aria-label="Paginación de documentos HITELL"
-          @update:model-value="page = $event"
+          @update:model-value="irAPagina"
         />
       </div>
     </div>
@@ -194,8 +180,8 @@
     <!-- Detalle -->
     <DetalleModal
       :open="detalle !== null"
-      :titulo="detalle ? `${detalle.docType} · DocEntry ${formatEntero(detalle.docEntry)}` : ''"
-      :subtitulo="detalle ? HITELL_DOC_TYPE_LABEL[detalle.docType] : ''"
+      :titulo="detalle ? tituloDoc(detalle) : ''"
+      :subtitulo="detalle ? `${HITELL_DOC_TYPE_LABEL[detalle.docType]} · DocEntry ${formatEntero(detalle.docEntry)}` : ''"
       @close="detalle = null"
     >
       <template v-if="detalle">
@@ -274,7 +260,7 @@
     <DetalleModal
       :open="confirmar !== null"
       titulo="Reintegrar a HITELL"
-      :subtitulo="confirmar ? `${confirmar.docType} · DocEntry ${formatEntero(confirmar.docEntry)}` : ''"
+      :subtitulo="confirmar ? tituloDoc(confirmar) : ''"
       @close="confirmar = null"
     >
       <p class="text-sm text-gray-700 dark:text-gray-200">
@@ -320,6 +306,7 @@ import { integracionesApi } from '../services/integracionesApi'
 import { INTEGRACIONES_PERMISSIONS } from '../permissions'
 import type { HitellSyncFilters, HitellSyncStatus } from '../types'
 import {
+  DIAS_POR_DEFECTO,
   HITELL_DOC_TYPE_LABEL,
   HITELL_REJECTION_LABEL,
   HITELL_RESULT_LABEL,
@@ -327,6 +314,7 @@ import {
   formatEntero,
   formatFechaHora,
   mensajeError,
+  rangoUltimosDias,
   toneHitell,
   truncar,
 } from '../utils/formatters'
@@ -342,38 +330,33 @@ const puedeReintegrar = computed(
   () => authStore.userRoles?.includes('Admin') || authStore.hasPermission(INTEGRACIONES_PERMISSIONS.hitellRetry),
 )
 
-// Por defecto la bandeja de pendientes: es lo que soporte revisa primero.
 const filters = reactive<HitellSyncFilters>({
-  status: 'REJECTED',
+  status: '',
   docType: '',
   rejectionType: '',
-  docEntry: null,
-  top: 200,
+  docNum: null,
+  ...rangoUltimosDias(),
+  page: 1,
+  pageSize: 20,
 })
 
 const entries = ref<HitellSyncStatus[]>([])
+const total = ref(0)
+const totalPages = ref(1)
 const loading = ref(false)
 const error = ref<string | null>(null)
 const detalle = ref<HitellSyncStatus | null>(null)
 const confirmar = ref<HitellSyncStatus | null>(null)
 const reintegrando = ref(new Set<string>())
 
-const pageSize = 20
-const page = ref(1)
-const totalPaginas = computed(() => Math.ceil(entries.value.length / pageSize) || 1)
-const pagina = computed(() => entries.value.slice((page.value - 1) * pageSize, page.value * pageSize))
-
-const resumen = computed(() => {
-  const contar = (result: HitellSyncStatus['result']) => entries.value.filter((e) => e.result === result).length
-  return [
-    { label: 'Rechazados', valor: contar('RECHAZADO'), clase: 'text-red-600 dark:text-red-400' },
-    { label: 'Integrados', valor: contar('INTEGRADO'), clase: 'text-green-600 dark:text-green-400' },
-    { label: 'No corresponde', valor: contar('NO_CORRESPONDE'), clase: 'text-gray-600 dark:text-gray-300' },
-  ]
-})
-
 function claveDoc(doc: Pick<HitellSyncStatus, 'docType' | 'docEntry'>): string {
   return `${doc.docType}-${doc.docEntry}`
+}
+
+function tituloDoc(doc: HitellSyncStatus): string {
+  return doc.docNum !== null
+    ? `Documento SAP N.º ${formatEntero(doc.docNum)}`
+    : `${doc.docType} · DocEntry ${formatEntero(doc.docEntry)}`
 }
 
 async function cargar() {
@@ -382,15 +365,29 @@ async function cargar() {
   try {
     // Un tipo de rechazo solo tiene sentido sobre rechazados: el middleware lo fuerza igual.
     if (filters.rejectionType && filters.status !== 'REJECTED') filters.status = 'REJECTED'
-    if (typeof filters.docEntry !== 'number' || Number.isNaN(filters.docEntry)) filters.docEntry = null
-    entries.value = await integracionesApi.listarHitell(filters)
-    page.value = 1
+    if (typeof filters.docNum !== 'number' || Number.isNaN(filters.docNum)) filters.docNum = null
+    const respuesta = await integracionesApi.listarHitell(filters)
+    entries.value = respuesta.entries ?? []
+    total.value = respuesta.total ?? entries.value.length
+    totalPages.value = respuesta.totalPages || 1
   } catch (e) {
     error.value = mensajeError(e, 'No se pudo consultar el estado de integración con HITELL.')
     entries.value = []
+    total.value = 0
+    totalPages.value = 1
   } finally {
     loading.value = false
   }
+}
+
+function buscar() {
+  filters.page = 1
+  cargar()
+}
+
+function irAPagina(p: number) {
+  filters.page = p
+  cargar()
 }
 
 async function reintegrar() {
@@ -402,7 +399,7 @@ async function reintegrar() {
     const resultado = await integracionesApi.reintegrarHitell(doc)
     const feedback = HITELL_RETRY_FEEDBACK[resultado.status] ?? HITELL_RETRY_FEEDBACK.Error
     const detalleMsg = [resultado.reason, resultado.jobId ? `Job ${resultado.jobId}` : null].filter(Boolean).join(' · ')
-    const titulo = `${doc.docType} ${doc.docEntry}: ${feedback.titulo}`
+    const titulo = `${tituloDoc(doc)}: ${feedback.titulo}`
     if (feedback.tone === 'success') toast.success(titulo, detalleMsg || undefined)
     else if (feedback.tone === 'danger') toast.error(titulo, detalleMsg || undefined)
     else if (feedback.tone === 'warning') toast.warning(titulo, detalleMsg || undefined)
@@ -411,10 +408,7 @@ async function reintegrar() {
     detalle.value = null
     await cargar()
   } catch (e) {
-    toast.error(
-      `No se pudo reintegrar ${doc.docType} ${doc.docEntry}`,
-      mensajeError(e, 'El middleware no aceptó el reintento.'),
-    )
+    toast.error(`No se pudo reintegrar ${tituloDoc(doc)}`, mensajeError(e, 'El middleware no aceptó el reintento.'))
   } finally {
     reintegrando.value.delete(clave)
   }

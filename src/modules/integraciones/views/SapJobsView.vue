@@ -16,7 +16,9 @@
 
     <div class="rounded-lg border border-sky-200 dark:border-sky-800 bg-sky-50 dark:bg-sky-900/20 px-4 py-3 text-sm text-sky-900 dark:text-sky-100">
       Aquí aparecen las peticiones a SAP que el middleware tuvo que encolar porque SAP no respondió a tiempo o estaba
-      saturado. Las que SAP atendió de inmediato no pasan por la cola: búsquelas en la pestaña Bitácora.
+      saturado. Cada job queda registrado y va cambiando de estado hasta terminar en Completado o Error, con sus
+      intentos. Las que SAP atendió de inmediato no pasan por la cola: búsquelas en la pestaña Bitácora. Por defecto
+      se muestran los últimos {{ DIAS_POR_DEFECTO }} días.
     </div>
 
     <!-- Filtros -->
@@ -210,10 +212,12 @@ import JsonBlock from '../components/JsonBlock.vue'
 import { integracionesApi } from '../services/integracionesApi'
 import type { SapJob, SapJobFilters } from '../types'
 import {
+  DIAS_POR_DEFECTO,
   SAP_JOB_STATUS_LABEL,
   formatEntero,
   formatFechaHora,
   mensajeError,
+  rangoUltimosDias,
   toneHttp,
   toneJob,
   truncar,
@@ -228,8 +232,7 @@ const toast = useToast()
 const filters = reactive<SapJobFilters>({
   status: '',
   endpoint: '',
-  desde: '',
-  hasta: '',
+  ...rangoUltimosDias(),
   page: 1,
   pageSize: 20,
 })

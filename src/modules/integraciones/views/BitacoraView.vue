@@ -59,7 +59,9 @@
       <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
         <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Bitácora de peticiones al middleware</h2>
         <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
-          {{ formatEntero(total) }} registro(s). La hora es la de Ecuador. Los cuerpos se guardan truncados a 2000 caracteres.
+          {{ formatEntero(total) }} registro(s). Toda petición que llegó al middleware desde cualquier módulo, haya ido
+          a la cola o no. La hora es la de Ecuador y los cuerpos se guardan truncados a 2000 caracteres. Por defecto se
+          muestran los últimos {{ DIAS_POR_DEFECTO }} días.
         </p>
       </div>
 
@@ -182,7 +184,15 @@ import DetalleModal from '../components/DetalleModal.vue'
 import JsonBlock from '../components/JsonBlock.vue'
 import { integracionesApi } from '../services/integracionesApi'
 import type { BitacoraEntry, BitacoraFilters } from '../types'
-import { formatDuracion, formatEntero, formatFechaHora, mensajeError, toneHttp } from '../utils/formatters'
+import {
+  DIAS_POR_DEFECTO,
+  formatDuracion,
+  formatEntero,
+  formatFechaHora,
+  mensajeError,
+  rangoUltimosDias,
+  toneHttp,
+} from '../utils/formatters'
 
 const inputClass =
   'mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors'
@@ -195,8 +205,7 @@ const filters = reactive<BitacoraFilters>({
   usuario: '',
   statusCode: null,
   onlyErrors: false,
-  desde: '',
-  hasta: '',
+  ...rangoUltimosDias(),
   page: 1,
   pageSize: 20,
 })

@@ -33,6 +33,8 @@ export interface HitellRejection {
 export interface HitellSyncStatus {
   docType: HitellDocType
   docEntry: number
+  /** Número visible del documento en SAP. Null en filas anteriores a la columna doc_num. */
+  docNum: number | null
   status: HitellStatus
   result: HitellResult
   reason: string | null
@@ -46,8 +48,18 @@ export interface HitellSyncFilters {
   status: HitellStatus | ''
   docType: HitellDocType | ''
   rejectionType: HitellRejectionType | ''
-  docEntry: number | null
-  top: number
+  /** Búsqueda puntual por número de documento SAP. */
+  docNum: number | null
+  /** Fecha (YYYY-MM-DD) del input; se envía como inicio del día. */
+  desde: string
+  /** Fecha (YYYY-MM-DD) del input; se envía como fin del día. */
+  hasta: string
+  page: number
+  pageSize: number
+}
+
+export interface HitellSyncPage extends Omit<PagedResponse<HitellSyncStatus>, 'items'> {
+  entries: HitellSyncStatus[]
 }
 
 /** Resultado del reintento manual (WebPosSyncInfo del middleware). */

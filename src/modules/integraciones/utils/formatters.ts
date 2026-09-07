@@ -12,6 +12,24 @@ export type BadgeTone = 'success' | 'warning' | 'danger' | 'info' | 'neutral'
 
 // ─── Fechas y números ────────────────────────────────────────────────────────
 
+/** Estándar de listados del proyecto: al abrir, se cargan solo los últimos 15 días. */
+export const DIAS_POR_DEFECTO = 15
+
+/** YYYY-MM-DD en hora local, formato que usan los inputs type="date". */
+export function fechaIso(fecha: Date): string {
+  const y = fecha.getFullYear()
+  const m = String(fecha.getMonth() + 1).padStart(2, '0')
+  const d = String(fecha.getDate()).padStart(2, '0')
+  return `${y}-${m}-${d}`
+}
+
+export function rangoUltimosDias(dias = DIAS_POR_DEFECTO): { desde: string; hasta: string } {
+  const hoy = new Date()
+  const desde = new Date(hoy)
+  desde.setDate(hoy.getDate() - dias)
+  return { desde: fechaIso(desde), hasta: fechaIso(hoy) }
+}
+
 /**
  * El middleware devuelve fechas sin zona (hora del servidor / UTC-5). `new Date` las toma como
  * hora local, que es lo que el usuario espera ver; no se convierte.
