@@ -371,6 +371,8 @@ export interface RecentCountItemDto {
   description?: string | null
   level1?: string | null
   level2?: string | null
+  /** Código escaneado en ese ingreso o, si fue manual, el del maestro. */
+  barcode?: string | null
   quantity: number
   countedByUserId: string
   countedAt: string
@@ -405,15 +407,17 @@ export interface SessionDetailLineDto {
   systemQuantity: number
   countedQuantity: number
   difference: number
-  status: 'Balanced' | 'Difference' | 'New' | 'NotCounted'
+  status: 'Balanced' | 'Difference' | 'New'
+  /** True cuando la referencia tenía stock y nadie la contó: es una Diferencia (faltante completo), no una categoría aparte. */
+  notCounted?: boolean
 }
 
 export interface SessionDetailStatsDto {
   total: number
   balanced: number
+  /** Incluye las referencias con stock que nadie contó. */
   difference: number
   newItems: number
-  notCounted: number
 }
 
 export interface UserScanSummaryDto {

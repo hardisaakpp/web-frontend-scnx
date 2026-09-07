@@ -25,10 +25,14 @@ invPlanesApi.interceptors.response.use(
 )
 
 export const inventarioSesionesService = {
-  async getSesiones(): Promise<InventorySessionListItemDto[]> {
-    // Para un usuario con acceso a todas las bodegas, el backend consulta el stock de cada bodega
-    // distinta con sesiones abiertas, una por una — puede superar el timeout default (30s).
-    const response = await invPlanesApi.get<InventorySessionListItemDto[]>('/api/inventory-sessions', { timeout: 120_000 })
+  /**
+   * Listado de tomas. `since`/`until` (ISO, sobre la fecha de apertura) se filtran en el servidor:
+   * el costo del endpoint es calcular el alcance de cada toma devuelta contra sc_maestros, así que
+   * traer solo el rango visible (15 días por defecto) es lo que hace rápida la pantalla.
+   */
+  async getSesiones(params?: { since?: string; until?: string; status?: string }): Promise<InventorySessionListItemDto[]> {
+    // Sin filtro de fechas (usuario limpió el rango) puede tardar: se mantiene el timeout amplio.
+    const response = await invPlanesApi.get<InventorySessionListItemDto[]>('/api/inventory-sessions', { params, timeout: 120_000 })
     return response.data
   },
 

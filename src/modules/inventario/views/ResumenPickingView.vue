@@ -121,10 +121,13 @@
                 <span class="font-semibold text-gray-700 dark:text-gray-200">x{{ item.quantity }}</span>
               </div>
               <div v-if="item.description" class="text-gray-500 dark:text-gray-400 truncate mt-0.5">{{ item.description }}</div>
+              <div v-if="item.barcode" class="font-mono text-gray-600 dark:text-gray-300 mt-0.5">
+                <span class="font-sans text-gray-400 dark:text-gray-500">Cód. barras </span>{{ item.barcode }}
+              </div>
               <div class="flex items-center gap-2 mt-0.5 text-gray-400 dark:text-gray-500">
                 <span v-if="item.level1">{{ item.level1 }}<span v-if="item.level2"> / {{ item.level2 }}</span></span>
                 <span>{{ formatTime(item.countedAt) }}</span>
-                <span class="font-mono">{{ item.countedByUserId }}</span>
+                <span class="truncate">{{ userLabel(item.countedByUserId) }}</span>
               </div>
             </div>
             <button
@@ -153,6 +156,7 @@ import { ChevronLeftIcon, ArrowPathIcon, TrashIcon } from '@heroicons/vue/24/out
 import { inventarioSesionesService } from '../services/inventarioSesionesApi'
 import type { InventoryPickingSummaryDto, RecentCountItemDto } from '../types'
 import { APP_LOCALE } from '@/plugins/locale'
+import { resolveUserNames } from '@/utils/resolveUserNames'
 
 type LocalRecentCountItem = RecentCountItemDto & { _deleted?: boolean }
 
@@ -166,6 +170,11 @@ const loading = ref(false)
 const error = ref<string | null>(null)
 const eliminando = ref(false)
 const errorEliminar = ref<string | null>(null)
+const userNames = ref<Record<string, string>>({})
+
+function userLabel(userId: string): string {
+  return userNames.value[userId] || userId
+}
 
 const totalLines1 = computed(() => summary.value?.byLevel1.reduce((s, r) => s + r.lines, 0) ?? 0)
 const totalQty1 = computed(() => summary.value?.byLevel1.reduce((s, r) => s + r.totalQuantity, 0) ?? 0)
@@ -190,6 +199,8 @@ async function cargar() {
   try {
     summary.value = await inventarioSesionesService.getPickingSummary(sessionId)
     localRecentCounts.value = summary.value.recentCounts.map(c => ({ ...c }))
+    // Nombre del operador en vez del id (los ingresos pueden ser de varios usuarios de la misma toma).
+    userNames.value = await resolveUserNames(localRecentCounts.value.map(c => c.countedByUserId))
   } catch (e: any) {
     error.value = e.message ?? 'Error al cargar el resumen.'
   } finally {

@@ -6,6 +6,33 @@ Registro cronológico de cambios realizados al módulo `src/modules/inventario` 
 
 ---
 
+## 2026-09-07 — Observaciones de la toma física OUT-CON (nombres, "No contados", código de barras, carga de la lista)
+
+Rama `fix/inventario-toma-fisica-outcon` (desde `test`), contraparte en `api-inventario` (misma rama).
+
+- **Nombres de usuario en vez de GUID/login/correo.** `src/utils/resolveUserNames.ts` (compartido con
+  caja-chica) ya no usa `GET /Users` del Core, que es solo Admin y a un supervisor le fallaba en silencio
+  dejando los ids crudos; ahora resuelve cada id con `GET /Users/info/{id}` (solo autenticado, con caché)
+  y muestra nombre completo → usuario → correo → id. Con eso el **Detalle de la toma** (resumen y detalle
+  de scans y sus descargas), Gestión de scans, reasignación de reconteo e historial de planes muestran el
+  nombre. En el **Resumen supervisor** el nombre resuelto tiene prioridad sobre el texto que guarda el
+  backend (`userName`, que para usuarios AD es el correo), tanto en "Creado por" como en "Conteo por
+  usuario" y en el Excel. Sin cambios en Core.
+- **"No contados" deja de ser categoría** (`DetalleTomaFisicaView`): quedan Cerrados / Diferencias / Otros
+  códigos; una referencia con stock que nadie contó es una **Diferencia** (faltante completo) y la fila
+  lleva la marca "Sin conteo" (columna `SinConteo` en el Excel). El informe de ajuste ya las incluía como
+  faltante (`BuildSessionResults` recorre stock ∪ conteos), así que solo cambió la presentación.
+  Tipos: `SessionDetailLineDto.notCounted`, `SessionDetailStatsDto` sin `notCounted`.
+- **Código de barras en el listado de eliminación** (`ResumenPickingView`, "Últimos 30 ingresos", móvil):
+  nueva línea "Cód. barras" por ingreso (`RecentCountItemDto.barcode`, del backend) y el operador ahora
+  se muestra por nombre en vez del id.
+- **Lista de tomas más rápida** (`SesionesInventarioView`): el rango de fechas viaja al servidor
+  (`getSesiones({ since, until })`) en vez de traer el histórico completo y filtrar en el navegador; abre
+  con los últimos 15 días (estándar) y recarga al cambiar el rango. El backend calcula el alcance de cada
+  toma devuelta contra sc_maestros, por eso el volumen de tomas históricas era lo que hacía lenta la pantalla.
+- Estado: **sin commitear** al momento de escribir esto. Requiere desplegar `api-inventario` de la misma
+  rama (filtros del listado, `barcode` en picking-summary, clasificación sin `NotCounted`).
+
 ## 2026-09-02 — Fix: "Conteo por usuario" del resumen supervisor mostraba GUIDs
 
 - **`SessionUserStatDto.userName`** (types.ts): el backend (`api-inventario` rama `fix/leak`) ahora
