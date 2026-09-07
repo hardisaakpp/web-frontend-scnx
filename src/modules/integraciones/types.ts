@@ -33,8 +33,8 @@ export interface HitellRejection {
 export interface HitellSyncStatus {
   docType: HitellDocType
   docEntry: number
-  /** Número visible del documento en SAP. Null en filas anteriores a la columna doc_num. */
-  docNum: number | null
+  /** Número visible del documento en SAP. La API omite el campo (undefined) o manda null en filas anteriores a la columna doc_num. */
+  docNum?: number | null
   status: HitellStatus
   result: HitellResult
   reason: string | null
