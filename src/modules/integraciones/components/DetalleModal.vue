@@ -3,13 +3,17 @@
     <div
       v-if="open"
       class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50"
-      role="dialog"
-      aria-modal="true"
-      :aria-label="titulo"
       @click.self="emit('close')"
       @keydown.esc="emit('close')"
     >
-      <div class="w-full max-w-3xl max-h-[90vh] flex flex-col bg-white dark:bg-gray-800 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700">
+      <!-- Elemento <dialog> nativo (Sonar S6819): abierto con el atributo `open` dentro de nuestro
+           propio fondo, por eso se anulan los estilos de agente de usuario (posición, margen, borde). -->
+      <dialog
+        open
+        aria-modal="true"
+        :aria-label="titulo"
+        class="relative m-0 p-0 w-full max-w-3xl max-h-[90vh] flex flex-col bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700"
+      >
         <div class="flex items-start justify-between gap-4 px-6 py-4 border-b border-gray-200 dark:border-gray-700">
           <div>
             <h3 class="text-lg font-semibold text-gray-900 dark:text-white">{{ titulo }}</h3>
@@ -32,7 +36,7 @@
         <div v-if="$slots.footer" class="px-6 py-3 border-t border-gray-200 dark:border-gray-700 flex justify-end gap-2">
           <slot name="footer" />
         </div>
-      </div>
+      </dialog>
     </div>
   </Teleport>
 </template>
@@ -47,6 +51,6 @@ defineProps<{
 }>()
 
 const emit = defineEmits<{
-  (e: 'close'): void
+  close: []
 }>()
 </script>
