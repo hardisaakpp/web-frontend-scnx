@@ -34,7 +34,7 @@
 
     <template v-if="stats">
       <!-- Stat cards -->
-      <div class="grid grid-cols-2 sm:grid-cols-5 gap-3 mb-5">
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
         <!-- Consolidado: download-only -->
         <button
           type="button"
@@ -138,7 +138,13 @@
                   <td class="td font-mono text-xs font-semibold">{{ row.itemCode }}</td>
                   <td class="td max-w-xs truncate">{{ row.description ?? '—' }}</td>
                   <td class="td text-right font-mono">{{ fmtQty(row.systemQuantity) }}</td>
-                  <td class="td text-right font-mono" :class="row.countedQuantity > 0 ? 'text-blue-600 dark:text-blue-400' : 'text-gray-400'">{{ fmtQty(row.countedQuantity) }}</td>
+                  <td class="td text-right font-mono whitespace-nowrap" :class="row.countedQuantity > 0 ? 'text-blue-600 dark:text-blue-400' : 'text-gray-400'">
+                    <span
+                      v-if="row.notCounted"
+                      class="mr-1.5 inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-sans font-semibold uppercase tracking-wide bg-gray-200 text-gray-600 dark:bg-gray-700 dark:text-gray-300"
+                      title="Nadie registró esta referencia: se toma como faltante completo"
+                    >Sin conteo</span>{{ fmtQty(row.countedQuantity) }}
+                  </td>
                   <td class="td text-right font-mono font-semibold" :class="diffClass(row.difference)">
                     {{ row.difference === 0 ? '—' : (row.difference > 0 ? '+' : '') + fmtQty(row.difference) }}
                   </td>
@@ -309,7 +315,7 @@ function userLabel(userId: string): string {
   return userNames.value[userId] || userId
 }
 
-type FilterKey = 'Balanced' | 'Difference' | 'New' | 'NotCounted'
+type FilterKey = 'Balanced' | 'Difference' | 'New'
 const activeFilter = ref<FilterKey | null>(null)
 const search = ref('')
 const page = ref(0)
@@ -340,7 +346,8 @@ const FILTER_CARDS = computed(() => [
   { filter: 'Balanced' as FilterKey, label: 'Cerrados', count: stats.value?.balanced ?? 0, iconClass: 'text-green-500', numClass: 'text-green-600 dark:text-green-400' },
   { filter: 'Difference' as FilterKey, label: 'Diferencias', count: stats.value?.difference ?? 0, iconClass: 'text-red-500', numClass: 'text-red-600 dark:text-red-400' },
   { filter: 'New' as FilterKey, label: 'Otros Códigos', count: stats.value?.newItems ?? 0, iconClass: 'text-amber-500', numClass: 'text-amber-600 dark:text-amber-400' },
-  { filter: 'NotCounted' as FilterKey, label: 'No contados', count: stats.value?.notCounted ?? 0, iconClass: 'text-gray-400', numClass: 'text-gray-500 dark:text-gray-400' },
+  // "No contados" dejó de ser categoría: una referencia con stock que nadie contó es una Diferencia
+  // (faltante completo, se cobra en el ajuste), igual que en StoreControl; la fila lleva la marca "Sin conteo".
 ])
 
 const activeLabelShort = computed(() => FILTER_CARDS.value.find(c => c.filter === activeFilter.value)?.label ?? 'vista')
@@ -421,7 +428,6 @@ function rowClass(status: string): string {
     Balanced: '',
     Difference: 'bg-red-50/40 dark:bg-red-900/5',
     New: 'bg-amber-50/40 dark:bg-amber-900/5',
-    NotCounted: 'opacity-50',
   }[status] ?? ''
 }
 
@@ -442,6 +448,7 @@ const LINE_COLUMNS: ExcelColumn<SessionDetailLineDto>[] = [
   { header: 'Scan', key: 'countedQuantity' },
   { header: 'Diferencia', key: 'difference' },
   { header: 'Estado', key: 'status' },
+  { header: 'SinConteo', key: r => (r.notCounted ? 'SI' : '') },
 ]
 
 const SCAN_SUMMARY_COLUMNS: ExcelColumn<UserScanSummaryDto>[] = [

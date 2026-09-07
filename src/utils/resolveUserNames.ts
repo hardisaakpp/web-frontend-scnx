@@ -1,68 +1,68 @@
 import api from '@/services/api'
 
+/**
+ * Resuelve IDs de usuario del Core a un nombre legible.
+ *
+ * Usa `GET /Users/info/{id}` del Core, que solo exige estar autenticado. El listado `GET /Users`
+ * que se usaba antes es solo para Admin: a un supervisor le fallaba en silencio y las pantallas
+ * quedaban mostrando el GUID o el login de Active Directory en vez del nombre.
+ *
+ * Prioridad del texto: nombre completo → usuario → correo → id. Los ids que el Core no conoce
+ * (p. ej. logins AD guardados como texto libre) se devuelven tal cual.
+ */
+
 type UserRecord = Record<string, unknown>
 
-let usersByIdCache: Record<string, string> | null = null
-let loadUsersPromise: Promise<Record<string, string>> | null = null
+const nameCache = new Map<string, string>()
+const inflight = new Map<string, Promise<string>>()
 
 const normalizeString = (value: unknown) => String(value ?? '').trim()
 
-function extractItems(payload: unknown): unknown[] {
-  if (Array.isArray(payload)) return payload
-  const data = (payload as { data?: unknown[] })?.data
-  if (Array.isArray(data)) return data
-  return []
+function userDisplayName(user: UserRecord, fallbackId: string): string {
+  const fullName = normalizeString(user.fullName ?? user.FullName ?? user.Nombre ?? user.name)
+  const userName = normalizeString(user.userName ?? user.UserName ?? user.username)
+  const email = normalizeString(user.email ?? user.Email ?? user.Correo ?? user.mail)
+  return fullName || userName || email || fallbackId
 }
 
-const userDisplayName = (user: UserRecord): string => {
-  const id = normalizeString(user.id ?? user.Id ?? user.idUsuario ?? user.IdUsuario)
-  const userName = normalizeString(user.userName ?? user.UsuarioNombre ?? user.username)
-  const fullName = normalizeString(user.fullName ?? user.Nombre ?? user.name)
-  const email = normalizeString(user.email ?? user.Correo ?? user.mail)
-  const base = fullName || userName || email || id
-  return email && base !== email ? `${base} (${email})` : base
-}
-
-async function fetchUsersFromApi(): Promise<Record<string, string>> {
+async function fetchUserName(id: string): Promise<string> {
   try {
-    const response = await api.get('/Users')
-    const payload = response.data as unknown
-    const items = extractItems(payload)
-    const map: Record<string, string> = {}
-    for (const item of items) {
-      const user = item as UserRecord
-      const id = normalizeString(user.id ?? user.Id ?? user.idUsuario ?? user.IdUsuario)
-      if (id) map[id] = userDisplayName(user)
-    }
-    usersByIdCache = map
-    return map
+    const response = await api.get(`/Users/info/${encodeURIComponent(id)}`)
+    const payload = (response.data ?? {}) as UserRecord
+    return userDisplayName(payload, id)
   } catch {
-    usersByIdCache = {}
-    return {}
+    return id
   }
 }
 
-async function loadUsersById(): Promise<Record<string, string>> {
-  if (usersByIdCache) return usersByIdCache
-  if (!loadUsersPromise) {
-    loadUsersPromise = fetchUsersFromApi()
-  }
-  try {
-    return await loadUsersPromise
-  } finally {
-    loadUsersPromise = null
-  }
+function resolveOne(id: string): Promise<string> {
+  const cached = nameCache.get(id)
+  if (cached) return Promise.resolve(cached)
+
+  const pending = inflight.get(id)
+  if (pending) return pending
+
+  const promise = fetchUserName(id)
+    .then((name) => {
+      nameCache.set(id, name)
+      return name
+    })
+    .finally(() => {
+      inflight.delete(id)
+    })
+  inflight.set(id, promise)
+  return promise
 }
 
-/** Resuelve IDs de usuario a nombre legible vía Core API /Users. */
+/** Resuelve IDs de usuario a nombre legible. Devuelve siempre una entrada por id (el id mismo si no se pudo resolver). */
 export async function resolveUserNames(ids: string[]): Promise<Record<string, string>> {
   const uniqueIds = Array.from(new Set(ids.map(normalizeString).filter(Boolean)))
   if (uniqueIds.length === 0) return {}
 
-  const usersById = await loadUsersById()
+  const names = await Promise.all(uniqueIds.map(resolveOne))
   const result: Record<string, string> = {}
-  for (const id of uniqueIds) {
-    result[id] = usersById[id] || id
-  }
+  uniqueIds.forEach((id, index) => {
+    result[id] = names[index] || id
+  })
   return result
 }
