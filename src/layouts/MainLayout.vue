@@ -113,37 +113,35 @@
           <span v-show="!effectiveSidebarCollapsed" class="relative z-10 font-medium">CEDI</span>
         </router-link>
 
-        <!-- Caja Chica -->
-        <router-link
-          v-if="hasModuleAccess('cajachica')"
-          to="/caja-chica"
-          class="group flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 relative overflow-hidden"
-          :class="{
-            'bg-gradient-to-r from-blue-600 to-sky-500 text-white shadow-lg shadow-blue-500/50': $route.path.startsWith('/caja-chica'),
-            'text-slate-600 hover:bg-slate-200/70 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800/50 dark:hover:text-white': !$route.path.startsWith('/caja-chica')
-          }"
-          :title="effectiveSidebarCollapsed ? 'Caja Chica' : ''"
-        >
-          <div class="absolute inset-0 bg-gradient-to-r from-blue-600/20 to-sky-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
-          <DocumentCheckIcon class="h-5 w-5 flex-shrink-0 relative z-10" :class="{ 'scale-110': $route.path.startsWith('/caja-chica') }" />
-          <span v-show="!effectiveSidebarCollapsed" class="relative z-10 font-medium">Caja Chica</span>
-        </router-link>
+          <!-- Caja Chica -->
+          <router-link v-if="hasModuleAccess('cajachica')" to="/caja-chica"
+            class="group flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 relative overflow-hidden"
+            :class="{
+              'bg-gradient-to-r from-blue-600 to-sky-500 text-white shadow-lg shadow-blue-500/50': $route.path.startsWith('/caja-chica'),
+              'text-slate-600 hover:bg-slate-200/70 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800/50 dark:hover:text-white': !$route.path.startsWith('/caja-chica')
+            }" :title="effectiveSidebarCollapsed ? 'Caja Chica' : ''">
+            <div
+              class="absolute inset-0 bg-gradient-to-r from-blue-600/20 to-sky-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+            </div>
+            <DocumentCheckIcon class="h-5 w-5 flex-shrink-0 relative z-10"
+              :class="{ 'scale-110': $route.path.startsWith('/caja-chica') }" />
+            <span v-show="!effectiveSidebarCollapsed" class="relative z-10 font-medium">Caja Chica</span>
+          </router-link>
 
-        <!-- Conciliación -->
-        <router-link
-          v-if="hasModuleAccess('conciliacion')"
-          to="/conciliacion"
-          class="group flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 relative overflow-hidden"
-          :class="{
-            'bg-gradient-to-r from-blue-600 to-sky-500 text-white shadow-lg shadow-blue-500/50': $route.path.startsWith('/conciliacion'),
-            'text-slate-600 hover:bg-slate-200/70 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800/50 dark:hover:text-white': !$route.path.startsWith('/conciliacion')
-          }"
-          :title="effectiveSidebarCollapsed ? 'Conciliación' : ''"
-        >
-          <div class="absolute inset-0 bg-gradient-to-r from-blue-600/20 to-sky-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
-          <ClipboardDocumentCheckIcon class="h-5 w-5 flex-shrink-0 relative z-10" :class="{ 'scale-110': $route.path.startsWith('/conciliacion') }" />
-          <span v-show="!effectiveSidebarCollapsed" class="relative z-10 font-medium">Conciliación</span>
-        </router-link>
+          <!-- Conciliación -->
+          <router-link v-if="hasModuleAccess('conciliacion')" to="/conciliacion"
+            class="group flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 relative overflow-hidden"
+            :class="{
+              'bg-gradient-to-r from-blue-600 to-sky-500 text-white shadow-lg shadow-blue-500/50': $route.path.startsWith('/conciliacion'),
+              'text-slate-600 hover:bg-slate-200/70 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800/50 dark:hover:text-white': !$route.path.startsWith('/conciliacion')
+            }" :title="effectiveSidebarCollapsed ? 'Conciliación' : ''">
+            <div
+              class="absolute inset-0 bg-gradient-to-r from-blue-600/20 to-sky-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+            </div>
+            <ClipboardDocumentCheckIcon class="h-5 w-5 flex-shrink-0 relative z-10"
+              :class="{ 'scale-110': $route.path.startsWith('/conciliacion') }" />
+            <span v-show="!effectiveSidebarCollapsed" class="relative z-10 font-medium">Conciliación</span>
+          </router-link>
 
         <!-- Demanda OTB -->
         <router-link
@@ -177,37 +175,35 @@
           <span v-show="!effectiveSidebarCollapsed" class="relative z-10 font-medium">Gestión ODC SAP</span>
         </router-link>
 
-        <!-- Importador PYG (main) -->
-        <router-link
-          v-if="hasModuleAccess('pyg')"
-          to="/pyg"
-          class="group flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 relative overflow-hidden"
-          :class="{
-            'bg-gradient-to-r from-blue-600 to-sky-500 text-white shadow-lg shadow-blue-500/50': $route.path.startsWith('/pyg'),
-            'text-slate-600 hover:bg-slate-200/70 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800/50 dark:hover:text-white': !$route.path.startsWith('/pyg')
-          }"
-          :title="effectiveSidebarCollapsed ? 'Importador PYG' : ''"
-        >
-          <div class="absolute inset-0 bg-gradient-to-r from-blue-600/20 to-sky-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
-          <DocumentArrowUpIcon class="h-5 w-5 flex-shrink-0 relative z-10" :class="{ 'scale-110': $route.path.startsWith('/pyg') }" />
-          <span v-show="!effectiveSidebarCollapsed" class="relative z-10 font-medium">Importador PYG</span>
-        </router-link>
+          <!-- Importador PYG (main) -->
+          <router-link v-if="hasModuleAccess('pyg')" to="/pyg"
+            class="group flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 relative overflow-hidden"
+            :class="{
+              'bg-gradient-to-r from-blue-600 to-sky-500 text-white shadow-lg shadow-blue-500/50': $route.path.startsWith('/pyg'),
+              'text-slate-600 hover:bg-slate-200/70 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800/50 dark:hover:text-white': !$route.path.startsWith('/pyg')
+            }" :title="effectiveSidebarCollapsed ? 'Importador PYG' : ''">
+            <div
+              class="absolute inset-0 bg-gradient-to-r from-blue-600/20 to-sky-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+            </div>
+            <DocumentArrowUpIcon class="h-5 w-5 flex-shrink-0 relative z-10"
+              :class="{ 'scale-110': $route.path.startsWith('/pyg') }" />
+            <span v-show="!effectiveSidebarCollapsed" class="relative z-10 font-medium">Importador PYG</span>
+          </router-link>
 
-        <!-- Mis Inventarios (usuarios con acceso tipo Tienda, o pickers invitados a una sesión puntual) -->
-        <router-link
-          v-if="(hasModuleAccess('inventario') && isTiendaAccess) || (!hasModuleAccess('inventario') && hasPickerSessions)"
-          to="/inventario/mis-inventarios"
-          class="group flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 relative overflow-hidden"
-          :class="{
-            'bg-gradient-to-r from-blue-600 to-sky-500 text-white shadow-lg shadow-blue-500/50': $route.path.startsWith('/inventario/mis-inventarios'),
-            'text-slate-600 hover:bg-slate-200/70 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800/50 dark:hover:text-white': !$route.path.startsWith('/inventario/mis-inventarios')
-          }"
-          :title="effectiveSidebarCollapsed ? 'Mis Inventarios' : ''"
-        >
-          <div class="absolute inset-0 bg-gradient-to-r from-blue-600/20 to-sky-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
-          <ClipboardDocumentListIcon class="h-5 w-5 flex-shrink-0 relative z-10" :class="{ 'scale-110': $route.path.startsWith('/inventario/mis-inventarios') }" />
-          <span v-show="!effectiveSidebarCollapsed" class="relative z-10 font-medium">Mis Inventarios</span>
-        </router-link>
+          <!-- Mis Inventarios (usuarios con acceso tipo Tienda) -->
+          <router-link v-if="hasModuleAccess('inventario') && isTiendaAccess" to="/inventario/mis-inventarios"
+            class="group flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 relative overflow-hidden"
+            :class="{
+              'bg-gradient-to-r from-blue-600 to-sky-500 text-white shadow-lg shadow-blue-500/50': $route.path.startsWith('/inventario/mis-inventarios'),
+              'text-slate-600 hover:bg-slate-200/70 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800/50 dark:hover:text-white': !$route.path.startsWith('/inventario/mis-inventarios')
+            }" :title="effectiveSidebarCollapsed ? 'Mis Inventarios' : ''">
+            <div
+              class="absolute inset-0 bg-gradient-to-r from-blue-600/20 to-sky-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+            </div>
+            <ClipboardDocumentListIcon class="h-5 w-5 flex-shrink-0 relative z-10"
+              :class="{ 'scale-110': $route.path.startsWith('/inventario/mis-inventarios') }" />
+            <span v-show="!effectiveSidebarCollapsed" class="relative z-10 font-medium">Mis Inventarios</span>
+          </router-link>
 
           <!-- Inventario (Supervisor / Administrador: todas las pantallas) -->
           <router-link v-if="hasModuleAccess('inventario') && !isTiendaAccess" to="/inventario"
@@ -327,6 +323,21 @@
             <ForkliftIcon class="h-5 w-5 flex-shrink-0 relative z-10"
               :class="{ 'scale-110': $route.path.startsWith('/recepcion-mercaderia') }" />
             <span v-show="!effectiveSidebarCollapsed" class="relative z-10 font-medium">Recepción Mercadería</span>
+          </router-link>
+
+          <!-- Integraciones (soporte SAP / HITELL) -->
+          <router-link v-if="hasModuleAccess('integraciones')" to="/integraciones"
+            class="group flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 relative overflow-hidden"
+            :class="{
+              'bg-gradient-to-r from-blue-600 to-sky-500 text-white shadow-lg shadow-blue-500/50': $route.path.startsWith('/integraciones'),
+              'text-slate-600 hover:bg-slate-200/70 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800/50 dark:hover:text-white': !$route.path.startsWith('/integraciones')
+            }" :title="effectiveSidebarCollapsed ? 'Integraciones' : ''">
+            <div
+              class="absolute inset-0 bg-gradient-to-r from-blue-600/20 to-sky-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+            </div>
+            <ArrowPathRoundedSquareIcon class="h-5 w-5 flex-shrink-0 relative z-10"
+              :class="{ 'scale-110': $route.path.startsWith('/integraciones') }" />
+            <span v-show="!effectiveSidebarCollapsed" class="relative z-10 font-medium">Integraciones</span>
           </router-link>
 
           <!-- Validación de Artículos -->
@@ -493,6 +504,7 @@ import {
   ShoppingCartIcon,
   ClipboardDocumentListIcon,
   BanknotesIcon,
+  ArrowPathRoundedSquareIcon,
   ChartBarIcon
 } from '@heroicons/vue/24/outline'
 import { Pin, PinOff, TruckIcon, ForkliftIcon } from 'lucide-vue-next'

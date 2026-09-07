@@ -22,8 +22,9 @@ import transaccionesRoutes from '../modules/transacciones/router'
 import reposicionesRoutes from '../modules/reposiciones/router'
 import recepcionMercaderiaRoutes from '../modules/recepcion-mercaderia/router'
 import ruletaRoutes from '../modules/ruleta/router'
-import cediRoutes from '../modules/cedi/router'
 import transferenciasDirectasRoutes from '../modules/transferencias-directas/router'
+import integracionesRoutes from '../modules/integraciones/router'
+import cediRoutes from '../modules/cedi/router'
 import demandaOtbRoutes from '../modules/demanda-otb/router'
 
 console.log('🔍 DEBUG usuariosRoutes:', usuariosRoutes)
@@ -83,6 +84,7 @@ const router = createRouter({
         ...reposicionesRoutes,
         ...recepcionMercaderiaRoutes,
         ...ruletaRoutes,
+        ...integracionesRoutes,
         ...cediRoutes,
         ...demandaOtbRoutes,
         {
