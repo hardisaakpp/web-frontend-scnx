@@ -5,6 +5,7 @@ cada integración y reintegre a HITELL los documentos rechazados, sin entrar a l
 
 Ruta: `/integraciones`. Código: `src/modules/integraciones/`. Menú: entrada "Integraciones" en
 `src/layouts/MainLayout.vue`, visible para quien tenga cualquier permiso `integraciones.*`.
+Manual para el usuario final: [MANUAL_USUARIO_MODULO_INTEGRACIONES.md](MANUAL_USUARIO_MODULO_INTEGRACIONES.md).
 
 ## Pestañas
 
