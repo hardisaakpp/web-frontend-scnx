@@ -292,6 +292,21 @@
             <span v-show="!effectiveSidebarCollapsed" class="relative z-10 font-medium">Recepción Mercadería</span>
           </router-link>
 
+          <!-- Integraciones (soporte SAP / HITELL) -->
+          <router-link v-if="hasModuleAccess('integraciones')" to="/integraciones"
+            class="group flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 relative overflow-hidden"
+            :class="{
+              'bg-gradient-to-r from-blue-600 to-sky-500 text-white shadow-lg shadow-blue-500/50': $route.path.startsWith('/integraciones'),
+              'text-slate-600 hover:bg-slate-200/70 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800/50 dark:hover:text-white': !$route.path.startsWith('/integraciones')
+            }" :title="effectiveSidebarCollapsed ? 'Integraciones' : ''">
+            <div
+              class="absolute inset-0 bg-gradient-to-r from-blue-600/20 to-sky-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+            </div>
+            <ArrowPathRoundedSquareIcon class="h-5 w-5 flex-shrink-0 relative z-10"
+              :class="{ 'scale-110': $route.path.startsWith('/integraciones') }" />
+            <span v-show="!effectiveSidebarCollapsed" class="relative z-10 font-medium">Integraciones</span>
+          </router-link>
+
           <!-- Validación de Artículos -->
           <router-link v-if="hasModuleAccess('articuloscaner')" to="/articulo-scaner"
             class="group flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 relative overflow-hidden"
@@ -444,7 +459,8 @@ import {
   SparklesIcon,
   ShoppingCartIcon,
   ClipboardDocumentListIcon,
-  BanknotesIcon
+  BanknotesIcon,
+  ArrowPathRoundedSquareIcon
 } from '@heroicons/vue/24/outline'
 import { Pin, PinOff, TruckIcon, ForkliftIcon } from 'lucide-vue-next'
 import { useAuthStore } from '../stores/auth'
