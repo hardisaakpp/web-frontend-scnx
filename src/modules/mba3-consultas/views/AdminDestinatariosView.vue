@@ -545,11 +545,12 @@ const personasAgrupadas = computed<PersonaAgrupada[]>(() => {
   return Array.from(map.values())
 })
 
-// Personas pendientes: tarjeta creada al elegir/escribir a alguien en el buscador,
-// antes de que tenga ningún correo asignado (avatar gris = sin correo aún). No
-// existen en el backend todavía — se persisten recién al arrastrar/tocar su primer
-// correo (agregarCorreoAPersona), momento en que recargarPersonasCorreo() las quita
-// de aquí porque ya aparecen en personasAgrupadas.
+// Personas pendientes: tarjeta sin ningún correo asignado (avatar gris = sin correo
+// aún), ya sea porque se acaba de crear desde el buscador o porque se le quitó su
+// último correo (ver quitarCorreoDePersona). No existen en el backend todavía (o ya
+// no tienen ningún link ahí) — se persisten recién al arrastrar/tocar un correo
+// (agregarCorreoAPersona), momento en que recargarPersonasCorreo() las quita de aquí
+// porque ya aparecen en personasAgrupadas.
 const personasPendientes = ref<PersonaAgrupada[]>([])
 
 // Orden estable de aparición de las tarjetas: independiente del orden que devuelva
@@ -815,6 +816,14 @@ async function quitarCorreoDePersona(correo: PersonaCorreoRow) {
   try {
     await notificacionPersonaCorreoService.eliminarLink(correo.id)
     personasCorreo.value = personasCorreo.value.filter((c) => c.id !== correo.id)
+    // Si era el último correo de la persona, su tarjeta desaparecería del todo (ya no
+    // hay fila suya en personasCorreo -> deja de existir en personasAgrupadas). Se
+    // conserva como tarjeta "pendiente" (vacía, en gris), igual que al crear una nueva
+    // desde el buscador, en vez de esfumarse.
+    const sigueTeniendoCorreo = personasCorreo.value.some((c) => c.email === correo.email)
+    if (!sigueTeniendoCorreo) {
+      agregarPersonaPendiente(correo.nombre, correo.email)
+    }
   } catch (err: any) {
     toast.error('No se pudo quitar el correo', extraerMensajeError(err, 'Error desconocido'))
   } finally {
