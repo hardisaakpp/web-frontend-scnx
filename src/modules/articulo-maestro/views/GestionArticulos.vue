@@ -746,6 +746,42 @@ watch(
     }
 )
 
+// H12: notifica el resultado de la importación una sola vez por trabajo.
+// Se observa `importStore.errores` (no `trabajo.estado`) porque el store
+// puebla `errores` en un segundo await DESPUÉS de que `trabajo` ya reporta
+// el estado terminal (ver `actualizar()`): esperar a que `errores` cambie
+// evita decidir Warning/Error antes de saber si las filas observadas son
+// solo restricciones de SAP.
+const jobNotificado = ref<number | null>(null)
+watch(
+    () => importStore.errores,
+    () => {
+        if (!importStore.isTerminal || importStore.jobId === null) return
+        if (jobNotificado.value === importStore.jobId) return
+        jobNotificado.value = importStore.jobId
+
+        const estado = importStore.trabajo?.estado
+        const correctas = importStore.trabajo?.filasCorrectas ?? 0
+        if (estado === 'COMPLETADO') {
+            toast.success('Importación completada', `${correctas} fila(s) aplicadas correctamente.`)
+        } else if (importStore.soloBloqueosEstructurales) {
+            // Ninguna fila observada es un error real -- todas son columnas
+            // estructurales omitidas porque el artículo ya tiene
+            // movimientos/stock en SAP (H12): advertencia, no error
+            // destructivo.
+            toast.warning(
+                'Importación completada con restricciones de SAP',
+                `${correctas} fila(s) aplicadas · ${importStore.erroresEstructurales.length} omitida(s) por movimientos en SAP (ver detalle).`
+            )
+        } else {
+            toast.error(
+                'Importación completada con errores',
+                `${correctas} fila(s) aplicadas · ${importStore.erroresNoEstructurales.length} fila(s) con errores (ver detalle).`
+            )
+        }
+    }
+)
+
 // ─── Manejo normalizado de errores HTTP ───
 // El backend ya traduce los 422 de Pydantic a mensajes de negocio en español
 // (ver app/core/error_translator.py): cada item de `detail` trae un `msg` ya

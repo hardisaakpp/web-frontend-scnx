@@ -100,8 +100,20 @@
                         </div>
                         <div class="form-field" :class="{ required: form.tieneCodigoProveedor }">
                             <label for="formBarCode">Código de Barras</label>
-                            <input id="formBarCode" v-model.trim="form.barCode" type="text" maxlength="15" :required="form.tieneCodigoProveedor" :placeholder="form.tieneCodigoProveedor ? 'EAN / UPC' : '[Asignación Automática desde Bolsa]'" :disabled="isEdit || !form.tieneCodigoProveedor" :title="isEdit ? LOCK_REASON.barCodeSellado : ''" />
+                            <input
+                                id="formBarCode"
+                                :value="form.barCode"
+                                @input="onBarCodeInput($event)"
+                                type="text"
+                                inputmode="numeric"
+                                maxlength="15"
+                                :required="form.tieneCodigoProveedor"
+                                :placeholder="form.tieneCodigoProveedor ? 'Ingrese EAN/UPC (8 a 15 dígitos)' : '[Asignación Automática desde Bolsa]'"
+                                :disabled="isEdit || !form.tieneCodigoProveedor"
+                                :title="isEdit ? LOCK_REASON.barCodeSellado : ''"
+                            />
                             <span v-if="isEdit" class="help">{{ LOCK_REASON.barCodeSellado }}</span>
+                            <span v-else-if="form.tieneCodigoProveedor" class="help">Solo dígitos, estándar EAN/UPC (8 a 15 caracteres).</span>
                         </div>
                         <div class="form-field">
                             <label for="formCodigoAlterno">Código Alterno</label>
@@ -826,6 +838,18 @@ const activeTab = ref('general')
 const showValidationErrors = ref(false)
 const showValidationModal = ref(false)
 
+// H08: estándar GS1 (EAN-8/UPC-A/EAN-13/EAN-14) -- solo dígitos, 8 a 15.
+const BAR_CODE_REGEX = /^\d{8,15}$/
+
+// Cubre tanto "vacío" (obligatorio si tieneCodigoProveedor) como "formato
+// inválido" (letras, símbolos, longitud fuera de rango) en un solo lugar,
+// para que tabsWithErrors/validationErrorsList/getFirstErrorTab no puedan
+// desincronizarse entre sí evaluando la regla de forma distinta cada uno.
+function barCodeEsInvalido(): boolean {
+    if (!form.value.tieneCodigoProveedor) return false
+    return !BAR_CODE_REGEX.test((form.value.barCode || '').trim())
+}
+
 // uIxxMarca/itemType/itemsGroupCode son estructurales (ver
 // STRUCTURAL_LOCKED_KEYS/CAMPOS_ESTRUCTURALES_BLOQUEADOS): en edición ya
 // vienen cargados desde el backend y están deshabilitados en pantalla, así
@@ -835,7 +859,7 @@ const showValidationModal = ref(false)
 const tabsWithErrors = computed(() => {
     const errorTabs = new Set<string>()
     if (!form.value.itemName) errorTabs.add('general')
-    if (form.value.tieneCodigoProveedor && !form.value.barCode) errorTabs.add('general')
+    if (barCodeEsInvalido()) errorTabs.add('general')
     if (!isEdit.value) {
         if (!form.value.uIxxMarca) errorTabs.add('cat')
         if (!form.value.itemType) errorTabs.add('sap')
@@ -847,8 +871,12 @@ const tabsWithErrors = computed(() => {
 const validationErrorsList = computed(() => {
     const errors: string[] = []
     if (!form.value.itemName) errors.push('Descripción Factura (Tab General)')
-    if (form.value.tieneCodigoProveedor && !form.value.barCode) {
-        errors.push('Código de Barras (Tab General)')
+    if (barCodeEsInvalido()) {
+        errors.push(
+            form.value.barCode
+                ? 'Código de Barras: debe contener entre 8 y 15 dígitos numéricos (Tab General)'
+                : 'Código de Barras (Tab General)'
+        )
     }
     if (!isEdit.value) {
         if (!form.value.uIxxMarca) errors.push('Negocio (Tab Categorización)')
@@ -860,7 +888,7 @@ const validationErrorsList = computed(() => {
 
 function getFirstErrorTab() {
     if (!form.value.itemName) return 'general'
-    if (form.value.tieneCodigoProveedor && !form.value.barCode) return 'general'
+    if (barCodeEsInvalido()) return 'general'
     if (!isEdit.value) {
         if (!form.value.uIxxMarca) return 'cat'
         if (!form.value.itemType) return 'sap'
@@ -1046,6 +1074,18 @@ function onPvpBlur(): void {
     form.value.price = Math.round(form.value.price * 100) / 100
 }
 
+// H08: código de barras GS1 (EAN-8/UPC-A/EAN-13/EAN-14) -- solo dígitos,
+// filtrados en tiempo real igual que PVP/Costo de Arranque arriba, en vez
+// de dejar que el usuario tipee letras y enterarse recién al guardar.
+function onBarCodeInput(event: Event): void {
+    const input = event.target as HTMLInputElement
+    const soloDigitos = input.value.replace(/\D/g, '').slice(0, 15)
+    if (soloDigitos !== input.value) {
+        input.value = soloDigitos
+    }
+    form.value.barCode = soloDigitos
+}
+
 // ─── Formulario ──────────────────────────────────────────────────────────────
 const form = ref({
     itemCode: '',
@@ -1156,6 +1196,17 @@ watch([
     }
     ultimoItemNameSugerido.value = sugerido
 }, { deep: true })
+
+// H08: al desactivar "Tiene código de proveedor", cualquier valor tipeado
+// en barCode queda huérfano (el backend lo neutraliza igual al guardar,
+// ver ArticuloCreate.validate_supplier_barcode), pero dejarlo visible en
+// pantalla es confuso -- se limpia de inmediato para reflejar que ese
+// campo ya no aplica y que el código real lo asignará la bolsa corporativa.
+watch(() => form.value.tieneCodigoProveedor, (tieneCodigo) => {
+    if (!tieneCodigo) {
+        form.value.barCode = ''
+    }
+})
 
 const loadingData = ref(false)
 const loadError = ref('')
@@ -1430,6 +1481,17 @@ function mostrarErroresValidacion(firstErrorTab: string): void {
         })
     }
 
+    // H08: mismo criterio que el toast de Negocio -- un valor tipeado con
+    // formato inválido es fácil de pasar por alto solo con el campo
+    // resaltado en rojo, así que además se notifica explícitamente.
+    if (barCodeEsInvalido() && form.value.barCode) {
+        toast.addToast({
+            type: 'error',
+            title: 'Validación',
+            message: 'El código de barras debe contener entre 8 y 15 dígitos numéricos.'
+        })
+    }
+
     // Intentar hacer focus al primer campo inválido después de cambiar de pestaña
     setTimeout(() => {
         const firstInvalid = document.querySelector('input:invalid, select:invalid, .form-field.required input') as HTMLElement
@@ -1508,7 +1570,22 @@ async function handleSubmit() {
             const itemCode = route.params.itemCode as string
             const payload = buildPatchPayload()
             const article = await articuloService.updateArticulo(itemCode, payload)
+
+            // Bug H03: sincronizar form.value con el estado confirmado por el
+            // backend (isStructuralLocked recalculado, imágenes definitivas,
+            // etc. -- mismo helper que usa cargarDatosEdicion) ANTES de
+            // recongelar la línea base de dirty checking. Si originalSnapshot
+            // no se renueva aquí, queda anclado a la apertura inicial del
+            // formulario y una segunda edición consecutiva (p. ej. revertir
+            // un precio) calcula un delta vacío o reenvía campos ya guardados.
+            aplicarDatosArticuloAlForm(article)
             form.value.imagenes = article.imagenes ?? []
+
+            // Renovación atómica de la línea base de comparación: cualquier
+            // edición posterior en la misma sesión (sin F5) vuelve a
+            // compararse contra los datos recién confirmados.
+            originalSnapshot.value = JSON.parse(JSON.stringify(form.value))
+
             submitSuccess.value = `Artículo ${itemCode} actualizado. Sincronización con SAP iniciada en segundo plano.`
             ultimoItemCodeSap.value = itemCode
         } else {
