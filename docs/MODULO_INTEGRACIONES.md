@@ -8,11 +8,19 @@ Ruta: `/integraciones`. Código: `src/modules/integraciones/`. Menú: entrada "I
 
 ## Pestañas
 
+Las tres pestañas siguen el estándar de listados del proyecto: **paginación en servidor** (20 filas
+por página, solo viaja la página pedida) y **filtro de fechas con los últimos 15 días por defecto**
+(`rangoUltimosDias` en `utils/formatters.ts`), para que la primera carga no traiga tablas completas.
+
 | Pestaña | Ruta | Fuente en el middleware | Qué muestra |
 |---|---|---|---|
-| HITELL (WEBPOS) | `/integraciones/hitell` | `GET /api/v1/webpos/sync-status` | Estado por documento SAP (transferencia `ST` o entrada de mercadería `GR`): Integrado, No corresponde o Rechazado, con el motivo interpretado (p. ej. producto no creado en HITELL) y los ítems afectados. Botón **Reintegrar** para los rechazados. |
-| Cola SAP | `/integraciones/cola-sap` | `GET /api/v1/jobs`, `GET /api/v1/jobs/{id}` | Peticiones a SAP que el middleware encoló porque SAP no respondió en 10 s o estaba saturado: estado (Encolado, Procesando, Completado, Error), intentos, payload enviado y resultado. |
-| Bitácora de peticiones | `/integraciones/bitacora` | `GET /api/v1/api-logs`, `GET /api/v1/api-logs/{id}` | Toda petición que pasó por el middleware (excepto health, swagger y estas mismas consultas): endpoint, usuario, código HTTP, duración, request y response truncados a 2000 caracteres. La hora es la de Ecuador (UTC-5). |
+| HITELL (WEBPOS) | `/integraciones/hitell` | `GET /api/v1/webpos/sync-status` | Estado por documento SAP (transferencia `ST` o entrada de mercadería `GR`): Integrado, No corresponde o Rechazado, con el motivo interpretado (p. ej. producto no creado en HITELL) y los ítems afectados. Se busca por **número de documento SAP (DocNum)**; el DocEntry se muestra como dato secundario. Botón **Reintegrar** para los rechazados. |
+| Cola SAP | `/integraciones/cola-sap` | `GET /api/v1/jobs`, `GET /api/v1/jobs/{id}` | Peticiones a SAP que el middleware encoló porque SAP no respondió en 10 s o estaba saturado. El job queda registrado de forma permanente y su fila cambia de estado (Encolado, Procesando, Completado, Error) con cada reintento; se ve también el payload enviado y el resultado. |
+| Bitácora de peticiones | `/integraciones/bitacora` | `GET /api/v1/api-logs`, `GET /api/v1/api-logs/{id}` | Toda petición que pasó por el middleware desde cualquier módulo (excepto health, swagger y estas mismas consultas), haya ido a la cola o no: endpoint, usuario, código HTTP, duración, request y response truncados a 2000 caracteres. La hora es la de Ecuador (UTC-5). |
+
+Diferencia entre Cola SAP y Bitácora: la bitácora es el registro completo de llamadas; la cola solo
+tiene las que no pudieron completarse de forma síncrona. Una petición encolada aparece en ambas: en
+la bitácora con respuesta 202 y el `jobId`, y en la cola con su evolución.
 
 ### Reintegrar a HITELL
 
@@ -53,8 +61,12 @@ el JWT: el control de acceso es el de permisos del front descrito arriba.
 Antes de desplegar en un ambiente:
 
 1. Desplegar api-middleware-sap con la rama `feature/integraciones-logs` (o posterior): agrega
-   `GET /jobs`, `GET /api-logs`, `GET /api-logs/{id}` y el filtro `docEntry` de `sync-status`.
-2. Correr `sql/create_api_log_indexes.sql` de ese repo en `sc_middleware` (índices para paginar
+   `GET /jobs`, `GET /api-logs`, `GET /api-logs/{id}`, y en `GET /webpos/sync-status` paginación,
+   rango de fechas y búsqueda por `docNum` (nueva columna `doc_num`, que el middleware graba al
+   notificar a HITELL).
+2. En `sc_middleware` correr, de ese repo: `sql/create_pos_sync_status.sql` (en producción la tabla
+   **no existía** al 2026-09-07, por eso el estado HITELL daba 500), `sql/alter_pos_sync_status_add_doc_num.sql`
+   si la tabla ya existía sin `doc_num`, y `sql/create_api_log_indexes.sql` (índices para paginar
    `api_log` y `job_queue`; la tabla `api_log` de producción es grande).
 3. Verificar que `UPSTREAM_SLAYER` del front apunte al middleware vivo (ya hubo un 502 en
    producción por una IP vieja horneada en esa variable).

@@ -11,15 +11,12 @@ import type {
   BitacoraFilters,
   HitellRetryResponse,
   HitellSyncFilters,
+  HitellSyncPage,
   HitellSyncStatus,
   PagedResponse,
   SapJob,
   SapJobFilters,
 } from '../types'
-
-interface HitellSyncListResponse {
-  entries: HitellSyncStatus[]
-}
 
 /** Quita los filtros vacíos para no mandar `status=` y que el middleware los tome como inválidos. */
 function limpiarParams(params: Record<string, unknown>): Record<string, string | number | boolean> {
@@ -45,17 +42,20 @@ function finDelDia(fecha: string): string | undefined {
 export const integracionesApi = {
   // ─── HITELL ────────────────────────────────────────────────────────────────
 
-  async listarHitell(filters: HitellSyncFilters): Promise<HitellSyncStatus[]> {
-    const { data } = await slayerHttp.get<HitellSyncListResponse>('v1/webpos/sync-status', {
+  async listarHitell(filters: HitellSyncFilters): Promise<HitellSyncPage> {
+    const { data } = await slayerHttp.get<HitellSyncPage>('v1/webpos/sync-status', {
       params: limpiarParams({
         status: filters.status,
         docType: filters.docType,
         rejectionType: filters.rejectionType,
-        docEntry: filters.docEntry,
-        top: filters.top,
+        docNum: filters.docNum,
+        from: inicioDelDia(filters.desde),
+        to: finDelDia(filters.hasta),
+        page: filters.page,
+        pageSize: filters.pageSize,
       }),
     })
-    return data?.entries ?? []
+    return data
   },
 
   /**
