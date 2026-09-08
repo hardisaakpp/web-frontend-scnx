@@ -1,7 +1,6 @@
 <template>
   <TransitionRoot :show="isOpen" as="template">
-    <!-- @close vacío a propósito: clic fuera o Escape no cierran. Solo Cancelar / X, que piden confirmación. -->
-    <Dialog as="div" class="relative z-50" @close="() => {}">
+    <Dialog as="div" class="relative z-50" @close="ignorarCierreExterno">
       <TransitionChild enter="ease-out duration-200" enter-from="opacity-0" enter-to="opacity-100" leave="ease-in duration-150" leave-from="opacity-100" leave-to="opacity-0">
         <div class="fixed inset-0 bg-black bg-opacity-40" />
       </TransitionChild>
@@ -230,6 +229,12 @@ async function confirmar() {
   } finally {
     confirmando.value = false
   }
+}
+
+/** Clic fuera o Escape no cierran el modal: un cierre accidental dejaba la toma en Reconteo sin reparto.
+ *  Solo Cancelar y la X cierran, y piden confirmación. */
+function ignorarCierreExterno() {
+  // Intencionalmente vacío.
 }
 
 /** Cancelar y la X no cierran directo: primero se confirma, para que el supervisor sepa qué queda guardado. */
