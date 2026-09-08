@@ -671,9 +671,9 @@ async function cerrarTomaFisica(sessionId: string) {
   }
 }
 
-function onRepartoConfirmado() {
-  exito.value = 'Reparto de reconteo guardado.'
-  setTimeout(() => { exito.value = null }, 4000)
+function onRepartoConfirmado(resumen: string) {
+  exito.value = resumen
+  setTimeout(() => { exito.value = null }, 8000)
 }
 
 async function eliminarTomaFisica(sessionId: string) {

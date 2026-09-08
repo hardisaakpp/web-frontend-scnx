@@ -204,8 +204,13 @@ export const inventarioSesionesService = {
     return response.data
   },
 
-  async getRecountAssignmentProposal(sessionId: string): Promise<RecountAssignmentProposalDto> {
-    const response = await invPlanesApi.get<RecountAssignmentProposalDto>(`/api/inventory-sessions/${sessionId}/recount-assignment-proposal`)
+  /**
+   * Propuesta de reparto. Sin `participants` devuelve candidatos y una sugerencia por zona; con
+   * `participants` (usuarios elegidos por el supervisor) la sugerencia se balancea solo entre ellos.
+   */
+  async getRecountAssignmentProposal(sessionId: string, participants?: string[]): Promise<RecountAssignmentProposalDto> {
+    const params = participants && participants.length > 0 ? { participants: participants.join(',') } : undefined
+    const response = await invPlanesApi.get<RecountAssignmentProposalDto>(`/api/inventory-sessions/${sessionId}/recount-assignment-proposal`, { params })
     return response.data
   },
 
