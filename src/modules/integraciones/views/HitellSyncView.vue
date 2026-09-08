@@ -475,8 +475,7 @@ watch(
   },
 )
 
-onMounted(() => {
-  void cargar()
-  void cargarAlmacenes()
+onMounted(async () => {
+  await Promise.all([cargar(), cargarAlmacenes()])
 })
 </script>
