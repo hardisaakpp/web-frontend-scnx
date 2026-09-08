@@ -338,6 +338,8 @@ export interface AddInventoryCountRequest {
   quantity: number
   source: 'Manual' | 'Scan'
   scanCode?: string | null
+  /** Clave de idempotencia (UUID por registro de la cola de picking). Si se reintenta con la misma, el servidor devuelve el conteo ya guardado en vez de duplicarlo. */
+  clientId?: string
 }
 
 export interface InventoryCountResultDto {

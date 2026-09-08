@@ -401,9 +401,25 @@ onBeforeRouteLeave(() => {
 const validacionPendiente = new Set<string>()
 let validando = false
 
-let idCounter = 0
-function genId() {
-  return `${Date.now()}-${++idCounter}`
+/**
+ * UUID por registro de la cola. Viaja al backend como `clientId` (clave de idempotencia): si el
+ * envío se corta por timeout y se reintenta, el servidor reconoce el mismo id y no duplica el conteo.
+ * `crypto.randomUUID` solo existe en contextos seguros (https/localhost); en http se arma un v4 a mano.
+ */
+function genId(): string {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID()
+  }
+  const bytes = new Uint8Array(16)
+  if (typeof crypto !== 'undefined' && typeof crypto.getRandomValues === 'function') {
+    crypto.getRandomValues(bytes)
+  } else {
+    for (let i = 0; i < 16; i++) bytes[i] = Math.floor(Math.random() * 256)
+  }
+  bytes[6] = (bytes[6] & 0x0f) | 0x40
+  bytes[8] = (bytes[8] & 0x3f) | 0x80
+  const hex = Array.from(bytes, b => b.toString(16).padStart(2, '0')).join('')
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`
 }
 
 function getCachedItem(itemCode: string): CachedItemInfo | null {
@@ -554,7 +570,8 @@ async function procesarCola() {
         itemCode: item.itemCode,
         quantity: item.quantity,
         source: item.source,
-        scanCode: item.scanCode
+        scanCode: item.scanCode,
+        clientId: item.id
       })
       if (item.source === 'Scan') {
         const resolvedCode = result.itemCode
