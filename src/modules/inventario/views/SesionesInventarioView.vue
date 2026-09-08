@@ -562,7 +562,7 @@ watch([filtroEstado, fechaDesde, fechaHasta, busqueda, sortKey, sortDir], () => 
 let recargaPendiente: ReturnType<typeof setTimeout> | null = null
 watch([fechaDesde, fechaHasta], () => {
   if (recargaPendiente) clearTimeout(recargaPendiente)
-  recargaPendiente = setTimeout(() => { void cargar() }, 400)
+  recargaPendiente = setTimeout(() => { cargar() }, 400)
 })
 
 // Conteo aplica solo filtro de fecha (no el de estado) para que los chips siempre sean precisos
