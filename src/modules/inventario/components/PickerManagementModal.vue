@@ -40,7 +40,7 @@
                       v-model="nuevoUserId"
                       type="text"
                       class="input flex-1"
-                      placeholder="Ej: jperez o jperez@empresa.com"
+                      placeholder="Usuario de red (AD), ej: jperez"
                       @keydown.enter.prevent="agregarPicker"
                       :disabled="agregando"
                     />
@@ -109,6 +109,7 @@ import { ref, watch } from 'vue'
 import { Dialog, DialogPanel, DialogTitle, TransitionRoot, TransitionChild } from '@headlessui/vue'
 import { XMarkIcon } from '@heroicons/vue/24/outline'
 import { inventarioSesionesService } from '../services/inventarioSesionesApi'
+import { findCoreUser } from '@/utils/resolveUserNames'
 import type { InventorySessionListItemDto, InventorySessionPickerDto } from '../types'
 
 const props = defineProps<{
@@ -145,11 +146,18 @@ async function cargarPickers() {
 }
 
 async function agregarPicker() {
-  const userId = nuevoUserId.value.trim()
-  if (!userId || !props.session) return
+  const texto = nuevoUserId.value.trim()
+  if (!texto || !props.session) return
   agregando.value = true
   error.value = null
   try {
+    // Solo usuarios reales del Core / Directorio Activo; se guarda el login tal como está registrado.
+    const user = await findCoreUser(texto)
+    if (!user) {
+      error.value = `El usuario "${texto}" no existe en SCNexus / Directorio Activo. Verifica el nombre de usuario de red.`
+      return
+    }
+    const userId = user.userName
     const picker = await inventarioSesionesService.addPicker(props.session.sessionId, userId)
     pickers.value.push(picker)
     nuevoUserId.value = ''

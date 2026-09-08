@@ -92,12 +92,15 @@
                       type="text"
                       class="text-input flex-1"
                       placeholder="Agregar otro usuario (usuario de red / AD)"
+                      :disabled="buscandoUsuario"
                       @keydown.enter.prevent="agregarUsuario"
                     >
-                    <button type="button" class="btn-secondary" :disabled="!nuevoUsuario.trim()" @click="agregarUsuario">Agregar</button>
+                    <button type="button" class="btn-secondary" :disabled="!nuevoUsuario.trim() || buscandoUsuario" @click="agregarUsuario">
+                      {{ buscandoUsuario ? 'Verificando...' : 'Agregar' }}
+                    </button>
                   </div>
                   <p class="text-xs text-gray-500 dark:text-gray-400">
-                    Un usuario agregado aquí queda también como usuario de picking de la toma para que pueda entrar a recontar.
+                    Solo se aceptan usuarios registrados en SCNexus (Directorio Activo). Un usuario agregado aquí queda también como usuario de picking de la toma para que pueda entrar a recontar.
                     Quitar la marca a alguien solo lo deja fuera del reparto; conserva su acceso a la toma.
                   </p>
 
@@ -215,7 +218,7 @@ import { ref, computed, reactive, watch } from 'vue'
 import { Dialog, DialogPanel, DialogTitle, TransitionRoot, TransitionChild } from '@headlessui/vue'
 import { XMarkIcon } from '@heroicons/vue/24/outline'
 import { inventarioSesionesService } from '../services/inventarioSesionesApi'
-import { resolveUserNames } from '@/utils/resolveUserNames'
+import { resolveUserNames, findCoreUser } from '@/utils/resolveUserNames'
 import type { RecountAssignmentProposalDto } from '../services/inventarioSesionesApi'
 
 const props = defineProps<{
@@ -248,6 +251,7 @@ const userNames = ref<Record<string, string>>({})
 const participantes = ref<Participante[]>([])
 const pickersActuales = ref<string[]>([])
 const nuevoUsuario = ref('')
+const buscandoUsuario = ref(false)
 
 // itemCode -> assigned userId, editable por el supervisor antes de confirmar.
 const assignments = reactive<Record<string, string>>({})
@@ -321,23 +325,37 @@ watch(() => props.isOpen, async (open) => {
   }
 })
 
-function agregarUsuario() {
-  const userId = nuevoUsuario.value.trim()
-  if (!userId) return
-  const existente = participantes.value.find(p => mismoUsuario(p.userId, userId))
-  if (existente) {
-    existente.seleccionado = true
-  } else {
-    participantes.value.push({
-      userId,
-      seleccionado: true,
-      escaneo: 0,
-      asignados: 0,
-      esPicker: pickersActuales.value.some(p => mismoUsuario(p, userId)),
-      nuevo: true,
-    })
+/** Solo se aceptan usuarios que existen en el Core (Directorio Activo); se guarda el login tal como está registrado. */
+async function agregarUsuario() {
+  const texto = nuevoUsuario.value.trim()
+  if (!texto || buscandoUsuario.value) return
+  error.value = null
+  buscandoUsuario.value = true
+  try {
+    const user = await findCoreUser(texto)
+    if (!user) {
+      error.value = `El usuario "${texto}" no existe en SCNexus / Directorio Activo. Verifica el nombre de usuario de red.`
+      return
+    }
+    const userId = user.userName
+    userNames.value = { ...userNames.value, [userId]: user.fullName || user.userName }
+    const existente = participantes.value.find(p => mismoUsuario(p.userId, userId) || (user.id && mismoUsuario(p.userId, user.id)))
+    if (existente) {
+      existente.seleccionado = true
+    } else {
+      participantes.value.push({
+        userId,
+        seleccionado: true,
+        escaneo: 0,
+        asignados: 0,
+        esPicker: pickersActuales.value.some(p => mismoUsuario(p, userId)),
+        nuevo: true,
+      })
+    }
+    nuevoUsuario.value = ''
+  } finally {
+    buscandoUsuario.value = false
   }
-  nuevoUsuario.value = ''
 }
 
 // ─── Paso 2: reparto entre los participantes elegidos ────────────────────────
