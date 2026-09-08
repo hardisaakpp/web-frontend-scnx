@@ -105,6 +105,30 @@
           </span>
         </div>
 
+        <!-- Selección múltiple (como en el sistema anterior: seleccionar todos los de la pantalla y eliminar) -->
+        <div v-if="seleccionables.length > 0" class="flex items-center justify-between gap-2 mb-2 flex-shrink-0">
+          <label class="inline-flex items-center gap-2 text-xs text-gray-600 dark:text-gray-300 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              class="h-4 w-4 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500"
+              :checked="todosSeleccionados"
+              :indeterminate="algunosSeleccionados"
+              :disabled="eliminando"
+              @change="toggleTodos"
+            >
+            Seleccionar todos ({{ seleccionables.length }})
+          </label>
+          <button
+            type="button"
+            class="inline-flex items-center gap-1 rounded-lg bg-red-600 px-2.5 py-1.5 text-xs font-medium text-white hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            :disabled="eliminando || seleccionados.size === 0"
+            @click="eliminarSeleccionados"
+          >
+            <TrashIcon class="w-3.5 h-3.5" />
+            Eliminar seleccionados<span v-if="seleccionados.size > 0"> ({{ seleccionados.size }})</span>
+          </button>
+        </div>
+
         <div v-if="summary.recentCounts.length === 0" class="py-4 text-center text-xs text-gray-400">
           Sin registros
         </div>
@@ -113,8 +137,17 @@
             v-for="item in localRecentCounts"
             :key="item.countId"
             class="flex items-start gap-2 rounded-lg px-3 py-2 text-xs"
-            :class="item._deleted ? 'opacity-40 line-through' : 'bg-gray-50 dark:bg-gray-700/20'"
+            :class="item._deleted ? 'opacity-40 line-through' : (seleccionados.has(item.countId) ? 'bg-red-50 dark:bg-red-900/20' : 'bg-gray-50 dark:bg-gray-700/20')"
           >
+            <input
+              v-if="item.canDelete && !item._deleted"
+              type="checkbox"
+              class="mt-0.5 h-4 w-4 flex-shrink-0 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500"
+              :checked="seleccionados.has(item.countId)"
+              :disabled="eliminando"
+              :aria-label="`Seleccionar ${item.itemCode}`"
+              @change="toggleSeleccion(item.countId)"
+            >
             <div class="flex-1 min-w-0">
               <div class="flex items-center gap-1.5 flex-wrap">
                 <span class="font-mono font-medium text-gray-900 dark:text-white">{{ item.itemCode }}</span>
@@ -144,6 +177,7 @@
         </div>
 
         <div v-if="errorEliminar" class="mt-2 text-xs text-red-600 dark:text-red-400 flex-shrink-0">{{ errorEliminar }}</div>
+        <div v-if="avisoEliminar" class="mt-2 text-xs text-amber-700 dark:text-amber-300 flex-shrink-0">{{ avisoEliminar }}</div>
       </div>
     </div>
   </div>
@@ -170,6 +204,26 @@ const loading = ref(false)
 const error = ref<string | null>(null)
 const eliminando = ref(false)
 const errorEliminar = ref<string | null>(null)
+const avisoEliminar = ref<string | null>(null)
+
+// ─── Selección múltiple ──────────────────────────────────────────────────────
+const seleccionados = ref<Set<string>>(new Set())
+const seleccionables = computed(() => localRecentCounts.value.filter(i => i.canDelete && !i._deleted))
+const todosSeleccionados = computed(() => seleccionables.value.length > 0 && seleccionables.value.every(i => seleccionados.value.has(i.countId)))
+const algunosSeleccionados = computed(() => seleccionados.value.size > 0 && !todosSeleccionados.value)
+
+function toggleSeleccion(countId: string) {
+  const next = new Set(seleccionados.value)
+  if (next.has(countId)) next.delete(countId)
+  else next.add(countId)
+  seleccionados.value = next
+}
+
+function toggleTodos() {
+  seleccionados.value = todosSeleccionados.value
+    ? new Set()
+    : new Set(seleccionables.value.map(i => i.countId))
+}
 const userNames = ref<Record<string, string>>({})
 
 function userLabel(userId: string): string {
@@ -199,6 +253,7 @@ async function cargar() {
   try {
     summary.value = await inventarioSesionesService.getPickingSummary(sessionId)
     localRecentCounts.value = summary.value.recentCounts.map(c => ({ ...c }))
+    seleccionados.value = new Set()
     // Nombre del operador en vez del id (los ingresos pueden ser de varios usuarios de la misma toma).
     userNames.value = await resolveUserNames(localRecentCounts.value.map(c => c.countedByUserId))
   } catch (e: any) {
@@ -210,12 +265,43 @@ async function cargar() {
 
 async function eliminar(item: LocalRecentCountItem) {
   errorEliminar.value = null
+  avisoEliminar.value = null
   eliminando.value = true
   try {
     await inventarioSesionesService.deleteCount(sessionId, item.countId)
     item._deleted = true
+    if (seleccionados.value.has(item.countId)) toggleSeleccion(item.countId)
   } catch (e: any) {
     errorEliminar.value = e.message ?? 'No se pudo eliminar el ingreso.'
+  } finally {
+    eliminando.value = false
+  }
+}
+
+async function eliminarSeleccionados() {
+  const ids = [...seleccionados.value]
+  if (ids.length === 0) return
+  const unidades = seleccionables.value
+    .filter(i => seleccionados.value.has(i.countId))
+    .reduce((s, i) => s + i.quantity, 0)
+  if (!window.confirm(`Se eliminarán ${ids.length} ingreso(s) (${formatQty(unidades)} unidades) de esta toma. Esta acción no se puede deshacer. ¿Continuar?`)) return
+
+  errorEliminar.value = null
+  avisoEliminar.value = null
+  eliminando.value = true
+  try {
+    const result = await inventarioSesionesService.deleteCounts(sessionId, ids)
+    const omitidos = new Set(result.skipped.map(s => s.countId))
+    for (const item of localRecentCounts.value) {
+      if (seleccionados.value.has(item.countId) && !omitidos.has(item.countId)) item._deleted = true
+    }
+    seleccionados.value = new Set()
+    if (result.skipped.length > 0) {
+      const motivos = [...new Set(result.skipped.map(s => s.reason))].join(' ')
+      avisoEliminar.value = `Se eliminaron ${result.deleted}. No se pudieron eliminar ${result.skipped.length}: ${motivos}`
+    }
+  } catch (e: any) {
+    errorEliminar.value = e.message ?? 'No se pudieron eliminar los ingresos seleccionados.'
   } finally {
     eliminando.value = false
   }
