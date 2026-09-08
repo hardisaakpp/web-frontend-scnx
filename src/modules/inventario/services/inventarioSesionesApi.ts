@@ -216,7 +216,30 @@ export const inventarioSesionesService = {
 
   async setRecountAssignments(sessionId: string, assignments: { itemCode: string; userId: string }[]): Promise<void> {
     await invPlanesApi.post(`/api/inventory-sessions/${sessionId}/recount-assignments`, { assignments })
+  },
+
+  /** Lo que el usuario actual debe recontar (solo lo suyo si hay reparto; todo si el reconteo está abierto). */
+  async getMyRecountItems(sessionId: string): Promise<MyRecountListDto> {
+    const response = await invPlanesApi.get<MyRecountListDto>(`/api/inventory-sessions/${sessionId}/recount/my-items`)
+    return response.data
   }
+}
+
+export interface MyRecountItemDto {
+  itemCode: string
+  description: string | null
+  barcode: string | null
+  level2: string | null
+  recounted: boolean
+  recountedQuantity: number
+}
+
+export interface MyRecountListDto {
+  /** 'Open' = sin reparto, todos ven todo. 'Assigned' = hay reparto, la lista es lo asignado al usuario. */
+  mode: 'Open' | 'Assigned'
+  total: number
+  pending: number
+  items: MyRecountItemDto[]
 }
 
 export interface ArticleCountLineDto {

@@ -32,6 +32,45 @@
       </div>
     </div>
 
+    <!-- Reconteo: qué me toca -->
+    <div v-if="esReconteo && miReconteo" class="px-4 pt-4">
+      <div class="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl p-4">
+        <div class="flex items-start justify-between gap-3 flex-wrap">
+          <div>
+            <h2 class="text-sm font-semibold text-amber-900 dark:text-amber-100">
+              <template v-if="miReconteo.mode === 'Assigned'">Tu reconteo: {{ miReconteo.pending }} pendiente{{ miReconteo.pending !== 1 ? 's' : '' }} de {{ miReconteo.total }}</template>
+              <template v-else>Reconteo abierto: {{ miReconteo.pending }} artículo{{ miReconteo.pending !== 1 ? 's' : '' }} por recontar de {{ miReconteo.total }}</template>
+            </h2>
+            <p class="text-xs text-amber-800 dark:text-amber-200 mt-0.5">
+              <template v-if="miReconteo.mode === 'Assigned'">Solo se registran los artículos de esta lista. Los demás los recuenta otro compañero.</template>
+              <template v-else>No hay reparto: cualquier usuario de la toma puede recontar cualquier artículo de la lista.</template>
+            </p>
+          </div>
+          <button type="button" class="text-xs font-medium text-amber-800 dark:text-amber-200 underline" @click="mostrarListaReconteo = !mostrarListaReconteo">
+            {{ mostrarListaReconteo ? 'Ocultar lista' : 'Ver lista' }}
+          </button>
+        </div>
+        <div v-if="avisoReconteo" class="mt-2 rounded-lg bg-red-100 dark:bg-red-900/40 text-red-800 dark:text-red-200 text-xs px-3 py-2">{{ avisoReconteo }}</div>
+        <div v-if="mostrarListaReconteo && miReconteo.items.length > 0" class="mt-3 max-h-56 overflow-y-auto divide-y divide-amber-200/60 dark:divide-amber-800/60 rounded-lg bg-white/70 dark:bg-gray-900/30">
+          <div
+            v-for="i in miReconteo.items"
+            :key="i.itemCode"
+            class="flex items-center justify-between gap-3 px-3 py-1.5 text-xs"
+            :class="i.recounted ? 'opacity-50' : ''"
+          >
+            <div class="min-w-0">
+              <span class="font-mono font-semibold text-gray-900 dark:text-white">{{ i.itemCode }}</span>
+              <span v-if="i.description" class="text-gray-600 dark:text-gray-300 ml-2 truncate">{{ i.description }}</span>
+              <div class="text-gray-400 dark:text-gray-500 font-mono">{{ i.barcode ?? '—' }}<span v-if="i.level2" class="font-sans ml-2">{{ i.level2 }}</span></div>
+            </div>
+            <span v-if="i.recounted" class="badge badge-green flex-shrink-0">Recontado {{ i.recountedQuantity }}</span>
+            <span v-else class="badge badge-amber flex-shrink-0">Pendiente</span>
+          </div>
+        </div>
+        <div v-else-if="mostrarListaReconteo" class="mt-3 text-xs text-amber-800 dark:text-amber-200">No tienes artículos asignados en este reconteo.</div>
+      </div>
+    </div>
+
     <!-- Content -->
     <div class="flex-1 grid grid-cols-1 lg:grid-cols-2 gap-4 p-4">
       <!-- Left: inputs -->
@@ -230,6 +269,7 @@ import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRouter, useRoute, onBeforeRouteLeave } from 'vue-router'
 import { ChevronLeftIcon, ChevronDownIcon, CameraIcon } from '@heroicons/vue/24/outline'
 import { inventarioSesionesService } from '../services/inventarioSesionesApi'
+import type { MyRecountListDto } from '../services/inventarioSesionesApi'
 import type { InventorySessionStatus } from '../types'
 import ScannerPanel from '../components/ScannerPanel.vue'
 
@@ -292,6 +332,53 @@ const sessionId = route.params.sessionId as string
 const barcodeInputRef = ref<HTMLInputElement | null>(null)
 const sessionInfo = ref<SessionInfo | null>(null)
 const errorCarga = ref<string | null>(null)
+
+// ─── Reconteo: lista de lo que me toca ──────────────────────────────────────
+const miReconteo = ref<MyRecountListDto | null>(null)
+const mostrarListaReconteo = ref(true)
+const avisoReconteo = ref<string | null>(null)
+let avisoReconteoTimer: ReturnType<typeof setTimeout> | null = null
+const esReconteo = computed(() => sessionInfo.value?.status === 'Recount')
+const reconteoPendientes = computed(() => miReconteo.value?.items.filter(i => !i.recounted) ?? [])
+
+async function cargarMiReconteo() {
+  if (!esReconteo.value) {
+    miReconteo.value = null
+    return
+  }
+  try {
+    miReconteo.value = await inventarioSesionesService.getMyRecountItems(sessionId)
+  } catch {
+    // Sin la lista la pantalla sigue funcionando; el backend valida igual al registrar.
+    miReconteo.value = null
+  }
+}
+
+function mostrarAvisoReconteo(msg: string) {
+  avisoReconteo.value = msg
+  if (avisoReconteoTimer) clearTimeout(avisoReconteoTimer)
+  avisoReconteoTimer = setTimeout(() => { avisoReconteo.value = null }, 6000)
+}
+
+/**
+ * Con reparto, solo se encolan artículos de mi lista: evita mandar al servidor algo que va a rechazar
+ * y le dice al operador de inmediato que ese artículo no le corresponde. El código puede venir como
+ * código de barras (escáner) o como código de artículo (manual).
+ */
+function permitidoEnMiReconteo(code: string): boolean {
+  if (!esReconteo.value || !miReconteo.value || miReconteo.value.mode !== 'Assigned') return true
+  const c = code.trim().toUpperCase()
+  return miReconteo.value.items.some(i => i.itemCode.toUpperCase() === c || (i.barcode ?? '').toUpperCase() === c)
+}
+
+/** Tras registrar un conteo, marca el artículo como recontado en mi lista sin volver a consultar. */
+function marcarRecontado(itemCode: string, quantity: number) {
+  const item = miReconteo.value?.items.find(i => i.itemCode.toUpperCase() === itemCode.toUpperCase())
+  if (!item) return
+  item.recounted = true
+  item.recountedQuantity += quantity
+  if (miReconteo.value) miReconteo.value.pending = miReconteo.value.items.filter(i => !i.recounted).length
+}
 const online = ref(navigator.onLine)
 
 const scanCode = ref('')
@@ -542,6 +629,7 @@ async function cargarInfoSesion() {
       description: status.description,
       status: status.status as InventorySessionStatus
     }
+    await cargarMiReconteo()
   } catch (e: any) {
     errorCarga.value = e.message ?? 'No se pudo cargar la sesión.'
   }
@@ -549,6 +637,10 @@ async function cargarInfoSesion() {
 
 function agregarACola(itemCode: string, quantity: number, source: 'Scan' | 'Manual', sc?: string | null) {
   if (!itemCode.trim()) return
+  if (!permitidoEnMiReconteo(itemCode)) {
+    mostrarAvisoReconteo(`${itemCode.trim().toUpperCase()} no está en tu lista de reconteo. Solo puedes recontar los artículos que te asignaron.`)
+    return
+  }
   cola.value.push({
     id: genId(),
     itemCode: itemCode.trim().toUpperCase(),
@@ -573,6 +665,7 @@ async function procesarCola() {
         scanCode: item.scanCode,
         clientId: item.id
       })
+      marcarRecontado(result.itemCode ?? item.itemCode, item.quantity)
       if (item.source === 'Scan') {
         const resolvedCode = result.itemCode
         const wasResolved = resolvedCode.toUpperCase() !== item.itemCode.toUpperCase()
@@ -689,6 +782,7 @@ onUnmounted(() => {
 .badge { @apply inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium; }
 .badge-blue { @apply bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300; }
 .badge-amber { @apply bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300; }
+.badge-green { @apply bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300; }
 .badge-gray { @apply bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400; }
 .badge-red { @apply bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300; }
 .alert-error { @apply rounded-lg border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 px-3 py-2 text-sm text-red-700 dark:text-red-300; }
