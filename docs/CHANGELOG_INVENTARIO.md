@@ -6,6 +6,19 @@ Registro cronológico de cambios realizados al módulo `src/modules/inventario` 
 
 ---
 
+## 2026-09-08 — Piloto 2: tolerancia a fallas de red en la pantalla de conteo (rama feature/inventarios_piloto2)
+
+**Contexto.** Al verificar el punto 1 del correo de la toma OUT-CON ("el picking tolera cortes de red") se encontró que era cierto solo a medias: la cola y los errores de envío vivían en memoria, así que se perdían al refrescar, cerrar la pestaña o volver a "Mis inventarios"; el botón "Reenviar" dependía del operador; y con WiFi conectado pero sin salida cada escaneo esperaba los 30 s de timeout antes de pasar a error. Esta rama incluye todo lo de `fix/inventario-toma-fisica-outcon` más los 4 cambios siguientes, únicamente en `ConteoPickingView.vue` y `inventarioSesionesApi.addCount`. **Sin cambios de backend ni de Core.**
+
+1. **Pendientes guardados en el dispositivo.** Cola y errores se persisten en `localStorage` por toma (`inv_picking_pendientes_v1_<sessionId>`) y se restauran al reabrir la pantalla: lo que estaba en cola o falló por red se reenvía automáticamente; lo rechazado por el servidor vuelve a mostrarse como error. La clave se borra sola cuando no queda nada pendiente.
+2. **Reenvío automático.** Al recibir el evento `online` y cada 30 s (mientras haya errores de conexión) se reencolan los registros marcados como reintentables. Los errores se clasifican: timeout / sin respuesta → reintentable; respuesta del servidor (p. ej. artículo fuera del alcance) → no reintentable, requiere al operador ("Reenviar" manual sigue disponible para ambos).
+3. **Aviso al salir con pendientes.** `onBeforeRouteLeave` pide confirmación y `beforeunload` bloquea el cierre/refresh del navegador cuando hay registros sin enviar. Nuevo badge ámbar "N pendientes" en la cabecera y texto explicativo en el bloque de errores.
+4. **Timeout de `addCount` a 8 s** (antes 30 s del default de axios). El resto de llamadas del servicio conserva su timeout.
+
+**Estado:** commit en `feature/inventarios_piloto2` (web-scnexus). Verificado con `vue-tsc` y compilación en Vite; falta prueba funcional en dispositivo real con corte de red (piloto).
+
+---
+
 ## 2026-09-07 — Observaciones de la toma física OUT-CON (nombres, "No contados", código de barras, carga de la lista)
 
 Rama `fix/inventario-toma-fisica-outcon` (desde `test`), contraparte en `api-inventario` (misma rama).

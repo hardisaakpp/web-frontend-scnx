@@ -114,8 +114,14 @@ export const inventarioSesionesService = {
     return response.data
   },
 
+  /**
+   * Registra un conteo desde la pantalla de picking. Timeout corto a propósito: con WiFi conectado
+   * pero sin salida a internet (caso típico en tienda) el default de 30 s dejaba al operador viendo
+   * "Enviando..." medio minuto por cada escaneo; con 8 s el registro pasa rápido a la lista de
+   * errores, que se reintenta sola.
+   */
   async addCount(sessionId: string, data: AddInventoryCountRequest): Promise<InventoryCountResultDto> {
-    const response = await invPlanesApi.post<InventoryCountResultDto>(`/api/inventory-sessions/${sessionId}/counts`, data)
+    const response = await invPlanesApi.post<InventoryCountResultDto>(`/api/inventory-sessions/${sessionId}/counts`, data, { timeout: 8_000 })
     return response.data
   },
 

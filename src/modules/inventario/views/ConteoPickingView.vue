@@ -10,6 +10,11 @@
           <span v-if="sessionInfo" class="font-mono text-xs text-gray-400">{{ sessionInfo.warehouseCode }}</span>
           <span v-if="sessionInfo" :class="['badge', badgeClass(sessionInfo.status)]">{{ statusLabel(sessionInfo.status) }}</span>
           <span v-if="!online" class="badge badge-red">Sin conexión</span>
+          <span
+            v-if="pendientes > 0"
+            class="badge badge-amber"
+            title="Registros guardados en este dispositivo que aún no llegaron al servidor. Se reintentan solos."
+          >{{ pendientes }} pendiente{{ pendientes !== 1 ? 's' : '' }}</span>
         </div>
         <h1 class="text-base font-semibold text-gray-900 dark:text-white truncate">
           {{ sessionInfo?.warehouseName ?? 'Cargando sesión...' }}
@@ -111,6 +116,9 @@
               Reenviar todo
             </button>
           </div>
+          <p class="text-xs text-gray-500 dark:text-gray-400 mb-2">
+            Guardados en este dispositivo. Los de conexión se reintentan solos cada 30 segundos y al volver la red; los rechazados por el servidor necesitan tu revisión. No cierres la toma hasta que desaparezcan.
+          </p>
           <div class="space-y-1.5 max-h-48 overflow-y-auto">
             <div
               v-for="e in errores"
@@ -218,8 +226,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, nextTick } from 'vue'
-import { useRouter, useRoute } from 'vue-router'
+import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
+import { useRouter, useRoute, onBeforeRouteLeave } from 'vue-router'
 import { ChevronLeftIcon, ChevronDownIcon, CameraIcon } from '@heroicons/vue/24/outline'
 import { inventarioSesionesService } from '../services/inventarioSesionesApi'
 import type { InventorySessionStatus } from '../types'
@@ -248,6 +256,8 @@ interface ErrorItem {
   source: 'Manual' | 'Scan'
   scanCode?: string | null
   errorMsg: string
+  /** true = falla de red/timeout: se reintenta solo. false = el servidor lo rechazó (p. ej. artículo fuera del alcance): requiere revisión. */
+  reintentable: boolean
 }
 
 interface SessionInfo {
@@ -265,6 +275,15 @@ interface CachedItemInfo {
 
 const ITEM_CACHE_PREFIX = 'inv_item_v1_'
 const ITEM_CACHE_TTL = 24 * 60 * 60 * 1000
+
+/**
+ * Tolerancia a fallas de red (toma OUT-CON, 2026-09): los registros que no logran enviarse se
+ * guardan en el navegador por toma, se reintentan solos cada AUTO_RETRY_MS y al volver la conexión,
+ * y la pantalla avisa antes de salir si queda algo pendiente. Antes vivían solo en memoria y se
+ * perdían al refrescar, cerrar la pestaña o volver a "Mis inventarios".
+ */
+const PENDING_PREFIX = 'inv_picking_pendientes_v1_'
+const AUTO_RETRY_MS = 30_000
 
 const router = useRouter()
 const route = useRoute()
@@ -286,6 +305,98 @@ const cola = ref<ColaItem[]>([])
 const enviados = ref<EnviadoItem[]>([])
 const errores = ref<ErrorItem[]>([])
 const procesando = ref(false)
+
+/** Registros que todavía no llegaron al servidor: en cola o con error. */
+const pendientes = computed(() => cola.value.length + errores.value.length)
+
+// ─── Persistencia de pendientes por toma ─────────────────────────────────────
+
+interface PendientesGuardados {
+  cola: ColaItem[]
+  errores: ErrorItem[]
+}
+
+function guardarPendientes() {
+  const key = PENDING_PREFIX + sessionId
+  try {
+    if (pendientes.value === 0) {
+      localStorage.removeItem(key)
+      return
+    }
+    const data: PendientesGuardados = { cola: cola.value, errores: errores.value }
+    localStorage.setItem(key, JSON.stringify(data))
+  } catch {
+    // Sin almacenamiento disponible: la pantalla sigue funcionando solo en memoria.
+  }
+}
+
+function restaurarPendientes() {
+  try {
+    const raw = localStorage.getItem(PENDING_PREFIX + sessionId)
+    if (!raw) return
+    const data = JSON.parse(raw) as Partial<PendientesGuardados>
+    // Lo que estaba en cola o falló por red vuelve a la cola; lo rechazado por el servidor
+    // se muestra de nuevo como error para que el operador decida.
+    const guardados = data.errores ?? []
+    const restaurados = [...(data.cola ?? []), ...guardados.filter(e => e.reintentable !== false)].map(e => ({
+      id: e.id,
+      itemCode: e.itemCode,
+      quantity: e.quantity,
+      source: e.source,
+      scanCode: e.scanCode ?? null,
+    }))
+    if (restaurados.length > 0) {
+      cola.value.push(...restaurados)
+    }
+    const rechazados = guardados.filter(e => e.reintentable === false)
+    if (rechazados.length > 0) {
+      errores.value.push(...rechazados)
+    }
+  } catch {
+    localStorage.removeItem(PENDING_PREFIX + sessionId)
+  }
+}
+
+watch([cola, errores], guardarPendientes, { deep: true })
+
+// ─── Reintento automático ────────────────────────────────────────────────────
+
+let reintentoTimer: ReturnType<typeof setInterval> | null = null
+
+/** Reencola solo los que fallaron por red; los rechazados por el servidor esperan al operador. */
+function reenviarReintentables() {
+  const items = errores.value.filter(e => e.reintentable)
+  if (items.length === 0) {
+    procesarCola()
+    return
+  }
+  errores.value = errores.value.filter(e => !e.reintentable)
+  for (const e of items) {
+    cola.value.push({ id: e.id, itemCode: e.itemCode, quantity: e.quantity, source: e.source, scanCode: e.scanCode })
+  }
+  procesarCola()
+}
+
+function reintentarSiHayErrores() {
+  if (!procesando.value && navigator.onLine && errores.value.some(e => e.reintentable)) {
+    reenviarReintentables()
+  }
+}
+
+// ─── Aviso al salir con pendientes ───────────────────────────────────────────
+
+const MENSAJE_SALIR = 'Hay registros de conteo que aún no se enviaron al servidor. Si sales ahora quedarán guardados en este dispositivo, pero no se registrarán hasta que vuelvas a abrir esta toma con conexión.'
+
+function onBeforeUnload(event: BeforeUnloadEvent) {
+  if (pendientes.value === 0) return
+  event.preventDefault()
+  event.returnValue = MENSAJE_SALIR
+}
+
+onBeforeRouteLeave(() => {
+  if (pendientes.value === 0) return true
+  return window.confirm(`${MENSAJE_SALIR}\n\n¿Salir de todas formas?`)
+})
 
 const validacionPendiente = new Set<string>()
 let validando = false
@@ -369,8 +480,25 @@ function encolarValidacion(itemCode: string) {
   }
 }
 
-function onOnline() { online.value = true }
+function onOnline() {
+  online.value = true
+  // Volvió la red: reenviar lo que falló por conexión y destrabar la cola sin esperar al operador.
+  reenviarReintentables()
+}
 function onOffline() { online.value = false }
+
+/** Mensaje entendible para el operador según el tipo de falla del envío. */
+function describirErrorEnvio(e: any): { errorMsg: string; reintentable: boolean } {
+  // El interceptor del servicio envuelve el error de axios en un Error con `cause`.
+  const origen = e?.cause ?? e
+  if (origen?.code === 'ECONNABORTED') {
+    return { errorMsg: 'Sin respuesta del servidor (tiempo agotado). Se reintentará solo.', reintentable: true }
+  }
+  if (!origen?.response) {
+    return { errorMsg: 'Sin conexión. Se reintentará solo cuando vuelva la red.', reintentable: true }
+  }
+  return { errorMsg: e?.message ?? 'Error al registrar el conteo.', reintentable: false }
+}
 
 function statusLabel(status: InventorySessionStatus): string {
   return { Open: 'Abierta', Recount: 'Reconteo', Closed: 'Cerrada', Expired: 'No realizado' }[status] ?? status
@@ -456,7 +584,7 @@ async function procesarCola() {
         quantity: item.quantity,
         source: item.source,
         scanCode: item.scanCode,
-        errorMsg: e.message ?? 'Error de conexión'
+        ...describirErrorEnvio(e)
       })
     }
     cola.value.shift()
@@ -489,6 +617,10 @@ function onManualEnter() {
 }
 
 function reenviarTodos() {
+  if (errores.value.length === 0) {
+    procesarCola()
+    return
+  }
   const items = errores.value.splice(0)
   for (const e of items) {
     cola.value.push({ id: e.id, itemCode: e.itemCode, quantity: e.quantity, source: e.source, scanCode: e.scanCode })
@@ -505,6 +637,13 @@ function reenviarItem(e: ErrorItem) {
 onMounted(async () => {
   window.addEventListener('online', onOnline)
   window.addEventListener('offline', onOffline)
+  window.addEventListener('beforeunload', onBeforeUnload)
+  reintentoTimer = setInterval(reintentarSiHayErrores, AUTO_RETRY_MS)
+
+  // Lo que quedó pendiente de una sesión anterior en este dispositivo se envía primero.
+  restaurarPendientes()
+  if (cola.value.length > 0) procesarCola()
+
   await cargarInfoSesion()
   nextTick(() => barcodeInputRef.value?.focus())
 })
@@ -512,6 +651,8 @@ onMounted(async () => {
 onUnmounted(() => {
   window.removeEventListener('online', onOnline)
   window.removeEventListener('offline', onOffline)
+  window.removeEventListener('beforeunload', onBeforeUnload)
+  if (reintentoTimer) clearInterval(reintentoTimer)
 })
 </script>
 
