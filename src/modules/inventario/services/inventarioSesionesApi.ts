@@ -13,7 +13,8 @@ import type {
   SessionDetailLineDto,
   SessionDetailStatsDto,
   SessionScansByUserDto,
-  MyCountHistorySessionDto
+  MyCountHistorySessionDto,
+  DeleteCountsResultDto
 } from '../types'
 
 invPlanesApi.interceptors.response.use(
@@ -137,6 +138,12 @@ export const inventarioSesionesService = {
 
   async deleteCount(sessionId: string, countId: string): Promise<void> {
     await invPlanesApi.delete(`/api/inventory-sessions/${sessionId}/counts/${countId}`)
+  },
+
+  /** Elimina varios ingresos en una sola llamada; los que no se pudieron borrar vienen en `skipped` con el motivo. */
+  async deleteCounts(sessionId: string, countIds: string[]): Promise<DeleteCountsResultDto> {
+    const response = await invPlanesApi.post<DeleteCountsResultDto>(`/api/inventory-sessions/${sessionId}/counts/delete-batch`, { countIds })
+    return response.data
   },
 
   async getSupervisorSummary(sessionId: string): Promise<SupervisorSummaryDto> {

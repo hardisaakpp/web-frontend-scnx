@@ -342,6 +342,12 @@ export interface AddInventoryCountRequest {
   clientId?: string
 }
 
+export interface DeleteCountsResultDto {
+  deleted: number
+  skipped: { countId: string; reason: string }[]
+  status: InventorySessionStatusDto
+}
+
 export interface InventoryCountResultDto {
   countId: string
   inventorySessionId: string
