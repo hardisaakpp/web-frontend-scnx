@@ -80,8 +80,8 @@ export async function findCoreUser(idOrLogin: string): Promise<CoreUserInfo | nu
       fullName: normalizeString(u.fullName ?? u.FullName) || null,
       email: normalizeString(u.email ?? u.Email) || null,
     }
-    nameCache.set(key, info.fullName || info.userName)
-    nameCache.set(info.userName, info.fullName || info.userName)
+    nameCache.set(key, info.fullName ?? info.userName)
+    nameCache.set(info.userName, info.fullName ?? info.userName)
     return info
   } catch {
     return null
