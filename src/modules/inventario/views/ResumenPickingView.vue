@@ -105,7 +105,7 @@
           </span>
         </div>
 
-        <!-- Selección múltiple (como en el sistema anterior: seleccionar todos los de la pantalla y eliminar) -->
+        <!-- Selección múltiple (como en el sistema anterior: marcar los registros de la pantalla y eliminarlos) -->
         <div v-if="seleccionables.length > 0" class="flex items-center justify-between gap-2 mb-2 flex-shrink-0">
           <label class="inline-flex items-center gap-2 text-xs text-gray-600 dark:text-gray-300 cursor-pointer select-none">
             <input

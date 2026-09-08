@@ -437,7 +437,7 @@ async function cargar() {
       if (assignedIds.length > 0) {
         userNames.value = await resolveUserNames(assignedIds)
       }
-      // Con reparto, el operador arranca viendo solo lo suyo; quien no tiene nada asignado ve todo.
+      // Con reparto, el operador arranca viendo solo lo suyo; quien no tiene nada asignado ve la lista completa.
       filterAsignado.value = misAsignados.value > 0 ? 'mios' : 'todos'
     }
     // Clear pending manual edits on reload
