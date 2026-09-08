@@ -1,6 +1,7 @@
 <template>
   <TransitionRoot :show="isOpen" as="template">
-    <Dialog as="div" class="relative z-50" @close="cerrar">
+    <!-- @close vacío a propósito: clic fuera o Escape no cierran. Solo Cancelar / X, que piden confirmación. -->
+    <Dialog as="div" class="relative z-50" @close="() => {}">
       <TransitionChild enter="ease-out duration-200" enter-from="opacity-0" enter-to="opacity-100" leave="ease-in duration-150" leave-from="opacity-100" leave-to="opacity-0">
         <div class="fixed inset-0 bg-black bg-opacity-40" />
       </TransitionChild>
@@ -15,10 +16,15 @@
                     Reparto de reconteo
                   </DialogTitle>
                   <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                    Propuesta agrupada por Nivel 2. Revisa, reasigna o quita usuarios antes de confirmar.
+                    <template v-if="proposal?.hasExistingAssignments">
+                      Reparto ya guardado. Ajusta lo que necesites y confirma para reemplazarlo.
+                    </template>
+                    <template v-else>
+                      Propuesta agrupada por Nivel 2. Revisa, reasigna o quita usuarios antes de confirmar.
+                    </template>
                   </p>
                 </div>
-                <button type="button" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200" @click="cerrar">
+                <button type="button" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200" title="Cerrar" @click="pedirSalida">
                   <XMarkIcon class="w-5 h-5" />
                 </button>
               </div>
@@ -77,15 +83,36 @@
                 </template>
               </div>
 
+              <!-- Confirmación de salida sin guardar -->
+              <div
+                v-if="confirmandoSalida"
+                class="mx-6 mb-4 rounded-lg border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-900/20 px-4 py-3 text-sm text-amber-800 dark:text-amber-200"
+              >
+                <p class="font-semibold mb-1">¿Salir sin guardar el reparto?</p>
+                <p class="text-xs mb-3">
+                  <template v-if="proposal?.hasExistingAssignments">
+                    Se descartan los cambios de esta pantalla; el reparto guardado anteriormente se mantiene.
+                  </template>
+                  <template v-else>
+                    La toma queda en Reconteo sin reparto: cualquier usuario podrá recontar cualquier artículo.
+                    Puedes volver a esta pantalla desde el menú de la toma con "Repartir reconteo".
+                  </template>
+                </p>
+                <div class="flex justify-end gap-2">
+                  <button type="button" class="btn-secondary !py-1.5 text-xs" @click="confirmandoSalida = false">Seguir editando</button>
+                  <button type="button" class="btn-warning !py-1.5 text-xs" @click="cerrar">Salir sin guardar</button>
+                </div>
+              </div>
+
               <div class="flex justify-end gap-3 px-6 py-4 border-t border-gray-100 dark:border-gray-700">
-                <button type="button" class="btn-secondary" @click="cerrar">Cancelar</button>
+                <button type="button" class="btn-secondary" :disabled="confirmando" @click="pedirSalida">Cancelar</button>
                 <button
                   type="button"
                   class="btn-primary"
                   :disabled="loading || confirmando || items.length === 0"
                   @click="confirmar"
                 >
-                  {{ confirmando ? 'Confirmando...' : 'Confirmar reparto' }}
+                  {{ confirmando ? 'Confirmando...' : (proposal?.hasExistingAssignments ? 'Guardar cambios' : 'Confirmar reparto') }}
                 </button>
               </div>
             </DialogPanel>
@@ -113,6 +140,7 @@ const emit = defineEmits<{ close: []; confirmed: [] }>()
 
 const loading = ref(false)
 const confirmando = ref(false)
+const confirmandoSalida = ref(false)
 const error = ref<string | null>(null)
 const proposal = ref<RecountAssignmentProposalDto | null>(null)
 const userNames = ref<Record<string, string>>({})
@@ -149,12 +177,14 @@ function countForUser(userId: string): number {
 watch(() => props.isOpen, async (open) => {
   if (!open || !props.sessionId) return
   error.value = null
+  confirmandoSalida.value = false
   loading.value = true
   try {
     proposal.value = await inventarioSesionesService.getRecountAssignmentProposal(props.sessionId)
     Object.keys(assignments).forEach(k => delete assignments[k])
     for (const item of proposal.value.items) {
-      assignments[item.itemCode] = item.suggestedUserId ?? proposal.value.candidateUserIds[0] ?? ''
+      // Reparto ya guardado manda sobre la sugerencia: al reabrir se ve lo que está vigente.
+      assignments[item.itemCode] = item.currentUserId ?? item.suggestedUserId ?? proposal.value.candidateUserIds[0] ?? ''
     }
     userNames.value = await resolveUserNames(proposal.value.candidateUserIds)
   } catch (e: any) {
@@ -202,14 +232,26 @@ async function confirmar() {
   }
 }
 
+/** Cancelar y la X no cierran directo: primero se confirma, para que el supervisor sepa qué queda guardado. */
+function pedirSalida() {
+  if (confirmando.value) return
+  if (loading.value || items.value.length === 0) {
+    cerrar()
+    return
+  }
+  confirmandoSalida.value = true
+}
+
 function cerrar() {
+  confirmandoSalida.value = false
   emit('close')
 }
 </script>
 
 <style scoped>
 .btn-primary { @apply inline-flex items-center rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed; }
-.btn-secondary { @apply inline-flex items-center rounded-lg border border-gray-300 dark:border-gray-600 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700; }
+.btn-secondary { @apply inline-flex items-center rounded-lg border border-gray-300 dark:border-gray-600 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-60 disabled:cursor-not-allowed; }
+.btn-warning { @apply inline-flex items-center rounded-lg bg-amber-600 px-4 py-2 text-sm font-medium text-white hover:bg-amber-700; }
 .alert-error { @apply rounded-lg border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 px-3 py-2 text-sm text-red-700 dark:text-red-300; }
 .select-input { @apply rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 px-2 py-1.5 text-gray-900 dark:text-white focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500; }
 </style>
