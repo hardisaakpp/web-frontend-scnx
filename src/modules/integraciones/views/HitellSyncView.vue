@@ -99,6 +99,7 @@
           <thead class="bg-gray-50 dark:bg-gray-900">
             <tr>
               <th :class="thClass">Documento SAP</th>
+              <th :class="thClass">Almacenes</th>
               <th :class="thClass">Resultado</th>
               <th :class="thClass">Motivo</th>
               <th :class="thClass">Intentos</th>
@@ -119,6 +120,20 @@
                 <div class="text-xs text-gray-500 dark:text-gray-400">
                   {{ HITELL_DOC_TYPE_LABEL[doc.docType] }} · DocEntry {{ formatEntero(doc.docEntry) }}
                 </div>
+              </td>
+              <td class="px-6 py-4 text-sm">
+                <div v-if="doc.warehouses?.length" class="flex flex-col gap-0.5">
+                  <span
+                    v-for="w in doc.warehouses"
+                    :key="w.code"
+                    class="whitespace-nowrap"
+                    :class="w.codBusiness ? 'text-gray-900 dark:text-white font-medium' : 'text-gray-400 dark:text-gray-500'"
+                    :title="etiquetaAlmacen(w)"
+                  >
+                    {{ w.code }}<span v-if="w.codBusiness" class="ml-1 text-xs font-normal text-gray-500 dark:text-gray-400">neg. {{ w.codBusiness }}</span>
+                  </span>
+                </div>
+                <span v-else class="text-xs text-gray-400 dark:text-gray-500">Sin registrar</span>
               </td>
               <td class="px-6 py-4 whitespace-nowrap">
                 <EstadoBadge :label="HITELL_RESULT_LABEL[doc.result]" :tone="toneHitell(doc.result)" />
@@ -205,6 +220,28 @@
           <div>
             <dt class="text-gray-500 dark:text-gray-400">Última actualización</dt>
             <dd class="mt-0.5 text-gray-800 dark:text-gray-200">{{ formatFechaHora(detalle.updatedAt) }}</dd>
+          </div>
+          <div class="sm:col-span-2">
+            <dt class="text-gray-500 dark:text-gray-400">Almacenes del documento</dt>
+            <dd v-if="detalle.warehouses?.length" class="mt-1 flex flex-col gap-1">
+              <div
+                v-for="w in detalle.warehouses"
+                :key="w.code"
+                class="flex flex-wrap items-center gap-2"
+                :class="w.codBusiness ? 'text-gray-800 dark:text-gray-200' : 'text-gray-400 dark:text-gray-500'"
+              >
+                <span class="font-mono font-semibold">{{ w.code }}</span>
+                <span>{{ nombresAlmacen[w.code] ?? '' }}</span>
+                <EstadoBadge v-if="w.codBusiness" :label="`WEBPOS · negocio ${w.codBusiness}`" tone="info" />
+                <EstadoBadge v-else label="Fuera de WEBPOS" tone="neutral" />
+              </div>
+              <p v-if="detalle.result === 'RECHAZADO'" class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                El producto debe crearse en HITELL para las tiendas marcadas WEBPOS cuyo negocio coincide con el del rechazo.
+              </p>
+            </dd>
+            <dd v-else class="mt-0.5 text-gray-400 dark:text-gray-500 italic">
+              Sin registrar: este documento lo notificó una versión anterior del middleware. Al reintegrarlo quedan guardados.
+            </dd>
           </div>
         </dl>
 
@@ -304,7 +341,7 @@ import DetalleModal from '../components/DetalleModal.vue'
 import JsonBlock from '../components/JsonBlock.vue'
 import { integracionesApi } from '../services/integracionesApi'
 import { INTEGRACIONES_PERMISSIONS } from '../permissions'
-import type { HitellSyncFilters, HitellSyncStatus } from '../types'
+import type { HitellSyncFilters, HitellSyncStatus, HitellSyncWarehouse } from '../types'
 import {
   DIAS_POR_DEFECTO,
   HITELL_DOC_TYPE_LABEL,
@@ -348,6 +385,23 @@ const error = ref<string | null>(null)
 const detalle = ref<HitellSyncStatus | null>(null)
 const confirmar = ref<HitellSyncStatus | null>(null)
 const reintegrando = ref(new Set<string>())
+
+/** Nombres de almacén de SAP (código → nombre) para que soporte vea la tienda y no solo el código. Si SAP no responde, se muestran solo códigos. */
+const nombresAlmacen = ref<Record<string, string>>({})
+
+async function cargarAlmacenes() {
+  try {
+    nombresAlmacen.value = await integracionesApi.listarAlmacenes()
+  } catch {
+    nombresAlmacen.value = {}
+  }
+}
+
+function etiquetaAlmacen(w: HitellSyncWarehouse): string {
+  const nombre = nombresAlmacen.value[w.code]
+  const base = nombre ? `${w.code} · ${nombre}` : w.code
+  return w.codBusiness ? `${base} (WEBPOS, negocio ${w.codBusiness})` : `${base} (fuera de WEBPOS)`
+}
 
 function claveDoc(doc: Pick<HitellSyncStatus, 'docType' | 'docEntry'>): string {
   return `${doc.docType}-${doc.docEntry}`
@@ -421,5 +475,8 @@ watch(
   },
 )
 
-onMounted(cargar)
+onMounted(() => {
+  void cargar()
+  void cargarAlmacenes()
+})
 </script>

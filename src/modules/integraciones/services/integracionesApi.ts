@@ -68,6 +68,16 @@ export const integracionesApi = {
     return data
   },
 
+  /** Nombres de los almacenes de SAP indexados por código, para mostrar la tienda junto al código. */
+  async listarAlmacenes(): Promise<Record<string, string>> {
+    const { data } = await slayerHttp.get<{ warehouses?: Array<{ whsCode: string; whsName: string }> }>('v1/warehouses')
+    const nombres: Record<string, string> = {}
+    for (const w of data?.warehouses ?? []) {
+      if (w.whsCode) nombres[w.whsCode] = w.whsName
+    }
+    return nombres
+  },
+
   // ─── Cola SAP ──────────────────────────────────────────────────────────────
 
   async listarJobs(filters: SapJobFilters): Promise<PagedResponse<SapJob>> {
