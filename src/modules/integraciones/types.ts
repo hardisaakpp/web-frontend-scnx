@@ -30,6 +30,12 @@ export interface HitellRejection {
   retryEndpoint: string
 }
 
+/** Almacén del documento y su negocio WEBPOS (null si no está en WEBPOS). Es donde soporte crea el producto rechazado. */
+export interface HitellSyncWarehouse {
+  code: string
+  codBusiness: string | null
+}
+
 export interface HitellSyncStatus {
   docType: HitellDocType
   docEntry: number
@@ -42,6 +48,8 @@ export interface HitellSyncStatus {
   createdAt: string
   updatedAt: string | null
   rejection?: HitellRejection | null
+  /** Vacío en filas registradas por versiones anteriores del middleware; se completa en el siguiente reintento. */
+  warehouses?: HitellSyncWarehouse[]
 }
 
 export interface HitellSyncFilters {
