@@ -238,11 +238,15 @@ export interface RecountAssignmentItemDto {
   level2: string | null
   scannedByUserIds: string[]
   suggestedUserId: string | null
+  /** Asignado ya guardado (cuando se reabre un reparto existente para ajustarlo). */
+  currentUserId?: string | null
 }
 
 export interface RecountAssignmentProposalDto {
   items: RecountAssignmentItemDto[]
   candidateUserIds: string[]
+  /** true si la toma ya tiene un reparto guardado. */
+  hasExistingAssignments?: boolean
 }
 
 export interface SubmitItemsResultDto {
