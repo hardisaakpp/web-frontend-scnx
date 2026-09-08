@@ -64,6 +64,9 @@ export default defineConfig(async ({ mode }): Promise<UserConfig> => {
   const recepcionProxyTarget = upstreamUrl(env, 'RECEPCION')
   console.log(`\x1b[35m[proxy]\x1b[0m Recepción Mercadería → ${recepcionProxyTarget}`)
 
+  const recepcionProveedoresProxyTarget = upstreamUrl(env, 'RECEPCION_PROVEEDORES')
+  console.log(`\x1b[35m[proxy]\x1b[0m Recepción Proveedores → ${recepcionProveedoresProxyTarget}`)
+
   const demandaOtbProxyTarget = upstreamUrl(env, 'DEMANDA_OTB')
   console.log(`\x1b[35m[proxy]\x1b[0m Demanda OTB → ${demandaOtbProxyTarget}`)
 
@@ -197,6 +200,13 @@ export default defineConfig(async ({ mode }): Promise<UserConfig> => {
           changeOrigin: true,
           secure: false,
           rewrite: (path) => path.replace(/^\/api\/recepcion-api/, '/api')
+        },
+
+        '/api/recepcion-proveedores-api': {
+          target: recepcionProveedoresProxyTarget,
+          changeOrigin: true,
+          secure: false,
+          rewrite: (path) => path.replace(/^\/api\/recepcion-proveedores-api/, '/api')
         },
 
         '/api/demanda-otb-api': {
