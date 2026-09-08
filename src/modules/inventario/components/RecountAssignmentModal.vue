@@ -37,6 +37,14 @@
                 </template>
 
                 <template v-else>
+                  <div v-if="sinCandidatos" class="alert-warning">
+                    No hay usuarios candidatos para el reconteo: nadie contó en la primera ronda y la toma no tiene usuarios de picking.
+                    Cierra esta ventana, asigna usuarios desde el menú de la toma ("Gestionar usuarios de picking") y vuelve a abrir "Repartir reconteo".
+                  </div>
+                  <div v-else-if="sinAsignar > 0" class="alert-warning">
+                    {{ sinAsignar }} artículo(s) sin usuario asignado. Elige un usuario en cada uno para poder confirmar.
+                  </div>
+
                   <!-- Resumen por usuario -->
                   <div class="flex flex-wrap gap-2">
                     <div
@@ -72,6 +80,7 @@
                           class="select-input text-xs flex-shrink-0 w-48"
                           :class="item.scannedByUserIds.includes(assignments[item.itemCode]) ? 'border-amber-400' : ''"
                         >
+                          <option v-if="!assignments[item.itemCode]" value="" disabled>— Sin asignar —</option>
                           <option v-for="userId in proposal?.candidateUserIds ?? []" :key="userId" :value="userId">
                             {{ userLabel(userId) }}{{ item.scannedByUserIds.includes(userId) ? ' (lo contó)' : '' }}
                           </option>
@@ -108,7 +117,7 @@
                 <button
                   type="button"
                   class="btn-primary"
-                  :disabled="loading || confirmando || items.length === 0"
+                  :disabled="loading || confirmando || items.length === 0 || sinCandidatos || sinAsignar > 0"
                   @click="confirmar"
                 >
                   {{ confirmando ? 'Confirmando...' : (proposal?.hasExistingAssignments ? 'Guardar cambios' : 'Confirmar reparto') }}
@@ -166,8 +175,11 @@ const groupedByLevel2 = computed(() => {
 })
 
 const activeUserIds = computed(() =>
-  [...new Set(Object.values(assignments))].sort((a, b) => userLabel(a).localeCompare(userLabel(b)))
+  [...new Set(Object.values(assignments))].filter(Boolean).sort((a, b) => userLabel(a).localeCompare(userLabel(b)))
 )
+
+const sinCandidatos = computed(() => !!proposal.value && proposal.value.candidateUserIds.length === 0)
+const sinAsignar = computed(() => items.value.filter(i => !assignments[i.itemCode]).length)
 
 function countForUser(userId: string): number {
   return Object.values(assignments).filter(u => u === userId).length
@@ -258,5 +270,6 @@ function cerrar() {
 .btn-secondary { @apply inline-flex items-center rounded-lg border border-gray-300 dark:border-gray-600 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-60 disabled:cursor-not-allowed; }
 .btn-warning { @apply inline-flex items-center rounded-lg bg-amber-600 px-4 py-2 text-sm font-medium text-white hover:bg-amber-700; }
 .alert-error { @apply rounded-lg border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 px-3 py-2 text-sm text-red-700 dark:text-red-300; }
+.alert-warning { @apply rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 px-3 py-2 text-sm text-amber-800 dark:text-amber-200; }
 .select-input { @apply rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 px-2 py-1.5 text-gray-900 dark:text-white focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500; }
 </style>
