@@ -14,6 +14,8 @@ vi.mock('@/modules/recepcion-proveedores/services/pickingApi', () => ({
     escanear: vi.fn(),
     eliminarScan: vi.fn(),
     cerrar: vi.fn(),
+    integrarSap: vi.fn(),
+    verificarEstadoSap: vi.fn(),
   },
 }))
 
@@ -39,6 +41,9 @@ function buildSesion(overrides: Partial<OrdenPickingSesionResponse> = {}): Orden
     whsCode: 'RL-PSC',
     estado: 'EnProceso',
     fechaInicio: '2026-01-01T00:00:00Z',
+    sapDocEntry: null,
+    sapDocNum: null,
+    sapErrorMensaje: null,
     lineas: [buildLinea()],
     ...overrides,
   }
@@ -163,5 +168,100 @@ describe('usePickingStore', () => {
 
     expect(ok).toBe(true)
     expect(store.sesion?.estado).toBe('Finalizada')
+  })
+
+  it('integrarSap exito sincrono deja la sesion IntegradaSap con DocEntry/DocNum', async () => {
+    const sesion = buildSesion({ estado: 'Finalizada' })
+    vi.mocked(pickingApi.obtenerSesion).mockResolvedValue(sesion)
+    vi.mocked(pickingApi.obtenerScans).mockResolvedValue([])
+    const store = usePickingStore()
+    await store.cargarSesion(1)
+
+    vi.mocked(pickingApi.integrarSap).mockResolvedValue(
+      buildSesion({ estado: 'IntegradaSap', sapDocEntry: 900, sapDocNum: 901 })
+    )
+
+    const ok = await store.integrarSap()
+
+    expect(ok).toBe(true)
+    expect(store.sesion?.estado).toBe('IntegradaSap')
+    expect(store.sesion?.sapDocEntry).toBe(900)
+    expect(store.sesion?.sapDocNum).toBe(901)
+    expect(store.actionError).toBeNull()
+  })
+
+  it('integrarSap encolado deja la sesion en EnviandoSap', async () => {
+    const sesion = buildSesion({ estado: 'Finalizada' })
+    vi.mocked(pickingApi.obtenerSesion).mockResolvedValue(sesion)
+    vi.mocked(pickingApi.obtenerScans).mockResolvedValue([])
+    const store = usePickingStore()
+    await store.cargarSesion(1)
+
+    vi.mocked(pickingApi.integrarSap).mockResolvedValue(buildSesion({ estado: 'EnviandoSap' }))
+
+    const ok = await store.integrarSap()
+
+    expect(ok).toBe(true)
+    expect(store.sesion?.estado).toBe('EnviandoSap')
+  })
+
+  it('integrarSap con error de red deja actionError y no toca la sesion', async () => {
+    const sesion = buildSesion({ estado: 'Finalizada' })
+    vi.mocked(pickingApi.obtenerSesion).mockResolvedValue(sesion)
+    vi.mocked(pickingApi.obtenerScans).mockResolvedValue([])
+    const store = usePickingStore()
+    await store.cargarSesion(1)
+
+    vi.mocked(pickingApi.integrarSap).mockRejectedValue({
+      response: { status: 409, data: { detail: 'La sesion ya esta en proceso de integracion.' } },
+    })
+
+    const ok = await store.integrarSap()
+
+    expect(ok).toBe(false)
+    expect(store.actionError).toBe('La sesion ya esta en proceso de integracion.')
+    expect(store.sesion?.estado).toBe('Finalizada')
+  })
+
+  it('verificarEstadoSap resuelve EnviandoSap a IntegradaSap', async () => {
+    const sesion = buildSesion({ estado: 'EnviandoSap' })
+    vi.mocked(pickingApi.obtenerSesion).mockResolvedValue(sesion)
+    vi.mocked(pickingApi.obtenerScans).mockResolvedValue([])
+    const store = usePickingStore()
+    await store.cargarSesion(1)
+
+    vi.mocked(pickingApi.verificarEstadoSap).mockResolvedValue(
+      buildSesion({ estado: 'IntegradaSap', sapDocEntry: 900, sapDocNum: 901 })
+    )
+
+    const ok = await store.verificarEstadoSap()
+
+    expect(ok).toBe(true)
+    expect(store.sesion?.estado).toBe('IntegradaSap')
+  })
+
+  it('integrarSap descarta la respuesta si el usuario ya navego a otra sesion', async () => {
+    const sesion = buildSesion({ estado: 'Finalizada' })
+    vi.mocked(pickingApi.obtenerSesion).mockResolvedValue(sesion)
+    vi.mocked(pickingApi.obtenerScans).mockResolvedValue([])
+    const store = usePickingStore()
+    await store.cargarSesion(1)
+
+    let resolveIntegrar: (value: OrdenPickingSesionResponse) => void = () => {}
+    vi.mocked(pickingApi.integrarSap).mockImplementationOnce(
+      () => new Promise((resolve) => { resolveIntegrar = resolve })
+    )
+
+    const integrando = store.integrarSap()
+    vi.mocked(pickingApi.obtenerSesion).mockResolvedValue(buildSesion({ id: 2, docNum: 2002 }))
+    vi.mocked(pickingApi.obtenerScans).mockResolvedValue([])
+    await store.cargarSesion(2)
+
+    resolveIntegrar(buildSesion({ estado: 'IntegradaSap', sapDocEntry: 900, sapDocNum: 901 }))
+    const ok = await integrando
+
+    expect(ok).toBe(false)
+    expect(store.sesion?.id).toBe(2)
+    expect(store.sesion?.estado).toBe('EnProceso')
   })
 })

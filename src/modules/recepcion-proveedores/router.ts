@@ -34,6 +34,9 @@ const routes: RouteRecordRaw[] = [
     () => import('./views/PickingView.vue'),
     { title: 'Picking' }
   ),
+  route('/recepcion-proveedores/logs', 'recepcion-proveedores-logs', () => import('./views/LogsView.vue'), {
+    title: 'Logs de Picking',
+  }),
 ]
 
 export default routes

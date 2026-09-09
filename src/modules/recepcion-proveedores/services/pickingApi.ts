@@ -1,5 +1,5 @@
 import { recepcionProveedoresApi } from './config/axiosConfig'
-import type { OrdenPickingLineaResponse, OrdenPickingLogResponse, OrdenPickingScanResponse, OrdenPickingSesionResponse } from '../types'
+import type { OrdenPickingLineaResponse, OrdenPickingLogGeneralResponse, OrdenPickingLogResponse, OrdenPickingScanResponse, OrdenPickingSesionResponse } from '../types'
 
 export const pickingApi = {
   async obtenerSesionActiva(docNum: number): Promise<OrdenPickingSesionResponse | null> {
@@ -43,6 +43,21 @@ export const pickingApi = {
 
   async cerrar(sesionId: number): Promise<OrdenPickingSesionResponse> {
     const { data } = await recepcionProveedoresApi.post<OrdenPickingSesionResponse>(`/picking/${sesionId}/cerrar`)
+    return data
+  },
+
+  async obtenerLogsGeneral(params: { desde?: string; hasta?: string; docNum?: number }): Promise<OrdenPickingLogGeneralResponse[]> {
+    const { data } = await recepcionProveedoresApi.get<OrdenPickingLogGeneralResponse[]>('/picking/logs', { params })
+    return data
+  },
+
+  async integrarSap(sesionId: number): Promise<OrdenPickingSesionResponse> {
+    const { data } = await recepcionProveedoresApi.post<OrdenPickingSesionResponse>(`/picking/${sesionId}/integrar-sap`)
+    return data
+  },
+
+  async verificarEstadoSap(sesionId: number): Promise<OrdenPickingSesionResponse> {
+    const { data } = await recepcionProveedoresApi.post<OrdenPickingSesionResponse>(`/picking/${sesionId}/verificar-estado-sap`)
     return data
   },
 }

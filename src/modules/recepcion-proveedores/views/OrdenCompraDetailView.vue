@@ -6,6 +6,7 @@ import { usePickingStore } from '../stores/pickingStore'
 import { downloadExcel } from '@/utils/exportExcel'
 import LoadingSpinner from '@/components/LoadingSpinner.vue'
 import ErrorModal from '@/components/ErrorModal.vue'
+import BuscarOdcBar from '../components/BuscarOdcBar.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -81,6 +82,10 @@ watch(docNum, cargar)
 
 <template>
   <div class="max-w-4xl mx-auto py-8 px-4">
+    <div class="mb-6 pb-6 border-b border-gray-200 dark:border-gray-700">
+      <BuscarOdcBar />
+    </div>
+
     <LoadingSpinner v-if="ordenesCompraStore.loading" message="Consultando orden de compra..." />
 
     <template v-else-if="ordenesCompraStore.orden">

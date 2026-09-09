@@ -23,9 +23,13 @@ const codigoInputEl = ref<HTMLInputElement | null>(null)
 const mostrarLogs = ref(false)
 const mostrarConfirmarCierre = ref(false)
 const mostrarCierreExitoso = ref(false)
+const mostrarConfirmarIntegrarSap = ref(false)
+const mostrarIntegracionExitosa = ref(false)
 
-const sesionFinalizada = computed(() => pickingStore.sesion?.estado === 'Finalizada')
+const enProceso = computed(() => pickingStore.sesion?.estado === 'EnProceso')
 const puedeCerrar = computed(() => pickingStore.sesion?.estado === 'EnProceso' && pickingStore.scans.length > 0)
+const puedeIntegrarSap = computed(() => pickingStore.sesion?.estado === 'Finalizada' || pickingStore.sesion?.estado === 'ErrorSap')
+const puedeVerificarEstadoSap = computed(() => pickingStore.sesion?.estado === 'EnviandoSap')
 
 async function cargar(): Promise<void> {
   await pickingStore.cargarSesion(sesionId.value)
@@ -34,7 +38,7 @@ async function cargar(): Promise<void> {
 
 async function escanear(): Promise<void> {
   const codigo = codigoInput.value.trim()
-  if (!codigo || sesionFinalizada.value) return
+  if (!codigo || !enProceso.value) return
   const ok = await pickingStore.escanear(codigo, Math.max(1, cantidadInput.value || 1))
   if (ok) {
     codigoInput.value = ''
@@ -52,6 +56,17 @@ async function confirmarCierre(): Promise<void> {
   mostrarConfirmarCierre.value = false
   const ok = await pickingStore.cerrar()
   if (ok) mostrarCierreExitoso.value = true
+}
+
+async function confirmarIntegrarSap(): Promise<void> {
+  mostrarConfirmarIntegrarSap.value = false
+  const ok = await pickingStore.integrarSap()
+  if (ok && pickingStore.sesion?.estado === 'IntegradaSap') mostrarIntegracionExitosa.value = true
+}
+
+async function verificarEstado(): Promise<void> {
+  const ok = await pickingStore.verificarEstadoSap()
+  if (ok && pickingStore.sesion?.estado === 'IntegradaSap') mostrarIntegracionExitosa.value = true
 }
 
 async function alternarLogs(): Promise<void> {
@@ -90,7 +105,7 @@ watch(sesionId, cargar)
             Almacén {{ pickingStore.sesion.whsCode }} · Estado: {{ pickingStore.sesion.estado }}
           </p>
         </div>
-        <div class="flex gap-2">
+        <div class="flex flex-wrap gap-2">
           <button
             type="button"
             class="px-3 py-2 text-sm font-medium bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
@@ -106,12 +121,40 @@ watch(sesionId, cargar)
           >
             Cerrar Picking
           </button>
+          <button
+            v-if="puedeIntegrarSap"
+            type="button"
+            :disabled="pickingStore.isSubmitting"
+            class="px-3 py-2 text-sm font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            @click="mostrarConfirmarIntegrarSap = true"
+          >
+            {{ pickingStore.sesion.estado === 'ErrorSap' ? 'Reintentar integración SAP' : 'Integrar a SAP' }}
+          </button>
+          <button
+            v-if="puedeVerificarEstadoSap"
+            type="button"
+            :disabled="pickingStore.isSubmitting"
+            class="px-3 py-2 text-sm font-medium bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors disabled:opacity-50"
+            @click="verificarEstado"
+          >
+            Verificar estado
+          </button>
         </div>
+      </div>
+
+      <div v-if="pickingStore.sesion.estado === 'ErrorSap'" class="mb-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-sm text-red-700 dark:text-red-300">
+        No se pudo integrar a SAP: {{ pickingStore.sesion.sapErrorMensaje }}
+      </div>
+      <div v-else-if="pickingStore.sesion.estado === 'EnviandoSap'" class="mb-4 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg text-sm text-blue-700 dark:text-blue-300">
+        SAP está procesando la integración. Usa "Verificar estado" en unos momentos.
+      </div>
+      <div v-else-if="pickingStore.sesion.estado === 'IntegradaSap'" class="mb-4 p-3 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-lg text-sm text-emerald-700 dark:text-emerald-300">
+        Integrado a SAP — Goods Receipt DocEntry {{ pickingStore.sesion.sapDocEntry }}, DocNum {{ pickingStore.sesion.sapDocNum }}.
       </div>
 
       <!-- Input de escaneo: lector de codigo de barras actuando como teclado (Enter = escanear). -->
       <form
-        v-if="!sesionFinalizada"
+        v-if="enProceso"
         class="flex flex-wrap gap-2 items-end mb-4 bg-gray-50 dark:bg-gray-900/40 border border-gray-200 dark:border-gray-700 rounded-lg p-3"
         @submit.prevent="escanear"
       >
@@ -201,7 +244,7 @@ watch(sesionId, cargar)
               <td class="px-4 py-2 text-sm text-gray-500 dark:text-gray-400">{{ new Date(scan.fechaHora).toLocaleString() }}</td>
               <td class="px-4 py-2 text-right">
                 <button
-                  v-if="!sesionFinalizada && scan.usuarioId === usuarioActualId"
+                  v-if="enProceso && scan.usuarioId === usuarioActualId"
                   type="button"
                   :disabled="pickingStore.isSubmitting"
                   class="text-xs font-medium text-red-600 dark:text-red-400 hover:underline disabled:opacity-50"
@@ -245,6 +288,22 @@ watch(sesionId, cargar)
       title="Picking cerrado"
       message="La sesión de picking se cerró correctamente."
       @close="cerrarModalExito"
+    />
+
+    <ConfirmModal
+      :open="mostrarConfirmarIntegrarSap"
+      title="¿Integrar a SAP?"
+      message="Se creará un Goods Receipt en SAP con lo escaneado en esta sesión."
+      confirm-label="Integrar a SAP"
+      @confirm="confirmarIntegrarSap"
+      @cancel="mostrarConfirmarIntegrarSap = false"
+    />
+
+    <SuccessModal
+      :open="mostrarIntegracionExitosa"
+      title="Integración a SAP exitosa"
+      :message="`Goods Receipt creado: DocEntry ${pickingStore.sesion?.sapDocEntry}, DocNum ${pickingStore.sesion?.sapDocNum}.`"
+      @close="mostrarIntegracionExitosa = false"
     />
 
     <ErrorModal

@@ -160,6 +160,51 @@ export const usePickingStore = defineStore('recepcionProveedoresPicking', () => 
     }
   }
 
+  /**
+   * Devuelve true en cualquier round-trip HTTP exitoso (igual que cerrar()) — el resultado de
+   * negocio (IntegradaSap/EnviandoSap/ErrorSap) vive en sesion.estado/sesion.sapErrorMensaje.
+   * ErrorSap llega en un 200 normal, NO es un error HTTP: no debe pasar por actionError/ErrorModal.
+   */
+  async function integrarSap(): Promise<boolean> {
+    if (!sesion.value) return false
+    const sesionId = sesion.value.id
+
+    actionError.value = null
+    isSubmitting.value = true
+    try {
+      const resultado = await pickingApi.integrarSap(sesionId)
+      if (activeSesionId.value !== sesionId) return false
+      sesion.value = resultado
+      return true
+    } catch (err: unknown) {
+      if (activeSesionId.value !== sesionId) return false
+      actionError.value = mapApiError(err, 'No se pudo integrar el picking a SAP.').message
+      return false
+    } finally {
+      if (activeSesionId.value === sesionId) isSubmitting.value = false
+    }
+  }
+
+  async function verificarEstadoSap(): Promise<boolean> {
+    if (!sesion.value) return false
+    const sesionId = sesion.value.id
+
+    actionError.value = null
+    isSubmitting.value = true
+    try {
+      const resultado = await pickingApi.verificarEstadoSap(sesionId)
+      if (activeSesionId.value !== sesionId) return false
+      sesion.value = resultado
+      return true
+    } catch (err: unknown) {
+      if (activeSesionId.value !== sesionId) return false
+      actionError.value = mapApiError(err, 'No se pudo verificar el estado de la integración a SAP.').message
+      return false
+    } finally {
+      if (activeSesionId.value === sesionId) isSubmitting.value = false
+    }
+  }
+
   function limpiarActionError(): void {
     actionError.value = null
   }
@@ -180,6 +225,8 @@ export const usePickingStore = defineStore('recepcionProveedoresPicking', () => 
     escanear,
     eliminarScan,
     cerrar,
+    integrarSap,
+    verificarEstadoSap,
     limpiarActionError,
   }
 })

@@ -48,6 +48,9 @@ export interface OrdenPickingSesionResponse {
   whsCode: string
   estado: EstadoPickingSesion
   fechaInicio: string
+  sapDocEntry: number | null
+  sapDocNum: number | null
+  sapErrorMensaje: string | null
   lineas: OrdenPickingLineaResponse[]
 }
 
@@ -62,6 +65,17 @@ export interface OrdenPickingScanResponse {
 
 export interface OrdenPickingLogResponse {
   id: number
+  fechaHora: string
+  nivel: 'Info' | 'Warn' | 'Error'
+  evento: string
+  detalle: string | null
+  usuarioId: string | null
+}
+
+export interface OrdenPickingLogGeneralResponse {
+  id: number
+  docNum: number
+  whsCode: string
   fechaHora: string
   nivel: 'Info' | 'Warn' | 'Error'
   evento: string

@@ -13,6 +13,7 @@ describe('recepcionProveedoresRoutes', () => {
     expect(findRoute('recepcion-proveedores-buscar').path).toBe('/recepcion-proveedores')
     expect(findRoute('recepcion-proveedores-detalle').path).toBe('/recepcion-proveedores/ordenes-compra/:docNum')
     expect(findRoute('recepcion-proveedores-picking').path).toBe('/recepcion-proveedores/picking/:sesionId')
+    expect(findRoute('recepcion-proveedores-logs').path).toBe('/recepcion-proveedores/logs')
   })
 
   it('requires auth on every route', () => {

@@ -206,7 +206,7 @@ export default defineConfig(async ({ mode }): Promise<UserConfig> => {
           target: recepcionProveedoresProxyTarget,
           changeOrigin: true,
           secure: false,
-          rewrite: (path) => path.replace(/^\/api\/recepcion-proveedores-api/, '/api')
+          rewrite: (path) => path.replace(/^\/api\/recepcion-proveedores-api/, '/api/v1')
         },
 
         '/api/demanda-otb-api': {
