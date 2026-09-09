@@ -87,6 +87,9 @@
                         <p class="text-xs text-gray-500 dark:text-gray-400 mb-2">
                             Si las columnas foto1/foto2/foto3 de la plantilla llevan nombres de archivo, adjunta aquí el .zip que los contiene.
                         </p>
+                        <p class="text-xs text-gray-500 dark:text-gray-400 mb-2">
+                            También puedes nombrar tus imágenes en el ZIP con el Código de Proveedor (ej: <code class="font-mono">4656.png</code>, <code class="font-mono">4656_1.png</code>, <code class="font-mono">4656_2.png</code>) y dejar las columnas foto1, foto2, foto3 vacías en el Excel. El sistema las vinculará automáticamente.
+                        </p>
                         <div
                             class="border-2 border-dashed rounded-lg p-6 text-center transition-colors"
                             :class="dragOverZip ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20' : 'border-gray-300 dark:border-gray-600 hover:border-gray-400'"
