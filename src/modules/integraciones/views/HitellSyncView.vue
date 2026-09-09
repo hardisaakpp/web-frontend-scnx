@@ -30,6 +30,7 @@
         <select v-model="filters.status" :class="inputClass">
           <option value="">Todos</option>
           <option value="REJECTED">Rechazados</option>
+          <option value="ERROR">Error de envío</option>
           <option value="SYNCED">Integrados</option>
           <option value="SKIPPED_NOT_POS">No corresponde</option>
         </select>
@@ -160,7 +161,7 @@
                     Ver detalle
                   </button>
                   <button
-                    v-if="doc.result === 'RECHAZADO' && puedeReintegrar"
+                    v-if="(doc.result === 'RECHAZADO' || doc.result === 'ERROR') && puedeReintegrar"
                     type="button"
                     :disabled="reintegrando.has(claveDoc(doc))"
                     class="px-3 py-1.5 text-xs font-medium rounded-lg bg-amber-500 hover:bg-amber-600 text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
@@ -276,7 +277,7 @@
 
       <template #footer>
         <button
-          v-if="detalle?.result === 'RECHAZADO' && puedeReintegrar"
+          v-if="(detalle?.result === 'RECHAZADO' || detalle?.result === 'ERROR') && puedeReintegrar"
           type="button"
           class="px-4 py-2 text-sm font-medium rounded-lg bg-amber-500 hover:bg-amber-600 text-white transition-colors"
           @click="confirmar = detalle"

@@ -69,6 +69,7 @@ export const HITELL_RESULT_LABEL: Record<HitellResult, string> = {
   INTEGRADO: 'Integrado',
   NO_CORRESPONDE: 'No corresponde',
   RECHAZADO: 'Rechazado',
+  ERROR: 'Error de envío',
 }
 
 export const HITELL_REJECTION_LABEL: Record<HitellRejectionType, string> = {
@@ -82,6 +83,8 @@ export function toneHitell(result: HitellResult): BadgeTone {
       return 'success'
     case 'RECHAZADO':
       return 'danger'
+    case 'ERROR':
+      return 'warning'
     default:
       return 'neutral'
   }
