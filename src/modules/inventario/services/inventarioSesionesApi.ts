@@ -13,7 +13,8 @@ import type {
   SessionDetailLineDto,
   SessionDetailStatsDto,
   SessionScansByUserDto,
-  MyCountHistorySessionDto
+  MyCountHistorySessionDto,
+  DeleteCountsResultDto
 } from '../types'
 
 invPlanesApi.interceptors.response.use(
@@ -25,10 +26,14 @@ invPlanesApi.interceptors.response.use(
 )
 
 export const inventarioSesionesService = {
-  async getSesiones(): Promise<InventorySessionListItemDto[]> {
-    // Para un usuario con acceso a todas las bodegas, el backend consulta el stock de cada bodega
-    // distinta con sesiones abiertas, una por una — puede superar el timeout default (30s).
-    const response = await invPlanesApi.get<InventorySessionListItemDto[]>('/api/inventory-sessions', { timeout: 120_000 })
+  /**
+   * Listado de tomas. `since`/`until` (ISO, sobre la fecha de apertura) se filtran en el servidor:
+   * el costo del endpoint es calcular el alcance de cada toma devuelta contra sc_maestros, así que
+   * traer solo el rango visible (15 días por defecto) es lo que hace rápida la pantalla.
+   */
+  async getSesiones(params?: { since?: string; until?: string; status?: string }): Promise<InventorySessionListItemDto[]> {
+    // Sin filtro de fechas (usuario limpió el rango) puede tardar: se mantiene el timeout amplio.
+    const response = await invPlanesApi.get<InventorySessionListItemDto[]>('/api/inventory-sessions', { params, timeout: 120_000 })
     return response.data
   },
 
@@ -110,8 +115,14 @@ export const inventarioSesionesService = {
     return response.data
   },
 
+  /**
+   * Registra un conteo desde la pantalla de picking. Timeout corto a propósito: con WiFi conectado
+   * pero sin salida a internet (caso típico en tienda) el default de 30 s dejaba al operador viendo
+   * "Enviando..." medio minuto por cada escaneo; con 8 s el registro pasa rápido a la lista de
+   * errores, que se reintenta sola.
+   */
   async addCount(sessionId: string, data: AddInventoryCountRequest): Promise<InventoryCountResultDto> {
-    const response = await invPlanesApi.post<InventoryCountResultDto>(`/api/inventory-sessions/${sessionId}/counts`, data)
+    const response = await invPlanesApi.post<InventoryCountResultDto>(`/api/inventory-sessions/${sessionId}/counts`, data, { timeout: 8_000 })
     return response.data
   },
 
@@ -129,6 +140,12 @@ export const inventarioSesionesService = {
     await invPlanesApi.delete(`/api/inventory-sessions/${sessionId}/counts/${countId}`)
   },
 
+  /** Elimina varios ingresos en una sola llamada; los que no se pudieron borrar vienen en `skipped` con el motivo. */
+  async deleteCounts(sessionId: string, countIds: string[]): Promise<DeleteCountsResultDto> {
+    const response = await invPlanesApi.post<DeleteCountsResultDto>(`/api/inventory-sessions/${sessionId}/counts/delete-batch`, { countIds })
+    return response.data
+  },
+
   async getSupervisorSummary(sessionId: string): Promise<SupervisorSummaryDto> {
     const response = await invPlanesApi.get<SupervisorSummaryDto>(`/api/inventory-sessions/${sessionId}/supervisor-summary`)
     return response.data
@@ -137,7 +154,7 @@ export const inventarioSesionesService = {
   async closeSession(sessionId: string, note?: string | null): Promise<InventorySessionStatusDto> {
     // Cerrar dispara un sync de stock contra SAP (sp_sync_stock_sap_warehouse/items) que puede
     // tardar más que el timeout default (30s) en bodegas grandes — sin esto, el front corta la
-    // conexión, el backend cancela el SP a mitad de camino, y el próximo intento repite todo desde cero.
+    // conexión, el backend cancela el SP a mitad de camino, y el próximo intento repite el proceso desde cero.
     const response = await invPlanesApi.post<InventorySessionStatusDto>(
       `/api/inventory-sessions/${sessionId}/close`,
       { note: note ?? null },
@@ -187,14 +204,42 @@ export const inventarioSesionesService = {
     return response.data
   },
 
-  async getRecountAssignmentProposal(sessionId: string): Promise<RecountAssignmentProposalDto> {
-    const response = await invPlanesApi.get<RecountAssignmentProposalDto>(`/api/inventory-sessions/${sessionId}/recount-assignment-proposal`)
+  /**
+   * Propuesta de reparto. Sin `participants` devuelve candidatos y una sugerencia por zona; con
+   * `participants` (usuarios elegidos por el supervisor) la sugerencia se balancea solo entre ellos.
+   */
+  async getRecountAssignmentProposal(sessionId: string, participants?: string[]): Promise<RecountAssignmentProposalDto> {
+    const params = participants && participants.length > 0 ? { participants: participants.join(',') } : undefined
+    const response = await invPlanesApi.get<RecountAssignmentProposalDto>(`/api/inventory-sessions/${sessionId}/recount-assignment-proposal`, { params })
     return response.data
   },
 
   async setRecountAssignments(sessionId: string, assignments: { itemCode: string; userId: string }[]): Promise<void> {
     await invPlanesApi.post(`/api/inventory-sessions/${sessionId}/recount-assignments`, { assignments })
+  },
+
+  /** Lo que el usuario actual debe recontar (solo lo suyo si hay reparto; la lista completa si el reconteo está abierto). */
+  async getMyRecountItems(sessionId: string): Promise<MyRecountListDto> {
+    const response = await invPlanesApi.get<MyRecountListDto>(`/api/inventory-sessions/${sessionId}/recount/my-items`)
+    return response.data
   }
+}
+
+export interface MyRecountItemDto {
+  itemCode: string
+  description: string | null
+  barcode: string | null
+  level2: string | null
+  recounted: boolean
+  recountedQuantity: number
+}
+
+export interface MyRecountListDto {
+  /** 'Open' = sin reparto, cada usuario ve la lista completa. 'Assigned' = hay reparto, la lista es lo asignado al usuario. */
+  mode: 'Open' | 'Assigned'
+  total: number
+  pending: number
+  items: MyRecountItemDto[]
 }
 
 export interface ArticleCountLineDto {
@@ -221,11 +266,15 @@ export interface RecountAssignmentItemDto {
   level2: string | null
   scannedByUserIds: string[]
   suggestedUserId: string | null
+  /** Asignado ya guardado (cuando se reabre un reparto existente para ajustarlo). */
+  currentUserId?: string | null
 }
 
 export interface RecountAssignmentProposalDto {
   items: RecountAssignmentItemDto[]
   candidateUserIds: string[]
+  /** true si la toma ya tiene un reparto guardado. */
+  hasExistingAssignments?: boolean
 }
 
 export interface SubmitItemsResultDto {

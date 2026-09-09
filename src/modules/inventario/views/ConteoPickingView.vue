@@ -10,6 +10,11 @@
           <span v-if="sessionInfo" class="font-mono text-xs text-gray-400">{{ sessionInfo.warehouseCode }}</span>
           <span v-if="sessionInfo" :class="['badge', badgeClass(sessionInfo.status)]">{{ statusLabel(sessionInfo.status) }}</span>
           <span v-if="!online" class="badge badge-red">Sin conexión</span>
+          <span
+            v-if="pendientes > 0"
+            class="badge badge-amber"
+            title="Registros guardados en este dispositivo que aún no llegaron al servidor. Se reintentan solos."
+          >{{ pendientes }} pendiente{{ pendientes !== 1 ? 's' : '' }}</span>
         </div>
         <h1 class="text-base font-semibold text-gray-900 dark:text-white truncate">
           {{ sessionInfo?.warehouseName ?? 'Cargando sesión...' }}
@@ -24,6 +29,45 @@
         <button type="button" class="btn-secondary text-xs px-2.5 py-1.5" @click="irAlResumen">
           Ver Resumen
         </button>
+      </div>
+    </div>
+
+    <!-- Reconteo: qué me toca -->
+    <div v-if="esReconteo && miReconteo" class="px-4 pt-4">
+      <div class="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl p-4">
+        <div class="flex items-start justify-between gap-3 flex-wrap">
+          <div>
+            <h2 class="text-sm font-semibold text-amber-900 dark:text-amber-100">
+              <template v-if="miReconteo.mode === 'Assigned'">Tu reconteo: {{ miReconteo.pending }} pendiente{{ miReconteo.pending !== 1 ? 's' : '' }} de {{ miReconteo.total }}</template>
+              <template v-else>Reconteo abierto: {{ miReconteo.pending }} artículo{{ miReconteo.pending !== 1 ? 's' : '' }} por recontar de {{ miReconteo.total }}</template>
+            </h2>
+            <p class="text-xs text-amber-800 dark:text-amber-200 mt-0.5">
+              <template v-if="miReconteo.mode === 'Assigned'">Solo se registran los artículos de esta lista. Los demás los recuenta otro compañero.</template>
+              <template v-else>No hay reparto: cualquier usuario de la toma puede recontar cualquier artículo de la lista.</template>
+            </p>
+          </div>
+          <button type="button" class="text-xs font-medium text-amber-800 dark:text-amber-200 underline" @click="mostrarListaReconteo = !mostrarListaReconteo">
+            {{ mostrarListaReconteo ? 'Ocultar lista' : 'Ver lista' }}
+          </button>
+        </div>
+        <div v-if="avisoReconteo" class="mt-2 rounded-lg bg-red-100 dark:bg-red-900/40 text-red-800 dark:text-red-200 text-xs px-3 py-2">{{ avisoReconteo }}</div>
+        <div v-if="mostrarListaReconteo && miReconteo.items.length > 0" class="mt-3 max-h-56 overflow-y-auto divide-y divide-amber-200/60 dark:divide-amber-800/60 rounded-lg bg-white/70 dark:bg-gray-900/30">
+          <div
+            v-for="i in miReconteo.items"
+            :key="i.itemCode"
+            class="flex items-center justify-between gap-3 px-3 py-1.5 text-xs"
+            :class="i.recounted ? 'opacity-50' : ''"
+          >
+            <div class="min-w-0">
+              <span class="font-mono font-semibold text-gray-900 dark:text-white">{{ i.itemCode }}</span>
+              <span v-if="i.description" class="text-gray-600 dark:text-gray-300 ml-2 truncate">{{ i.description }}</span>
+              <div class="text-gray-400 dark:text-gray-500 font-mono">{{ i.barcode ?? '—' }}<span v-if="i.level2" class="font-sans ml-2">{{ i.level2 }}</span></div>
+            </div>
+            <span v-if="i.recounted" class="badge badge-green flex-shrink-0">Recontado {{ i.recountedQuantity }}</span>
+            <span v-else class="badge badge-amber flex-shrink-0">Pendiente</span>
+          </div>
+        </div>
+        <div v-else-if="mostrarListaReconteo" class="mt-3 text-xs text-amber-800 dark:text-amber-200">No tienes artículos asignados en este reconteo.</div>
       </div>
     </div>
 
@@ -111,6 +155,9 @@
               Reenviar todo
             </button>
           </div>
+          <p class="text-xs text-gray-500 dark:text-gray-400 mb-2">
+            Guardados en este dispositivo. Los de conexión se reintentan solos cada 30 segundos y al volver la red; los rechazados por el servidor necesitan tu revisión. No cierres la toma hasta que desaparezcan.
+          </p>
           <div class="space-y-1.5 max-h-48 overflow-y-auto">
             <div
               v-for="e in errores"
@@ -218,10 +265,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, nextTick } from 'vue'
-import { useRouter, useRoute } from 'vue-router'
+import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
+import { useRouter, useRoute, onBeforeRouteLeave } from 'vue-router'
 import { ChevronLeftIcon, ChevronDownIcon, CameraIcon } from '@heroicons/vue/24/outline'
 import { inventarioSesionesService } from '../services/inventarioSesionesApi'
+import type { MyRecountListDto } from '../services/inventarioSesionesApi'
 import type { InventorySessionStatus } from '../types'
 import ScannerPanel from '../components/ScannerPanel.vue'
 
@@ -248,6 +296,8 @@ interface ErrorItem {
   source: 'Manual' | 'Scan'
   scanCode?: string | null
   errorMsg: string
+  /** true = falla de red/timeout: se reintenta solo. false = el servidor lo rechazó (p. ej. artículo fuera del alcance): requiere revisión. */
+  reintentable: boolean
 }
 
 interface SessionInfo {
@@ -266,6 +316,15 @@ interface CachedItemInfo {
 const ITEM_CACHE_PREFIX = 'inv_item_v1_'
 const ITEM_CACHE_TTL = 24 * 60 * 60 * 1000
 
+/**
+ * Tolerancia a fallas de red (toma OUT-CON, 2026-09): los registros que no logran enviarse se
+ * guardan en el navegador por toma, se reintentan solos cada AUTO_RETRY_MS y al volver la conexión,
+ * y la pantalla avisa antes de salir si queda algo pendiente. Antes vivían solo en memoria y se
+ * perdían al refrescar, cerrar la pestaña o volver a "Mis inventarios".
+ */
+const PENDING_PREFIX = 'inv_picking_pendientes_v1_'
+const AUTO_RETRY_MS = 30_000
+
 const router = useRouter()
 const route = useRoute()
 const sessionId = route.params.sessionId as string
@@ -273,6 +332,53 @@ const sessionId = route.params.sessionId as string
 const barcodeInputRef = ref<HTMLInputElement | null>(null)
 const sessionInfo = ref<SessionInfo | null>(null)
 const errorCarga = ref<string | null>(null)
+
+// ─── Reconteo: lista de lo que me toca ──────────────────────────────────────
+const miReconteo = ref<MyRecountListDto | null>(null)
+const mostrarListaReconteo = ref(true)
+const avisoReconteo = ref<string | null>(null)
+let avisoReconteoTimer: ReturnType<typeof setTimeout> | null = null
+const esReconteo = computed(() => sessionInfo.value?.status === 'Recount')
+const reconteoPendientes = computed(() => miReconteo.value?.items.filter(i => !i.recounted) ?? [])
+
+async function cargarMiReconteo() {
+  if (!esReconteo.value) {
+    miReconteo.value = null
+    return
+  }
+  try {
+    miReconteo.value = await inventarioSesionesService.getMyRecountItems(sessionId)
+  } catch {
+    // Sin la lista la pantalla sigue funcionando; el backend valida igual al registrar.
+    miReconteo.value = null
+  }
+}
+
+function mostrarAvisoReconteo(msg: string) {
+  avisoReconteo.value = msg
+  if (avisoReconteoTimer) clearTimeout(avisoReconteoTimer)
+  avisoReconteoTimer = setTimeout(() => { avisoReconteo.value = null }, 6000)
+}
+
+/**
+ * Con reparto, solo se encolan artículos de mi lista: evita mandar al servidor algo que va a rechazar
+ * y le dice al operador de inmediato que ese artículo no le corresponde. El código puede venir como
+ * código de barras (escáner) o como código de artículo (manual).
+ */
+function permitidoEnMiReconteo(code: string): boolean {
+  if (!esReconteo.value || !miReconteo.value || miReconteo.value.mode !== 'Assigned') return true
+  const c = code.trim().toUpperCase()
+  return miReconteo.value.items.some(i => i.itemCode.toUpperCase() === c || (i.barcode ?? '').toUpperCase() === c)
+}
+
+/** Tras registrar un conteo, marca el artículo como recontado en mi lista sin volver a consultar. */
+function marcarRecontado(itemCode: string, quantity: number) {
+  const item = miReconteo.value?.items.find(i => i.itemCode.toUpperCase() === itemCode.toUpperCase())
+  if (!item) return
+  item.recounted = true
+  item.recountedQuantity += quantity
+  if (miReconteo.value) miReconteo.value.pending = miReconteo.value.items.filter(i => !i.recounted).length
+}
 const online = ref(navigator.onLine)
 
 const scanCode = ref('')
@@ -287,12 +393,116 @@ const enviados = ref<EnviadoItem[]>([])
 const errores = ref<ErrorItem[]>([])
 const procesando = ref(false)
 
+/** Registros que todavía no llegaron al servidor: en cola o con error. */
+const pendientes = computed(() => cola.value.length + errores.value.length)
+
+// ─── Persistencia de pendientes por toma ─────────────────────────────────────
+
+interface PendientesGuardados {
+  cola: ColaItem[]
+  errores: ErrorItem[]
+}
+
+function guardarPendientes() {
+  const key = PENDING_PREFIX + sessionId
+  try {
+    if (pendientes.value === 0) {
+      localStorage.removeItem(key)
+      return
+    }
+    const data: PendientesGuardados = { cola: cola.value, errores: errores.value }
+    localStorage.setItem(key, JSON.stringify(data))
+  } catch {
+    // Sin almacenamiento disponible: la pantalla sigue funcionando solo en memoria.
+  }
+}
+
+function restaurarPendientes() {
+  try {
+    const raw = localStorage.getItem(PENDING_PREFIX + sessionId)
+    if (!raw) return
+    const data = JSON.parse(raw) as Partial<PendientesGuardados>
+    // Lo que estaba en cola o falló por red vuelve a la cola; lo rechazado por el servidor
+    // se muestra de nuevo como error para que el operador decida.
+    const guardados = data.errores ?? []
+    const restaurados = [...(data.cola ?? []), ...guardados.filter(e => e.reintentable !== false)].map(e => ({
+      id: e.id,
+      itemCode: e.itemCode,
+      quantity: e.quantity,
+      source: e.source,
+      scanCode: e.scanCode ?? null,
+    }))
+    if (restaurados.length > 0) {
+      cola.value.push(...restaurados)
+    }
+    const rechazados = guardados.filter(e => e.reintentable === false)
+    if (rechazados.length > 0) {
+      errores.value.push(...rechazados)
+    }
+  } catch {
+    localStorage.removeItem(PENDING_PREFIX + sessionId)
+  }
+}
+
+watch([cola, errores], guardarPendientes, { deep: true })
+
+// ─── Reintento automático ────────────────────────────────────────────────────
+
+let reintentoTimer: ReturnType<typeof setInterval> | null = null
+
+/** Reencola solo los que fallaron por red; los rechazados por el servidor esperan al operador. */
+function reenviarReintentables() {
+  const items = errores.value.filter(e => e.reintentable)
+  if (items.length === 0) {
+    procesarCola()
+    return
+  }
+  errores.value = errores.value.filter(e => !e.reintentable)
+  for (const e of items) {
+    cola.value.push({ id: e.id, itemCode: e.itemCode, quantity: e.quantity, source: e.source, scanCode: e.scanCode })
+  }
+  procesarCola()
+}
+
+function reintentarSiHayErrores() {
+  if (!procesando.value && navigator.onLine && errores.value.some(e => e.reintentable)) {
+    reenviarReintentables()
+  }
+}
+
+// ─── Aviso al salir con pendientes ───────────────────────────────────────────
+
+const MENSAJE_SALIR = 'Hay registros de conteo que aún no se enviaron al servidor. Si sales ahora quedarán guardados en este dispositivo, pero no se registrarán hasta que vuelvas a abrir esta toma con conexión.'
+
+function onBeforeUnload(event: BeforeUnloadEvent) {
+  if (pendientes.value === 0) return
+  event.preventDefault()
+  event.returnValue = MENSAJE_SALIR
+}
+
+onBeforeRouteLeave(() => {
+  if (pendientes.value === 0) return true
+  return window.confirm(`${MENSAJE_SALIR}\n\n¿Salir de todas formas?`)
+})
+
 const validacionPendiente = new Set<string>()
 let validando = false
 
-let idCounter = 0
-function genId() {
-  return `${Date.now()}-${++idCounter}`
+/**
+ * UUID por registro de la cola. Viaja al backend como `clientId` (clave de idempotencia): si el
+ * envío se corta por timeout y se reintenta, el servidor reconoce el mismo id y no duplica el conteo.
+ * `crypto.randomUUID` solo existe en contextos seguros (https/localhost); en http se arma un v4 a mano
+ * con `crypto.getRandomValues`, que sí está disponible en cualquier contexto.
+ */
+function genId(): string {
+  if (typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID()
+  }
+  const bytes = crypto.getRandomValues(new Uint8Array(16))
+  bytes[6] = (bytes[6] & 0x0f) | 0x40
+  bytes[8] = (bytes[8] & 0x3f) | 0x80
+  const hex = Array.from(bytes, b => b.toString(16).padStart(2, '0')).join('')
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`
 }
 
 function getCachedItem(itemCode: string): CachedItemInfo | null {
@@ -369,8 +579,25 @@ function encolarValidacion(itemCode: string) {
   }
 }
 
-function onOnline() { online.value = true }
+function onOnline() {
+  online.value = true
+  // Volvió la red: reenviar lo que falló por conexión y destrabar la cola sin esperar al operador.
+  reenviarReintentables()
+}
 function onOffline() { online.value = false }
+
+/** Mensaje entendible para el operador según el tipo de falla del envío. */
+function describirErrorEnvio(e: any): { errorMsg: string; reintentable: boolean } {
+  // El interceptor del servicio envuelve el error de axios en un Error con `cause`.
+  const origen = e?.cause ?? e
+  if (origen?.code === 'ECONNABORTED') {
+    return { errorMsg: 'Sin respuesta del servidor (tiempo agotado). Se reintentará solo.', reintentable: true }
+  }
+  if (!origen?.response) {
+    return { errorMsg: 'Sin conexión. Se reintentará solo cuando vuelva la red.', reintentable: true }
+  }
+  return { errorMsg: e?.message ?? 'Error al registrar el conteo.', reintentable: false }
+}
 
 function statusLabel(status: InventorySessionStatus): string {
   return { Open: 'Abierta', Recount: 'Reconteo', Closed: 'Cerrada', Expired: 'No realizado' }[status] ?? status
@@ -398,6 +625,7 @@ async function cargarInfoSesion() {
       description: status.description,
       status: status.status as InventorySessionStatus
     }
+    await cargarMiReconteo()
   } catch (e: any) {
     errorCarga.value = e.message ?? 'No se pudo cargar la sesión.'
   }
@@ -405,6 +633,10 @@ async function cargarInfoSesion() {
 
 function agregarACola(itemCode: string, quantity: number, source: 'Scan' | 'Manual', sc?: string | null) {
   if (!itemCode.trim()) return
+  if (!permitidoEnMiReconteo(itemCode)) {
+    mostrarAvisoReconteo(`${itemCode.trim().toUpperCase()} no está en tu lista de reconteo. Solo puedes recontar los artículos que te asignaron.`)
+    return
+  }
   cola.value.push({
     id: genId(),
     itemCode: itemCode.trim().toUpperCase(),
@@ -426,8 +658,10 @@ async function procesarCola() {
         itemCode: item.itemCode,
         quantity: item.quantity,
         source: item.source,
-        scanCode: item.scanCode
+        scanCode: item.scanCode,
+        clientId: item.id
       })
+      marcarRecontado(result.itemCode ?? item.itemCode, item.quantity)
       if (item.source === 'Scan') {
         const resolvedCode = result.itemCode
         const wasResolved = resolvedCode.toUpperCase() !== item.itemCode.toUpperCase()
@@ -456,7 +690,7 @@ async function procesarCola() {
         quantity: item.quantity,
         source: item.source,
         scanCode: item.scanCode,
-        errorMsg: e.message ?? 'Error de conexión'
+        ...describirErrorEnvio(e)
       })
     }
     cola.value.shift()
@@ -489,6 +723,10 @@ function onManualEnter() {
 }
 
 function reenviarTodos() {
+  if (errores.value.length === 0) {
+    procesarCola()
+    return
+  }
   const items = errores.value.splice(0)
   for (const e of items) {
     cola.value.push({ id: e.id, itemCode: e.itemCode, quantity: e.quantity, source: e.source, scanCode: e.scanCode })
@@ -505,6 +743,13 @@ function reenviarItem(e: ErrorItem) {
 onMounted(async () => {
   window.addEventListener('online', onOnline)
   window.addEventListener('offline', onOffline)
+  window.addEventListener('beforeunload', onBeforeUnload)
+  reintentoTimer = setInterval(reintentarSiHayErrores, AUTO_RETRY_MS)
+
+  // Lo que quedó pendiente de una sesión anterior en este dispositivo se envía primero.
+  restaurarPendientes()
+  if (cola.value.length > 0) procesarCola()
+
   await cargarInfoSesion()
   nextTick(() => barcodeInputRef.value?.focus())
 })
@@ -512,6 +757,8 @@ onMounted(async () => {
 onUnmounted(() => {
   window.removeEventListener('online', onOnline)
   window.removeEventListener('offline', onOffline)
+  window.removeEventListener('beforeunload', onBeforeUnload)
+  if (reintentoTimer) clearInterval(reintentoTimer)
 })
 </script>
 
@@ -531,6 +778,7 @@ onUnmounted(() => {
 .badge { @apply inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium; }
 .badge-blue { @apply bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300; }
 .badge-amber { @apply bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300; }
+.badge-green { @apply bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300; }
 .badge-gray { @apply bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400; }
 .badge-red { @apply bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300; }
 .alert-error { @apply rounded-lg border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 px-3 py-2 text-sm text-red-700 dark:text-red-300; }

@@ -10,7 +10,7 @@
         </div>
         <h1 class="text-2xl font-semibold text-gray-900 dark:text-white">Gestión de Scans</h1>
         <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">
-          Elimina escaneos de cualquier usuario dentro de esta toma. Acción exclusiva de administradores/auditores de inventario.
+          Elimina escaneos de cualquier usuario dentro de esta toma, uno por uno o seleccionando varios. Tener acceso a esta pantalla es lo que autoriza la eliminación; cada borrado queda registrado en el log de auditoría.
         </p>
       </div>
       <button type="button" class="btn-secondary" :disabled="loading" @click="cargar">
@@ -74,6 +74,15 @@
           <div class="flex-1" />
           <input v-model="search" type="search" placeholder="Buscar usuario, código, descripción..." class="search-input w-64" />
           <span class="text-xs text-gray-400">{{ filteredDetail.length.toLocaleString() }} registros</span>
+          <button
+            v-if="seleccionables.length > 0"
+            type="button"
+            class="btn-danger text-xs !py-1.5"
+            :disabled="!!eliminando || seleccionados.size === 0"
+            @click="confirmarEliminarSeleccionados"
+          >
+            Eliminar seleccionados<span v-if="seleccionados.size > 0"> ({{ seleccionados.size }})</span>
+          </button>
         </div>
 
         <div v-if="filteredDetail.length === 0" class="py-16 text-center text-sm text-gray-500 dark:text-gray-400">
@@ -83,6 +92,18 @@
           <table class="min-w-full divide-y divide-gray-100 dark:divide-gray-700 text-sm">
             <thead class="bg-gray-50 dark:bg-gray-900/50 sticky top-0">
               <tr>
+                <th class="th w-8">
+                  <input
+                    v-if="seleccionables.length > 0"
+                    type="checkbox"
+                    class="h-4 w-4 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500"
+                    :checked="todosSeleccionados"
+                    :indeterminate="algunosSeleccionados"
+                    :disabled="!!eliminando"
+                    :title="`Seleccionar todos los registros filtrados (${seleccionables.length})`"
+                    @change="toggleTodos"
+                  >
+                </th>
                 <th class="th cursor-pointer select-none" @click="toggleSort('scannedAt')">Fecha/Hora{{ sortIndicator('scannedAt') }}</th>
                 <th class="th cursor-pointer select-none" @click="toggleSort('userId')">Usuario{{ sortIndicator('userId') }}</th>
                 <th class="th cursor-pointer select-none" @click="toggleSort('barcode')">Cód. Barras{{ sortIndicator('barcode') }}</th>
@@ -98,8 +119,19 @@
                 v-for="d in pagedDetail"
                 :key="d.countId"
                 class="hover:bg-gray-50 dark:hover:bg-gray-700/20"
-                :class="{ 'opacity-40 line-through': eliminados.has(d.countId) }"
+                :class="{ 'opacity-40 line-through': eliminados.has(d.countId), 'bg-red-50 dark:bg-red-900/20': seleccionados.has(d.countId) }"
               >
+                <td class="td w-8">
+                  <input
+                    v-if="d.canDelete && !eliminados.has(d.countId)"
+                    type="checkbox"
+                    class="h-4 w-4 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500"
+                    :checked="seleccionados.has(d.countId)"
+                    :disabled="!!eliminando"
+                    :aria-label="`Seleccionar ${d.itemCode}`"
+                    @change="toggleSeleccion(d.countId)"
+                  >
+                </td>
                 <td class="td text-xs whitespace-nowrap text-gray-500 dark:text-gray-400">{{ fmtDt(d.scannedAt) }}</td>
                 <td class="td text-xs font-semibold">{{ userLabel(d.userId) }}</td>
                 <td class="td font-mono text-xs">{{ d.barcode ?? '—' }}</td>
@@ -135,6 +167,33 @@
         </div>
       </div>
     </template>
+
+    <!-- Confirm batch delete -->
+    <TransitionRoot :show="confirmandoLote" as="template">
+      <Dialog as="div" class="relative z-50" @close="confirmandoLote = false">
+        <TransitionChild enter="ease-out duration-200" enter-from="opacity-0" enter-to="opacity-100" leave="ease-in duration-150" leave-from="opacity-100" leave-to="opacity-0">
+          <div class="fixed inset-0 bg-black bg-opacity-30" />
+        </TransitionChild>
+        <div class="fixed inset-0 flex items-center justify-center p-4">
+          <TransitionChild enter="ease-out duration-200" enter-from="opacity-0 scale-95" enter-to="opacity-100 scale-100" leave="ease-in duration-150" leave-from="opacity-100 scale-100" leave-to="opacity-0 scale-95">
+            <DialogPanel class="w-full max-w-sm rounded-xl bg-white dark:bg-gray-800 p-6 shadow-xl">
+              <DialogTitle class="text-base font-semibold text-gray-900 dark:text-white mb-2">Eliminar escaneos seleccionados</DialogTitle>
+              <p class="text-sm text-gray-600 dark:text-gray-400 mb-2">
+                Se eliminarán <strong>{{ seleccionados.size }}</strong> escaneo(s) por <strong>{{ fmtQty(unidadesSeleccionadas) }}</strong> unidades,
+                de <strong>{{ usuariosSeleccionados.length }}</strong> usuario(s): {{ usuariosSeleccionados.join(', ') }}.
+              </p>
+              <p class="text-sm text-gray-600 dark:text-gray-400 mb-6">Esta acción no se puede deshacer y quedará registrada a tu nombre.</p>
+              <div class="flex justify-end gap-3">
+                <button type="button" class="btn-secondary" @click="confirmandoLote = false">Cancelar</button>
+                <button type="button" class="btn-danger" :disabled="!!eliminando" @click="eliminarSeleccionados">
+                  {{ eliminando ? 'Eliminando...' : 'Eliminar' }}
+                </button>
+              </div>
+            </DialogPanel>
+          </TransitionChild>
+        </div>
+      </Dialog>
+    </TransitionRoot>
 
     <!-- Confirm delete -->
     <TransitionRoot :show="!!porEliminar" as="template">
@@ -196,6 +255,60 @@ const eliminando = ref<string | null>(null)
 const eliminados = ref<Set<string>>(new Set())
 const porEliminar = ref<UserScanDetailEntryDto | null>(null)
 
+// ─── Selección múltiple (sobre los registros filtrados, no solo la página visible) ─────
+const seleccionados = ref<Set<string>>(new Set())
+const confirmandoLote = ref(false)
+const seleccionables = computed(() => filteredDetail.value.filter(d => d.canDelete && !eliminados.value.has(d.countId)))
+const todosSeleccionados = computed(() => seleccionables.value.length > 0 && seleccionables.value.every(d => seleccionados.value.has(d.countId)))
+const algunosSeleccionados = computed(() => seleccionados.value.size > 0 && !todosSeleccionados.value)
+const entradasSeleccionadas = computed(() => (scansData.value?.detail ?? []).filter(d => seleccionados.value.has(d.countId)))
+const unidadesSeleccionadas = computed(() => entradasSeleccionadas.value.reduce((s, d) => s + d.quantity, 0))
+const usuariosSeleccionados = computed(() => [...new Set(entradasSeleccionadas.value.map(d => userLabel(d.userId)))])
+
+function toggleSeleccion(countId: string) {
+  const next = new Set(seleccionados.value)
+  if (next.has(countId)) next.delete(countId)
+  else next.add(countId)
+  seleccionados.value = next
+}
+
+function toggleTodos() {
+  seleccionados.value = todosSeleccionados.value
+    ? new Set()
+    : new Set(seleccionables.value.map(d => d.countId))
+}
+
+function confirmarEliminarSeleccionados() {
+  if (seleccionados.value.size === 0) return
+  exito.value = null
+  confirmandoLote.value = true
+}
+
+async function eliminarSeleccionados() {
+  const ids = [...seleccionados.value]
+  if (ids.length === 0) return
+  eliminando.value = 'lote'
+  error.value = null
+  try {
+    const result = await inventarioSesionesService.deleteCounts(sessionId, ids)
+    const omitidos = new Set(result.skipped.map(s => s.countId))
+    const borrados = new Set(eliminados.value)
+    for (const id of ids) if (!omitidos.has(id)) borrados.add(id)
+    eliminados.value = borrados
+    seleccionados.value = new Set()
+    confirmandoLote.value = false
+    exito.value = `${result.deleted} escaneo(s) eliminado(s).`
+    if (result.skipped.length > 0) {
+      const motivos = [...new Set(result.skipped.map(s => s.reason))].join(' ')
+      error.value = `No se pudieron eliminar ${result.skipped.length}: ${motivos}`
+    }
+  } catch (e: any) {
+    error.value = e.message ?? 'Error al eliminar los escaneos seleccionados.'
+  } finally {
+    eliminando.value = null
+  }
+}
+
 type ScanSortKey = 'scannedAt' | 'userId' | 'barcode' | 'itemCode' | 'description' | 'quantity' | 'round'
 const sortKey = ref<ScanSortKey>('scannedAt')
 const sortDir = ref<'asc' | 'desc'>('asc')
@@ -221,6 +334,8 @@ async function cargar() {
   error.value = null
   try {
     scansData.value = await inventarioSesionesService.getScansByUser(sessionId)
+    seleccionados.value = new Set()
+    eliminados.value = new Set()
     if (scansData.value) {
       const ids = [
         ...scansData.value.summary.map(u => u.userId),
@@ -278,7 +393,8 @@ async function eliminar() {
   error.value = null
   try {
     await inventarioSesionesService.deleteCount(sessionId, entry.countId)
-    eliminados.value.add(entry.countId)
+    eliminados.value = new Set([...eliminados.value, entry.countId])
+    if (seleccionados.value.has(entry.countId)) toggleSeleccion(entry.countId)
     exito.value = `Escaneo de ${entry.itemCode} (usuario ${userLabel(entry.userId)}) eliminado.`
     porEliminar.value = null
   } catch (e: any) {
