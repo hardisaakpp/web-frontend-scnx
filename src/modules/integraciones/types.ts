@@ -9,10 +9,11 @@
 export type HitellDocType = 'ST' | 'GR'
 
 /** Estado persistido en pos_sync_status. */
-export type HitellStatus = 'SYNCED' | 'REJECTED' | 'SKIPPED_NOT_POS'
+export type HitellStatus = 'SYNCED' | 'REJECTED' | 'SKIPPED_NOT_POS' | 'ERROR'
 
 /** Lectura de negocio que el middleware ya interpreta para la UI. */
-export type HitellResult = 'INTEGRADO' | 'NO_CORRESPONDE' | 'RECHAZADO'
+/** ERROR = el envío nunca llegó a HITELL (conexión/configuración); no es un rechazo, solo hay que reintegrar. */
+export type HitellResult = 'INTEGRADO' | 'NO_CORRESPONDE' | 'RECHAZADO' | 'ERROR'
 
 export type HitellRejectionType = 'PRODUCTO_NO_EXISTE' | 'OTRO'
 
