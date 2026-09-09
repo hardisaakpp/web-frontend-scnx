@@ -14,7 +14,7 @@
         <button
           type="button"
           class="w-full flex items-center justify-between px-5 py-4 text-left"
-          @click="showImportForm = !showImportForm"
+          @click="toggleImportForm"
         >
           <span class="text-sm font-semibold text-gray-900 dark:text-white">IMPORTAR USUARIOS DE AD</span>
           <svg
@@ -41,6 +41,15 @@
           </div>
           <div v-if="syncSuccess" class="mb-4 text-sm text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 p-3 rounded">{{ syncSuccess }}</div>
           <div v-if="syncError" class="mb-4 text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 p-3 rounded">{{ syncError }}</div>
+          <div v-if="syncStatus" class="mb-4 text-xs text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-900/30 p-3 rounded space-y-1">
+            <div v-if="syncStatus.isRunning">Sincronización en curso desde {{ fmtFecha(syncStatus.runningSince) }} ({{ syncStatus.runningTrigger }})...</div>
+            <div v-if="syncStatus.lastResult">
+              Última sincronización: {{ fmtFecha(syncStatus.lastResult.finishedAt) }} · {{ syncStatus.lastResult.trigger === 'nightly' ? 'automática nocturna' : 'manual' }} ·
+              <span :class="syncStatus.lastResult.success ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'">{{ syncStatus.lastResult.message }}</span>
+            </div>
+            <div v-else-if="!syncStatus.isRunning">Sin sincronizaciones desde el último reinicio del Core.</div>
+            <div v-if="syncStatus.nextScheduledRun">Próxima sincronización automática: {{ fmtFecha(syncStatus.nextScheduledRun) }}</div>
+          </div>
 
           <div class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">Buscar e importar usuario específico de AD</div>
           <div class="flex flex-col gap-2 sm:flex-row sm:items-center">
@@ -244,6 +253,49 @@ const syncLoading = ref(false)
 const syncError = ref('')
 const syncSuccess = ref('')
 const showImportForm = ref(false)
+
+interface LdapSyncResult {
+  success: boolean
+  message: string
+  processed: number
+  created: number
+  updated: number
+  deactivated: number
+  skipped: number
+  errors: number
+  startedAt: string
+  finishedAt: string
+  trigger: string
+  durationSeconds: number
+}
+interface LdapSyncStatus {
+  isRunning: boolean
+  runningSince: string | null
+  runningTrigger: string | null
+  lastResult: LdapSyncResult | null
+  nextScheduledRun: string | null
+}
+const syncStatus = ref<LdapSyncStatus | null>(null)
+
+function fmtFecha(v: string | null | undefined): string {
+  if (!v) return '—'
+  return new Date(v).toLocaleString('es-EC', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+}
+
+async function cargarSyncStatus(): Promise<LdapSyncStatus | null> {
+  try {
+    const response = await api.get('/Admin/sync-ldap/status')
+    syncStatus.value = response.data as LdapSyncStatus
+    return syncStatus.value
+  } catch {
+    return null
+  }
+}
+
+function toggleImportForm() {
+  showImportForm.value = !showImportForm.value
+  if (showImportForm.value) cargarSyncStatus()
+}
 const searchUserTerm = ref('')
 const searchUserLoading = ref(false)
 const searchUserError = ref('')
@@ -486,19 +538,38 @@ const closeRoles = () => {
   removeSuccess.value = ''
 }
 
+/**
+ * La sincronización corre en segundo plano en el Core (con paginación contra AD puede tardar
+ * minutos en directorios grandes; en línea se cortaba por timeout del gateway). Se dispara y se
+ * consulta el estado cada 3 s hasta que termine; el Core además la corre solo cada noche.
+ */
 const syncLdap = async () => {
   syncLoading.value = true
   syncError.value = ''
   syncSuccess.value = ''
   try {
     await api.post('/Admin/sync-ldap')
-    syncSuccess.value = 'Sincronización completada. Los usuarios de AD han sido sincronizados.'
+    const limite = Date.now() + 15 * 60 * 1000
+    let status = await cargarSyncStatus()
+    while (status?.isRunning && Date.now() < limite) {
+      await new Promise(r => setTimeout(r, 3000))
+      status = await cargarSyncStatus()
+    }
+    const r = status?.lastResult
+    if (!r) {
+      syncError.value = 'No se pudo obtener el resultado de la sincronización.'
+    } else if (r.success) {
+      syncSuccess.value = `Sincronización completada en ${r.durationSeconds} s: ${r.processed} procesados, ${r.created} creados, ${r.updated} actualizados, ${r.deactivated} desactivados, ${r.skipped} omitidos.`
+    } else {
+      syncError.value = r.message
+    }
     page.value = 1
     await loadUsers()
   } catch (err: unknown) {
     const axiosError = err as { response?: { status?: number; data?: { message?: string } } }
     const message = axiosError?.response?.data?.message
-    syncError.value = message || 'No se pudo sincronizar los usuarios de AD.'
+    syncError.value = message || 'No se pudo iniciar la sincronización de usuarios de AD.'
+    await cargarSyncStatus()
   } finally {
     syncLoading.value = false
   }
