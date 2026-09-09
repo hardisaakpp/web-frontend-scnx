@@ -354,7 +354,15 @@ export interface TransitoriaResumen {
   unidadesEnviadas: number         // suma de unidades
   unidadesRecibidas: number | null // null = nunca sincronizado (≠ 0)
   totalPendiente: number | null    // null = nunca sincronizado (≠ 0)
+  puedeReversarse: boolean
+  plazoVencido: boolean
+  diasConfigurados: number | null //null= aun nose configuran los dias que tienen plazo una transitoria
+  diasTranscurridos: number
+  //Si la transferencia creada tiene un reverso/regularizacion asociado 
+  reversoEstado: EstadoTransferencia | null //null = no tiene reverso
+  reversoSapTransferDocNum: number | null // solo cuando el reverso se creo correctamnte en sap (stock transfer)
 }
+
 export interface TransitoriaLinea {
   itemCode: string
   itemName: string | null
@@ -376,11 +384,38 @@ export interface TransitoriaDetalle {
   fechaEnvioSap: string | null
   fechaTransitoriaAbierta: string | null
   fechaUltimaSincronizacion: string | null
-  lineas: TransitoriaLinea[]  
+  lineas: TransitoriaLinea[] 
+  puedeReversarse: boolean
+  plazoVencido: boolean
+  diasConfigurados: number | null
+  diasTranscurridos: number 
 }
 export interface SincronizarTransitoriaResponse {
   id: number
   estadoRecepcion: EstadoRecepcion
+}
+
+//Opcion de realizar una devolucion de stock a la tienda origen de manera manual
+export interface RegularizarResponse {
+  solicitudReversoId: number
+  mensaje: string
+}
+
+//GET/transitorias/{id}/reverso: 
+export interface TransitoriaReverso{
+  id: number
+  sapTransferDocNum: number | null
+  sapTransferDocEntry:  number | null 
+  guiaEnvio: string | null
+  tiendaOrigenCodigo: string //invertida respecto de la transitoria original
+  tiendaOrigen: string
+  tiendaDestinoCodigo: string
+  estado: EstadoTransferencia
+  fechaEnvioSap: string | null
+  lineas: TransitoriaLinea[]
+  baseDocumento: number | null //docunum de la transitoria original
+  justificacion: string
+  usuarioSolicitante: string
 }
 
 export interface ConfiguracionDiasTransitoria {

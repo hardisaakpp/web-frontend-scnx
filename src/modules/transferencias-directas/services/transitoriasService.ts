@@ -1,6 +1,6 @@
 import { transferenciasDirectasApi } from "@/lib/http"
 import { nombreArchivoDesdeHeader } from "../utils/descargas"
-import { FiltrosExportarTransitorias, ListarTransitoriasQuery, ResultadoPaginado, SincronizarTransitoriaResponse, TransitoriaDetalle, TransitoriaResumen } from "../types"
+import { FiltrosExportarTransitorias, ListarTransitoriasQuery, RegularizarResponse, ResultadoPaginado, SincronizarTransitoriaResponse, TransitoriaDetalle, TransitoriaResumen, TransitoriaReverso } from "../types"
 
 function construirParams(
   valores: Record<string, string | number | boolean | string[] | undefined>
@@ -79,6 +79,23 @@ const transitoriasService = {
       filename: nombreArchivoDesdeHeader(resp.headers['content-disposition'], 'historialtransitorias.xlsx'),
     }
   },
+  regularizar: async (id: number): Promise<RegularizarResponse> => {
+    const { data } = await transferenciasDirectasApi.post<RegularizarResponse>(
+      `transitorias/${id}/regularizar`
+    )
+    return data
+  },
+  /**
+   * GET /api/transitorias/{id}/reverso — id de la TRANSITORIA original, no del reverso.
+   * 404 si esa transitoria aún no tiene reverso creado.
+   */
+  obtenerReverso: async (id: number): Promise<TransitoriaReverso> => {
+    const { data } = await transferenciasDirectasApi.get<TransitoriaReverso>(
+      `transitorias/${id}/reverso`
+    )
+    return data
+  },
+
 }
 
 export default transitoriasService
