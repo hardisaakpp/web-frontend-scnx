@@ -71,20 +71,42 @@ export async function findCoreUser(idOrLogin: string): Promise<CoreUserInfo | nu
   if (!key) return null
   try {
     const response = await api.get(`/Users/info/${encodeURIComponent(key)}`)
-    const u = (response.data ?? {}) as UserRecord
-    const userName = normalizeString(u.userName ?? u.UserName)
-    if (!userName) return null
-    const info: CoreUserInfo = {
-      id: normalizeString(u.id ?? u.Id),
-      userName,
-      fullName: normalizeString(u.fullName ?? u.FullName) || null,
-      email: normalizeString(u.email ?? u.Email) || null,
-    }
+    const info = toCoreUserInfo((response.data ?? {}) as UserRecord)
+    if (!info) return null
     nameCache.set(key, info.fullName ?? info.userName)
     nameCache.set(info.userName, info.fullName ?? info.userName)
     return info
   } catch {
     return null
+  }
+}
+
+function toCoreUserInfo(u: UserRecord): CoreUserInfo | null {
+  const userName = normalizeString(u.userName ?? u.UserName)
+  if (!userName) return null
+  return {
+    id: normalizeString(u.id ?? u.Id),
+    userName,
+    fullName: normalizeString(u.fullName ?? u.FullName) || null,
+    email: normalizeString(u.email ?? u.Email) || null,
+  }
+}
+
+/**
+ * Coincidencias de usuarios del Core por usuario de red, nombre o correo (autocompletado).
+ * Usa `GET /Users/search`, que solo exige estar autenticado y devuelve datos básicos.
+ */
+export async function searchCoreUsers(query: string, limit = 10): Promise<CoreUserInfo[]> {
+  const q = normalizeString(query)
+  if (q.length < 2) return []
+  try {
+    const response = await api.get('/Users/search', { params: { q, limit } })
+    const rows = Array.isArray(response.data) ? (response.data as UserRecord[]) : []
+    const users = rows.map(toCoreUserInfo).filter((u): u is CoreUserInfo => u !== null)
+    for (const u of users) nameCache.set(u.userName, u.fullName ?? u.userName)
+    return users
+  } catch {
+    return []
   }
 }
 
