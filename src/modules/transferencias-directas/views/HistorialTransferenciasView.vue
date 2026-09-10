@@ -114,7 +114,7 @@ const totalRegistros = ref(0)
 
 const confirmAbierto = ref(false)
 const confirmCargando = ref(false)
-type AccionConfirmable = 'enviar' | 'definitiva' | 'reenviar'
+type AccionConfirmable = 'enviar' | 'definitiva' | 'reenviar' | 'eliminar'
 const accionPendiente = ref<AccionConfirmable | null>(null)
 const idPendiente = ref<number | null>(null)
 const confirmError = ref('')
@@ -143,6 +143,11 @@ const TEXTOS_CONFIRMACION: Record<AccionConfirmable, { titulo: string; mensaje: 
     mensaje: 'La solicitud se volverá a encolar para enviarse a SAP. ¿Desea continuar?',
     ok: 'Reintentar',
   },
+  eliminar: {
+    titulo: 'Eliminar borrador',
+    mensaje: '¿Seguro que deseas eliminar este borrador? Esta acción no se puede deshacer.',
+    ok: 'Eliminar',
+  },
 }
 
 const textosConfirmacion = computed(() =>
@@ -157,6 +162,7 @@ const confirmFaltantes = ref<StockFaltante[]>([])
 const pedirEnviarAprobacion = (id: number) => { accionPendiente.value = 'enviar'; idPendiente.value = id; confirmAbierto.value = true }
 const pedirCrearDefinitiva = (id: number) => { accionPendiente.value = 'definitiva'; idPendiente.value = id; confirmAbierto.value = true }
 const pedirReenviarSap = (id: number) => { accionPendiente.value = 'reenviar'; idPendiente.value = id; confirmAbierto.value = true }
+const pedirEliminar = (id: number) => { accionPendiente.value = 'eliminar'; idPendiente.value = id; confirmAbierto.value = true }
 const cancelarConfirm = () => {
   if (confirmCargando.value) return
   confirmAbierto.value = false
@@ -285,6 +291,7 @@ const ejecutarConfirmacion = async () => {
   try {
     if (accion === 'enviar') await transferenciasService.enviarAprobacion(id)
     else if (accion === 'reenviar') await transferenciasService.reenviarSap(id)
+    else if (accion === 'eliminar') await transferenciasService.eliminar(id)
     else {
       const guiaEnvio = solicitudes.value.find((s) => s.id === id)?.guiaEnvio
       await transferenciasService.crearDefinitiva(id, guiaEnvio)
@@ -310,6 +317,7 @@ const MENSAJES_FALLBACK: Record<AccionConfirmable, string> = {
   enviar: 'No se pudo enviar a aprobación.',
   definitiva: 'No se pudo crear la transferencia.',
   reenviar: 'No se pudo reintentar el envío a SAP.',
+  eliminar: 'No se pudo eliminar el borrador.',
 }
 
 const mensajeError = (e: any, accion: AccionConfirmable): string => {
@@ -490,7 +498,7 @@ const cerrarErrores = () => { erroresAbierto.value = false }
         </div>
       </div>
       <TablaHistorial :solicitudes="solicitudes" :cargando="cargando" :ordenar-por="ordenarPor" :direccion="direccion"
-        @ver="verDetalle" @editar="editar" @enviar-aprobacion="pedirEnviarAprobacion"
+        @ver="verDetalle" @editar="editar" @eliminar="pedirEliminar" @enviar-aprobacion="pedirEnviarAprobacion"
         @crear-definitiva="pedirCrearDefinitiva" @ver-errores="verErrores" @reenviar-sap="pedirReenviarSap"
         @ordenar="ordenarPorColumna" />
       <ErroresSapModal :abierto="erroresAbierto" :errores="erroresLista" :cargando="cargandoErrores"
@@ -543,6 +551,7 @@ const cerrarErrores = () => { erroresAbierto.value = false }
       @cerrar="cerrarDetalle" />
     <ModalConfirmacion :abierto="confirmAbierto" :titulo="confirmTitulo" :mensaje="confirmMensaje"
       :texto-confirmar="confirmTextoOk" :cargando="confirmCargando" :error="confirmError" :faltantes="confirmFaltantes"
+      :variante="accionPendiente === 'eliminar' ? 'peligro' : 'primary'"
       @confirmar="ejecutarConfirmacion" @cancelar="cancelarConfirm"  />
 
   </div>
