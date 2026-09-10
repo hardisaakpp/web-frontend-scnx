@@ -315,7 +315,8 @@ const scanTab = ref<'summary' | 'detail'>('summary')
 /** 0 = ambas rondas; 1 = conteo inicial; 2 = reconteo. Aplica al resumen, al detalle y a las descargas. */
 const scanRound = ref<0 | 1 | 2>(0)
 const scanSearch = ref('')
-const sufijoRonda = computed(() => scanRound.value === 1 ? '_conteo' : scanRound.value === 2 ? '_reconteo' : '')
+const SUFIJO_RONDA: Record<0 | 1 | 2, string> = { 0: '', 1: '_conteo', 2: '_reconteo' }
+const sufijoRonda = computed(() => SUFIJO_RONDA[scanRound.value])
 const scanPage = ref(0)
 const userNames = ref<Record<string, string>>({})
 

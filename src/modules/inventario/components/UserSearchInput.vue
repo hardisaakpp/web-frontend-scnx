@@ -2,6 +2,7 @@
   <div class="relative">
     <div class="flex gap-2">
       <input
+        :id="inputId"
         ref="inputRef"
         v-model="texto"
         type="text"
@@ -9,9 +10,6 @@
         :placeholder="placeholder"
         :disabled="disabled"
         autocomplete="off"
-        role="combobox"
-        :aria-expanded="abierto"
-        aria-autocomplete="list"
         @input="onInput"
         @focus="abierto = coincidencias.length > 0"
         @keydown.down.prevent="mover(1)"
@@ -28,13 +26,11 @@
     <ul
       v-if="abierto && (coincidencias.length > 0 || (texto.trim().length >= MIN_CHARS && !buscando))"
       class="absolute z-20 mt-1 w-full max-h-56 overflow-y-auto rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-lg text-sm"
-      role="listbox"
+      aria-live="polite"
     >
       <li
         v-for="(u, idx) in coincidencias"
         :key="u.id || u.userName"
-        role="option"
-        :aria-selected="idx === indice"
         class="px-3 py-2 cursor-pointer flex items-center justify-between gap-3"
         :class="idx === indice ? 'bg-blue-50 dark:bg-blue-900/30' : 'hover:bg-gray-50 dark:hover:bg-gray-700/40'"
         @mousedown.prevent="elegir(u)"
@@ -62,14 +58,20 @@
  * Reemplaza los campos de texto libre de "agregar usuario" en picking y reparto de reconteo:
  * hay cuentas cuyo usuario no coincide con el correo (o no tienen correo) y el operador no
  * tiene por qué saber cómo está registrada.
+ *
+ * La lista de coincidencias es un <ul> plano con navegación por teclado (flechas, Enter, Esc): sin
+ * roles combobox/listbox/option, que Sonar (S6819, S6842, S6807) rechaza sobre <input>/<ul>/<li>.
  */
 import { ref, onBeforeUnmount } from 'vue'
 import { searchCoreUsers, findCoreUser, type CoreUserInfo } from '@/utils/resolveUserNames'
 
 withDefaults(defineProps<{
+  /** id del <input>, para asociarlo a un <label for>. */
+  inputId?: string
   placeholder?: string
   disabled?: boolean
 }>(), {
+  inputId: undefined,
   placeholder: 'Buscar usuario por nombre, usuario de red o correo',
   disabled: false,
 })

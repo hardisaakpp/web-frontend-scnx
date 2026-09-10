@@ -33,9 +33,10 @@
 
                 <!-- Agregar usuario -->
                 <div>
-                  <label class="label">Agregar usuario (cuenta de SCNexus / Directorio Activo)</label>
+                  <label for="picker-user-search" class="label">Agregar usuario (cuenta de SCNexus / Directorio Activo)</label>
                   <div class="mt-1">
                     <UserSearchInput
+                      input-id="picker-user-search"
                       placeholder="Escribe parte del nombre, usuario de red o correo"
                       :disabled="agregando"
                       @select="agregarPicker"
