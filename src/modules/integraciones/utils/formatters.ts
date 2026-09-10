@@ -12,8 +12,8 @@ export type BadgeTone = 'success' | 'warning' | 'danger' | 'info' | 'neutral'
 
 // ─── Fechas y números ────────────────────────────────────────────────────────
 
-/** Estándar de listados del proyecto: al abrir, se cargan solo los últimos 15 días. */
-export const DIAS_POR_DEFECTO = 15
+/** Al abrir, las tres pestañas cargan solo los últimos 3 días (pedido de soporte 10/09/2026: 15 traía demasiado; el rango se puede ampliar en los filtros). */
+export const DIAS_POR_DEFECTO = 3
 
 /** YYYY-MM-DD en hora local, formato que usan los inputs type="date". */
 export function fechaIso(fecha: Date): string {

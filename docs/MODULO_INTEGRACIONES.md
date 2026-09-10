@@ -10,7 +10,7 @@ Manual para el usuario final: [MANUAL_USUARIO_MODULO_INTEGRACIONES.md](MANUAL_US
 ## Pestañas
 
 Las tres pestañas siguen el estándar de listados del proyecto: **paginación en servidor** (20 filas
-por página, solo viaja la página pedida) y **filtro de fechas con los últimos 15 días por defecto**
+por página, solo viaja la página pedida) y **filtro de fechas con los últimos 3 días por defecto**
 (`rangoUltimosDias` en `utils/formatters.ts`), para que la primera carga no traiga tablas completas.
 
 | Pestaña | Ruta | Fuente en el middleware | Qué muestra |

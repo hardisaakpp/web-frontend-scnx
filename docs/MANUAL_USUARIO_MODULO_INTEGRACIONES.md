@@ -54,7 +54,7 @@ Referencia técnica del esquema de permisos: [SISTEMA_PERMISOS.md](SISTEMA_PERMI
 
 Todas las pestañas comparten el mismo comportamiento:
 
-- Al abrir se muestran los **últimos 15 días**. Puede cambiar el rango con los campos **Desde** y **Hasta** y pulsar **Filtrar**.
+- Al abrir se muestran los **últimos 3 días**. Puede cambiar el rango con los campos **Desde** y **Hasta** y pulsar **Filtrar**.
 - Las tablas se cargan **por páginas de 20 filas**. Use la paginación al pie de la tabla para avanzar.
 - El botón **Actualizar**, arriba a la derecha, vuelve a consultar con los filtros actuales.
 - El botón **Ver detalle** de cada fila abre una ventana con toda la información del registro.
