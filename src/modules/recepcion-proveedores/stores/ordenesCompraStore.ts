@@ -2,12 +2,15 @@ import { ref } from 'vue'
 import { defineStore } from 'pinia'
 import { ordenesCompraApi } from '../services/ordenesCompraApi'
 import { mapApiError } from '@/utils/apiErrorMapper'
-import type { OrdenCompraResponse } from '../types'
+import type { EntradaMercaderiaResponse, OrdenCompraResponse } from '../types'
 
 export const useOrdenesCompraStore = defineStore('recepcionProveedoresOrdenesCompra', () => {
   const orden = ref<OrdenCompraResponse | null>(null)
   const loading = ref(false)
   const error = ref<string | null>(null)
+  const entradas = ref<EntradaMercaderiaResponse[]>([])
+  const cargandoEntradas = ref(false)
+  const errorEntradas = ref<string | null>(null)
 
   async function buscarPorDocNum(docNum: number): Promise<void> {
     loading.value = true
@@ -34,5 +37,28 @@ export const useOrdenesCompraStore = defineStore('recepcionProveedoresOrdenesCom
     }
   }
 
-  return { orden, loading, error, buscarPorDocNum, actualizarDesdeSap }
+  async function cargarEntradasRelacionadas(docNum: number): Promise<void> {
+    cargandoEntradas.value = true
+    errorEntradas.value = null
+    try {
+      entradas.value = await ordenesCompraApi.obtenerEntradasRelacionadas(docNum)
+    } catch (err: unknown) {
+      entradas.value = []
+      errorEntradas.value = mapApiError(err, 'No se pudieron cargar las entradas de mercadería relacionadas.').message
+    } finally {
+      cargandoEntradas.value = false
+    }
+  }
+
+  return {
+    orden,
+    loading,
+    error,
+    entradas,
+    cargandoEntradas,
+    errorEntradas,
+    buscarPorDocNum,
+    actualizarDesdeSap,
+    cargarEntradasRelacionadas,
+  }
 })

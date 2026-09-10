@@ -60,4 +60,8 @@ export const pickingApi = {
     const { data } = await recepcionProveedoresApi.post<OrdenPickingSesionResponse>(`/picking/${sesionId}/verificar-estado-sap`)
     return data
   },
+
+  async eliminarSesion(sesionId: number): Promise<void> {
+    await recepcionProveedoresApi.delete(`/picking/${sesionId}`)
+  },
 }

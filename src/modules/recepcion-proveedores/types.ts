@@ -27,6 +27,21 @@ export interface OrdenCompraResponse {
   lineas: OrdenCompraLineaResponse[]
 }
 
+export interface EntradaMercaderiaLineaResponse {
+  lineNum: number
+  itemCode: string
+  quantity: number
+  baseEntry: number
+  baseLine: number
+}
+
+export interface EntradaMercaderiaResponse {
+  docEntry: number
+  docNum: number
+  docDate: string
+  lineas: EntradaMercaderiaLineaResponse[]
+}
+
 export type EstadoPickingSesion = 'EnProceso' | 'Finalizada' | 'EnviandoSap' | 'IntegradaSap' | 'ErrorSap'
 export type EstadoPickingLinea = 'Pendiente' | 'Parcial' | 'Completa'
 

@@ -16,6 +16,7 @@ vi.mock('@/modules/recepcion-proveedores/services/pickingApi', () => ({
     cerrar: vi.fn(),
     integrarSap: vi.fn(),
     verificarEstadoSap: vi.fn(),
+    eliminarSesion: vi.fn(),
   },
 }))
 
@@ -262,6 +263,40 @@ describe('usePickingStore', () => {
 
     expect(ok).toBe(false)
     expect(store.sesion?.id).toBe(2)
+    expect(store.sesion?.estado).toBe('EnProceso')
+  })
+
+  it('eliminarSesion exito limpia la sesion', async () => {
+    const sesion = buildSesion({ estado: 'Finalizada' })
+    vi.mocked(pickingApi.obtenerSesion).mockResolvedValue(sesion)
+    vi.mocked(pickingApi.obtenerScans).mockResolvedValue([])
+    const store = usePickingStore()
+    await store.cargarSesion(1)
+
+    vi.mocked(pickingApi.eliminarSesion).mockResolvedValue(undefined)
+
+    const ok = await store.eliminarSesion()
+
+    expect(ok).toBe(true)
+    expect(pickingApi.eliminarSesion).toHaveBeenCalledWith(1)
+    expect(store.sesion).toBeNull()
+  })
+
+  it('eliminarSesion con error deja actionError y no toca la sesion', async () => {
+    const sesion = buildSesion({ estado: 'EnProceso' })
+    vi.mocked(pickingApi.obtenerSesion).mockResolvedValue(sesion)
+    vi.mocked(pickingApi.obtenerScans).mockResolvedValue([])
+    const store = usePickingStore()
+    await store.cargarSesion(1)
+
+    vi.mocked(pickingApi.eliminarSesion).mockRejectedValue({
+      response: { status: 409, data: { detail: 'No se puede eliminar: la sesion ya fue integrada.' } },
+    })
+
+    const ok = await store.eliminarSesion()
+
+    expect(ok).toBe(false)
+    expect(store.actionError).toBe('No se puede eliminar: la sesion ya fue integrada.')
     expect(store.sesion?.estado).toBe('EnProceso')
   })
 })

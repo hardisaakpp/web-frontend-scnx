@@ -205,6 +205,30 @@ export const usePickingStore = defineStore('recepcionProveedoresPicking', () => 
     }
   }
 
+  /**
+   * "Eliminar Picking": borra la sesion completa (irreversible), no un scan individual.
+   * A diferencia de cerrar()/integrarSap(), al exito no hay sesion que guardar — se limpia.
+   */
+  async function eliminarSesion(): Promise<boolean> {
+    if (!sesion.value) return false
+    const sesionId = sesion.value.id
+
+    actionError.value = null
+    isSubmitting.value = true
+    try {
+      await pickingApi.eliminarSesion(sesionId)
+      if (activeSesionId.value !== sesionId) return false
+      sesion.value = null
+      return true
+    } catch (err: unknown) {
+      if (activeSesionId.value !== sesionId) return false
+      actionError.value = mapApiError(err, 'No se pudo eliminar el picking.').message
+      return false
+    } finally {
+      if (activeSesionId.value === sesionId) isSubmitting.value = false
+    }
+  }
+
   function limpiarActionError(): void {
     actionError.value = null
   }
@@ -227,6 +251,7 @@ export const usePickingStore = defineStore('recepcionProveedoresPicking', () => 
     cerrar,
     integrarSap,
     verificarEstadoSap,
+    eliminarSesion,
     limpiarActionError,
   }
 })

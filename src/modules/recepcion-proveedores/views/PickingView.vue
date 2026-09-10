@@ -25,11 +25,15 @@ const mostrarConfirmarCierre = ref(false)
 const mostrarCierreExitoso = ref(false)
 const mostrarConfirmarIntegrarSap = ref(false)
 const mostrarIntegracionExitosa = ref(false)
+const mostrarConfirmarEliminar = ref(false)
 
 const enProceso = computed(() => pickingStore.sesion?.estado === 'EnProceso')
 const puedeCerrar = computed(() => pickingStore.sesion?.estado === 'EnProceso' && pickingStore.scans.length > 0)
 const puedeIntegrarSap = computed(() => pickingStore.sesion?.estado === 'Finalizada' || pickingStore.sesion?.estado === 'ErrorSap')
 const puedeVerificarEstadoSap = computed(() => pickingStore.sesion?.estado === 'EnviandoSap')
+const puedeEliminarPicking = computed(
+  () => pickingStore.sesion?.estado !== 'EnviandoSap' && pickingStore.sesion?.estado !== 'IntegradaSap'
+)
 
 async function cargar(): Promise<void> {
   await pickingStore.cargarSesion(sesionId.value)
@@ -82,6 +86,15 @@ function volverAOrden(): void {
   }
 }
 
+async function confirmarEliminarPicking(): Promise<void> {
+  mostrarConfirmarEliminar.value = false
+  const docNum = pickingStore.sesion?.docNum
+  const ok = await pickingStore.eliminarSesion()
+  if (ok && docNum !== undefined) {
+    router.push({ name: 'recepcion-proveedores-detalle', params: { docNum } })
+  }
+}
+
 function cerrarModalExito(): void {
   mostrarCierreExitoso.value = false
   volverAOrden()
@@ -92,7 +105,7 @@ watch(sesionId, cargar)
 </script>
 
 <template>
-  <div class="max-w-4xl mx-auto py-8 px-4">
+  <div class="max-w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
     <LoadingSpinner v-if="pickingStore.loading" message="Cargando sesión de picking..." />
 
     <template v-else-if="pickingStore.sesion">
@@ -138,6 +151,15 @@ watch(sesionId, cargar)
             @click="verificarEstado"
           >
             Verificar estado
+          </button>
+          <button
+            v-if="puedeEliminarPicking"
+            type="button"
+            :disabled="pickingStore.isSubmitting"
+            class="px-3 py-2 text-sm font-medium bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            @click="mostrarConfirmarEliminar = true"
+          >
+            Eliminar Picking
           </button>
         </div>
       </div>
@@ -196,6 +218,7 @@ watch(sesionId, cargar)
             <tr>
               <th class="px-4 py-2 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Código</th>
               <th class="px-4 py-2 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Descripción</th>
+              <th class="px-4 py-2 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Código de barras</th>
               <th class="px-4 py-2 text-right text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Pedido</th>
               <th class="px-4 py-2 text-right text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Pickeado</th>
               <th class="px-4 py-2 text-right text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Pendiente</th>
@@ -206,6 +229,7 @@ watch(sesionId, cargar)
             <tr v-for="linea in pickingStore.sesion.lineas" :key="linea.id">
               <td class="px-4 py-2 text-sm text-gray-900 dark:text-white">{{ linea.itemCode }}</td>
               <td class="px-4 py-2 text-sm text-gray-700 dark:text-gray-300">{{ linea.itemDescription }}</td>
+              <td class="px-4 py-2 text-sm text-gray-700 dark:text-gray-300">{{ linea.codeBars }}</td>
               <td class="px-4 py-2 text-sm text-right text-gray-900 dark:text-white">{{ linea.cantidadPedida }}</td>
               <td class="px-4 py-2 text-sm text-right font-semibold text-gray-900 dark:text-white">{{ linea.cantidadPickeada }}</td>
               <td class="px-4 py-2 text-sm text-right text-gray-900 dark:text-white">{{ linea.cantidadPendiente - linea.cantidadPickeada }}</td>
@@ -304,6 +328,15 @@ watch(sesionId, cargar)
       title="Integración a SAP exitosa"
       :message="`Goods Receipt creado: DocEntry ${pickingStore.sesion?.sapDocEntry}, DocNum ${pickingStore.sesion?.sapDocNum}.`"
       @close="mostrarIntegracionExitosa = false"
+    />
+
+    <ConfirmModal
+      :open="mostrarConfirmarEliminar"
+      title="¿Eliminar picking?"
+      message="Esta acción eliminará todo el picking y no se puede deshacer. ¿Desea continuar?"
+      confirm-label="Eliminar Picking"
+      @confirm="confirmarEliminarPicking"
+      @cancel="mostrarConfirmarEliminar = false"
     />
 
     <ErrorModal

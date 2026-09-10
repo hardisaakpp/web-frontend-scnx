@@ -17,6 +17,7 @@ const docNum = computed(() => Number(route.params.docNum))
 const iniciandoPicking = ref(false)
 const whsCodeSeleccionado = ref<string>('')
 const errorPicking = ref<string | null>(null)
+const mostrarEntradas = ref(false)
 
 const whsCodesEnOrden = computed(() => {
   const codigos = ordenesCompraStore.orden?.lineas.map((l) => l.whsCode) ?? []
@@ -35,6 +36,7 @@ watch(
 )
 
 async function cargar(): Promise<void> {
+  mostrarEntradas.value = false
   await ordenesCompraStore.buscarPorDocNum(docNum.value)
 }
 
@@ -60,6 +62,16 @@ function descargarExcel(): void {
   )
 }
 
+async function alternarEntradas(): Promise<void> {
+  mostrarEntradas.value = !mostrarEntradas.value
+  if (mostrarEntradas.value) {
+    // Siempre se recarga al abrir (no se cachea entre toggles en el cliente): el backend ya
+    // resuelve el cache-aside real (rapido si la ODC esta Cerrada), asi que no hay beneficio en
+    // duplicar esa logica aqui, y se evita mostrar datos obsoletos de una ODC distinta.
+    await ordenesCompraStore.cargarEntradasRelacionadas(docNum.value)
+  }
+}
+
 async function iniciarPicking(): Promise<void> {
   if (!whsCodeSeleccionado.value) return
   errorPicking.value = null
@@ -81,7 +93,7 @@ watch(docNum, cargar)
 </script>
 
 <template>
-  <div class="max-w-4xl mx-auto py-8 px-4">
+  <div class="max-w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
     <div class="mb-6 pb-6 border-b border-gray-200 dark:border-gray-700">
       <BuscarOdcBar />
     </div>
@@ -114,6 +126,61 @@ watch(docNum, cargar)
           >
             Descargar Excel
           </button>
+          <button
+            type="button"
+            :disabled="ordenesCompraStore.cargandoEntradas"
+            class="px-3 py-2 text-sm font-medium bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors disabled:opacity-50"
+            @click="alternarEntradas"
+          >
+            {{ mostrarEntradas ? 'Ocultar entradas' : 'Entradas de Mercaderías Relacionadas' }}
+          </button>
+        </div>
+      </div>
+
+      <div v-if="mostrarEntradas" class="mb-6">
+        <h2 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+          Entradas de Mercaderías Relacionadas con ODC Nº {{ ordenesCompraStore.orden.docNum }}
+        </h2>
+        <LoadingSpinner v-if="ordenesCompraStore.cargandoEntradas" message="Consultando entradas relacionadas..." />
+        <p v-else-if="ordenesCompraStore.errorEntradas" class="text-sm text-red-600 dark:text-red-400">
+          {{ ordenesCompraStore.errorEntradas }}
+        </p>
+        <p
+          v-else-if="ordenesCompraStore.entradas.length === 0"
+          class="text-sm text-gray-600 dark:text-gray-400 p-3 bg-gray-50 dark:bg-gray-900/40 border border-gray-200 dark:border-gray-700 rounded-lg"
+        >
+          No se encontraron entradas de mercadería relacionadas para esta ODC.
+        </p>
+        <div v-else class="flex flex-col gap-4">
+          <div
+            v-for="entrada in ordenesCompraStore.entradas"
+            :key="entrada.docEntry"
+            class="rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden"
+          >
+            <div class="px-4 py-2 text-sm font-medium bg-gray-50 dark:bg-gray-900 text-gray-700 dark:text-gray-300">
+              Entrada DocNum {{ entrada.docNum }} | DocEntry {{ entrada.docEntry }} | Fecha {{ entrada.docDate }}
+            </div>
+            <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+              <thead class="bg-gray-50 dark:bg-gray-900">
+                <tr>
+                  <th class="px-4 py-2 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Línea Entrada</th>
+                  <th class="px-4 py-2 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">ItemCode</th>
+                  <th class="px-4 py-2 text-right text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Cantidad</th>
+                  <th class="px-4 py-2 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">OC BaseEntry</th>
+                  <th class="px-4 py-2 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">OC BaseLine</th>
+                </tr>
+              </thead>
+              <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                <tr v-for="linea in entrada.lineas" :key="linea.lineNum">
+                  <td class="px-4 py-2 text-sm text-gray-900 dark:text-white">{{ linea.lineNum }}</td>
+                  <td class="px-4 py-2 text-sm text-gray-900 dark:text-white">{{ linea.itemCode }}</td>
+                  <td class="px-4 py-2 text-sm text-right text-gray-900 dark:text-white">{{ linea.quantity }}</td>
+                  <td class="px-4 py-2 text-sm text-gray-700 dark:text-gray-300">{{ linea.baseEntry }}</td>
+                  <td class="px-4 py-2 text-sm text-gray-700 dark:text-gray-300">{{ linea.baseLine }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
 
@@ -145,6 +212,7 @@ watch(docNum, cargar)
             <tr>
               <th class="px-4 py-2 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Código</th>
               <th class="px-4 py-2 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Descripción</th>
+              <th class="px-4 py-2 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Código de barras</th>
               <th class="px-4 py-2 text-right text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Cantidad</th>
               <th class="px-4 py-2 text-right text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Pendiente</th>
               <th class="px-4 py-2 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Almacén</th>
@@ -154,6 +222,7 @@ watch(docNum, cargar)
             <tr v-for="linea in ordenesCompraStore.orden.lineas" :key="linea.lineNum">
               <td class="px-4 py-2 text-sm text-gray-900 dark:text-white">{{ linea.itemCode }}</td>
               <td class="px-4 py-2 text-sm text-gray-700 dark:text-gray-300">{{ linea.dscription }}</td>
+              <td class="px-4 py-2 text-sm text-gray-700 dark:text-gray-300">{{ linea.codeBars }}</td>
               <td class="px-4 py-2 text-sm text-right text-gray-900 dark:text-white">{{ linea.quantity }}</td>
               <td class="px-4 py-2 text-sm text-right font-semibold text-gray-900 dark:text-white">{{ linea.cantidadPendiente }}</td>
               <td class="px-4 py-2 text-sm text-gray-700 dark:text-gray-300">{{ linea.whsCode }}</td>
