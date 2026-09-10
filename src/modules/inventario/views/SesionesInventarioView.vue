@@ -100,7 +100,7 @@
               <th class="th cursor-pointer select-none" @click="toggleSort('warehouseCode')">Bodega{{ sortIndicator('warehouseCode') }}</th>
               <th class="th cursor-pointer select-none" @click="toggleSort('description')">Descripción{{ sortIndicator('description') }}</th>
               <th class="th cursor-pointer select-none" @click="toggleSort('status')">Estado{{ sortIndicator('status') }}</th>
-              <th class="th text-right cursor-pointer select-none" @click="toggleSort('totalItems')">Listado (items / cant.){{ sortIndicator('totalItems') }}</th>
+              <th class="th text-right cursor-pointer select-none" title="Referencias distintas y unidades registradas en la toma, y último conteo" @click="toggleSort('countedItems')">Contado (ref. / unid.){{ sortIndicator('countedItems') }}</th>
               <th
                 class="th cursor-pointer select-none"
                 title="Fechas definidas al crear la toma o el plan — no las reales de ejecución (ver Resumen)"
@@ -142,10 +142,11 @@
                 </span>
               </td>
               <td class="td text-right whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">
-                <template v-if="s.totalItems != null && s.totalQuantity != null">
-                  {{ s.totalItems }} <span class="text-gray-400 dark:text-gray-500">items</span> / {{ fmtCantidad(s.totalQuantity) }}
+                <template v-if="s.countedItems > 0">
+                  {{ s.countedItems }} <span class="text-gray-400 dark:text-gray-500">ref.</span> / {{ fmtCantidad(s.countedQuantity) }}
+                  <div v-if="s.lastCountAt" class="text-[11px] text-gray-400 dark:text-gray-500">último {{ formatDateTime(s.lastCountAt) }}</div>
                 </template>
-                <span v-else class="text-gray-400 dark:text-gray-500" title="El alcance se muestra al cerrar la toma; en curso se consulta en el detalle">—</span>
+                <span v-else class="text-gray-400 dark:text-gray-500">sin conteos</span>
               </td>
               <td class="td whitespace-nowrap text-xs text-gray-500 dark:text-gray-400">
                 {{ formatDate(s.definedOpenDate) }} <span class="text-gray-300 dark:text-gray-600">→</span> {{ s.definedCloseDate ? formatDate(s.definedCloseDate) : '—' }}
@@ -422,6 +423,7 @@ import type { InventorySessionListItemDto, InventorySessionStatus } from '../typ
 import CrearSesionDirectaModal from '../components/CrearSesionDirectaModal.vue'
 import PickerManagementModal from '../components/PickerManagementModal.vue'
 import RecountAssignmentModal from '../components/RecountAssignmentModal.vue'
+import { APP_LOCALE } from '@/plugins/locale'
 import { useInventarioModulePermissions } from '../composables/useInventarioModulePermissions'
 
 const { canGenerar } = useInventarioModulePermissions()
@@ -499,7 +501,7 @@ const FILTROS_ESTADO = [
 
 const busqueda = ref('')
 
-type SesionSortKey = 'warehouseCode' | 'description' | 'status' | 'totalItems' | 'definedOpenDate'
+type SesionSortKey = 'warehouseCode' | 'description' | 'status' | 'countedItems' | 'definedOpenDate'
 const sortKey = ref<SesionSortKey>('definedOpenDate')
 const sortDir = ref<'asc' | 'desc'>('desc')
 
@@ -520,7 +522,6 @@ function sortIndicator(key: SesionSortKey) {
 function sortValue(s: InventorySessionListItemDto, key: SesionSortKey): string | number {
   if (key === 'definedOpenDate') return new Date(s.definedOpenDate).getTime()
   if (key === 'description') return s.description ?? ''
-  if (key === 'totalItems') return s.totalItems ?? -1
   return s[key]
 }
 
@@ -623,6 +624,11 @@ function formatDate(value?: string | null): string {
 }
 
 const cantidadFmt = new Intl.NumberFormat('es-DO', { maximumFractionDigits: 2 })
+function formatDateTime(value: string): string {
+  const d = new Date(value)
+  return d.toLocaleDateString(APP_LOCALE, { day: '2-digit', month: '2-digit' }) + ' ' + d.toLocaleTimeString(APP_LOCALE, { hour: '2-digit', minute: '2-digit' })
+}
+
 function fmtCantidad(value: number): string {
   return cantidadFmt.format(value || 0)
 }
