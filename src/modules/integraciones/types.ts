@@ -9,10 +9,11 @@
 export type HitellDocType = 'ST' | 'GR'
 
 /** Estado persistido en pos_sync_status. */
-export type HitellStatus = 'SYNCED' | 'REJECTED' | 'SKIPPED_NOT_POS'
+export type HitellStatus = 'SYNCED' | 'REJECTED' | 'SKIPPED_NOT_POS' | 'ERROR'
 
 /** Lectura de negocio que el middleware ya interpreta para la UI. */
-export type HitellResult = 'INTEGRADO' | 'NO_CORRESPONDE' | 'RECHAZADO'
+/** ERROR = el envío nunca llegó a HITELL (conexión/configuración); no es un rechazo, solo hay que reintegrar. */
+export type HitellResult = 'INTEGRADO' | 'NO_CORRESPONDE' | 'RECHAZADO' | 'ERROR'
 
 export type HitellRejectionType = 'PRODUCTO_NO_EXISTE' | 'OTRO'
 
@@ -30,6 +31,12 @@ export interface HitellRejection {
   retryEndpoint: string
 }
 
+/** Almacén del documento y su negocio WEBPOS (null si no está en WEBPOS). Es donde soporte crea el producto rechazado. */
+export interface HitellSyncWarehouse {
+  code: string
+  codBusiness: string | null
+}
+
 export interface HitellSyncStatus {
   docType: HitellDocType
   docEntry: number
@@ -42,6 +49,8 @@ export interface HitellSyncStatus {
   createdAt: string
   updatedAt: string | null
   rejection?: HitellRejection | null
+  /** Vacío en filas registradas por versiones anteriores del middleware; se completa en el siguiente reintento. */
+  warehouses?: HitellSyncWarehouse[]
 }
 
 export interface HitellSyncFilters {
