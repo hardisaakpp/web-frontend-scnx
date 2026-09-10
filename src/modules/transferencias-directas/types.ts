@@ -10,6 +10,8 @@ export type EstadoTransferencia =
   | 'Rechazado'
   | 'ErrorEnvioSap'
   | 'PendienteEnvioSap'
+  /** Borrado lógico: el back lo excluye de los listados normales. */
+  | 'Cancelado'
 
 //Estados transitorios (spinner / auto-refrescar).
 export const ESTADOS_TRANSITORIOS: EstadoTransferencia[] = ['Procesando', 'CreandoTransferencia']
@@ -192,6 +194,7 @@ export const ESTADO_LABELS: Record<string, string> = {
   EnviadoASap: 'Enviado a SAP',
   Rechazado: 'Rechazado',
   ErrorEnvioSap: 'Error Envío SAP',
+  Cancelado: 'Cancelado',
 }
 
 export const etiquetaEstado = (estado: string): string => ESTADO_LABELS[estado] ?? estado
