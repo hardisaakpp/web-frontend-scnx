@@ -6,6 +6,15 @@ server {
     listen 3001;
     server_name scnexus.mabelgroup.com.ec;
 
+    # Soporte para encabezados y cookies grandes (JWT con múltiples claims/roles/permisos)
+    client_header_buffer_size 8k;
+    large_client_header_buffers 4 64k;
+
+    # Búferes para proxy inverso hacia los microservicios
+    proxy_buffer_size 128k;
+    proxy_buffers 4 256k;
+    proxy_busy_buffers_size 256k;
+
     root /storage/scnexus/dist;
     index index.html;
 
