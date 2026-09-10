@@ -142,7 +142,10 @@
                 </span>
               </td>
               <td class="td text-right whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">
-                {{ s.totalItems }} <span class="text-gray-400 dark:text-gray-500">items</span> / {{ fmtCantidad(s.totalQuantity) }}
+                <template v-if="s.totalItems != null && s.totalQuantity != null">
+                  {{ s.totalItems }} <span class="text-gray-400 dark:text-gray-500">items</span> / {{ fmtCantidad(s.totalQuantity) }}
+                </template>
+                <span v-else class="text-gray-400 dark:text-gray-500" title="El alcance se muestra al cerrar la toma; en curso se consulta en el detalle">—</span>
               </td>
               <td class="td whitespace-nowrap text-xs text-gray-500 dark:text-gray-400">
                 {{ formatDate(s.definedOpenDate) }} <span class="text-gray-300 dark:text-gray-600">→</span> {{ s.definedCloseDate ? formatDate(s.definedCloseDate) : '—' }}
@@ -517,6 +520,7 @@ function sortIndicator(key: SesionSortKey) {
 function sortValue(s: InventorySessionListItemDto, key: SesionSortKey): string | number {
   if (key === 'definedOpenDate') return new Date(s.definedOpenDate).getTime()
   if (key === 'description') return s.description ?? ''
+  if (key === 'totalItems') return s.totalItems ?? -1
   return s[key]
 }
 

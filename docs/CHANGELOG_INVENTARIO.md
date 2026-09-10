@@ -6,6 +6,17 @@ Registro cronológico de cambios realizados al módulo `src/modules/inventario` 
 
 ---
 
+## 2026-09-10 — Novedades del piloto 2 (rama fix/inventarios-100926, desde main)
+
+1. **Cerrar toma desde Conteo de Artículos abre el reparto.** En la prueba la tienda cerró desde ese botón y el reconteo quedó abierto a todos sin preguntar. Ahora, si el cierre deja la toma en Reconteo, se abre el mismo modal de dos pasos (participantes → reparto / enviar sin reparto) que en la lista de tomas, y el texto del panel lo explica.
+2. **Listados rápidos.** "Toma Física" y "Mis inventarios" ya no reciben alcance (items / cantidad) para tomas abiertas o en reconteo: el backend devuelve null y la columna muestra "—" con tooltip. Cerradas siguen mostrando el alcance de la foto de cierre. Orden por esa columna trata los "—" como menores.
+3. **Scans por usuario con filtro de ronda.** En el detalle de la toma, la sección "Scans por usuario" gana un selector **Conteo + reconteo / Solo conteo / Solo reconteo** que aplica al resumen (recalculado en el front por usuario), al detalle y a las descargas (el archivo lleva sufijo `_conteo` / `_reconteo`). Antes el resumen mezclaba rondas y no había forma de ver el reconteo por separado.
+4. Ya incluidos desde ayer en esta rama: buscador de usuarios con autocompletado (pickers y reparto) y sincronización AD en segundo plano.
+
+**Estado:** rama `fix/inventarios-100926`. Tipado limpio. Requiere el backend de la misma rama (totales nullables, hoja RECONTEOS y correos viven en api-inventario).
+
+---
+
 ## 2026-09-08 — Piloto 2: tolerancia a fallas de red en la pantalla de conteo (rama feature/inventarios_piloto2)
 
 **Contexto.** Al verificar el punto 1 del correo de la toma OUT-CON ("el picking tolera cortes de red") se encontró que era cierto solo a medias: la cola y los errores de envío vivían en memoria, así que se perdían al refrescar, cerrar la pestaña o volver a "Mis inventarios"; el botón "Reenviar" dependía del operador; y con WiFi conectado pero sin salida cada escaneo esperaba los 30 s de timeout antes de pasar a error. Esta rama incluye todo lo de `fix/inventario-toma-fisica-outcon` más los 4 cambios siguientes en `ConteoPickingView.vue` y `inventarioSesionesApi.addCount`, y el punto 5 que sí requiere el backend de la misma rama. **Sin cambios en Core.**

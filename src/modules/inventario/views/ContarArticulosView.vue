@@ -72,6 +72,13 @@
       @close="mostrarEscaner = false"
     />
 
+    <RecountAssignmentModal
+      :is-open="mostrarReparto"
+      :session-id="sessionId"
+      @close="mostrarReparto = false"
+      @confirmed="onRepartoConfirmado"
+    />
+
     <div v-if="actionMsg" class="mb-4">
       <span :class="['text-xs font-medium', actionMsgError ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400']">
         {{ actionMsg }}
@@ -172,8 +179,8 @@
             Esta toma está en <strong>Reconteo</strong>. Al cerrarla se generará el snapshot inmutable y quedará definitivamente <strong>Cerrada</strong>, independientemente de las diferencias.
           </template>
           <template v-else>
-            Si todos los artículos cuadran, la toma pasará a <strong>Cerrada</strong>. Si hay diferencias, pasará a estado <strong>Reconteo</strong> para una segunda vuelta,
-            abierta a todos los usuarios de la toma. Si quieres dividir el reconteo entre personas, hazlo después desde el menú de la toma con "Repartir reconteo".
+            Si todos los artículos cuadran, la toma pasará a <strong>Cerrada</strong>. Si hay diferencias, pasará a estado <strong>Reconteo</strong> y podrás
+            elegir quiénes recontarán y repartirles los artículos, o enviarlo sin reparto para que cualquier usuario de la toma recuente.
           </template>
         </p>
 
@@ -222,6 +229,7 @@ import { useWarehouseAccessType } from '../composables/useWarehouseAccessType'
 import { useAuthStore } from '@/stores/auth'
 import { resolveUserNames } from '@/utils/resolveUserNames'
 import ScannerPanel from '../components/ScannerPanel.vue'
+import RecountAssignmentModal from '../components/RecountAssignmentModal.vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -253,6 +261,8 @@ const userNames = ref<Record<string, string>>({})
 
 const closeNote = ref('')
 const closingSession = ref(false)
+/** Tras cerrar con diferencias, el mismo reparto de reconteo que ofrece la lista de tomas. */
+const mostrarReparto = ref(false)
 const confirmandoCierre = ref(false)
 
 function userLabel(userId: string): string {
@@ -469,6 +479,11 @@ async function guardarLinea(itemCode: string) {
   }
 }
 
+async function onRepartoConfirmado(resumen: string) {
+  showMsg(resumen)
+  await cargar()
+}
+
 async function cerrarToma() {
   closingSession.value = true
   error.value = null
@@ -478,10 +493,11 @@ async function cerrarToma() {
     confirmandoCierre.value = false
     showMsg(
       result.status === 'Recount'
-        ? 'Se encontraron diferencias — la toma pasó a Reconteo. Sin reparto: todos los usuarios de la toma ven todos los artículos a recontar. Para dividirlo, usa "Repartir reconteo" en el menú de la toma.'
+        ? 'Se encontraron diferencias — la toma pasó a Reconteo. Define quiénes recontarán o envíalo sin reparto.'
         : 'Toma cerrada. Snapshot inmutable generado.'
     )
     await cargar()
+    if (result.status === 'Recount') mostrarReparto.value = true
   } catch (e: any) {
     showMsg(e.message ?? 'No se pudo cerrar la toma.', true)
   } finally {

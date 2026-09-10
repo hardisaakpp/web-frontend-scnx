@@ -184,7 +184,12 @@
               {{ scansData ? 'Actualizar' : 'Cargar' }}
             </button>
           </h2>
-          <div v-if="scansData" class="flex items-center gap-2">
+          <div v-if="scansData" class="flex items-center gap-2 flex-wrap">
+            <select v-model="scanRound" class="search-input text-xs py-1 w-40" title="Conteo inicial (ronda 1) o reconteo (ronda 2)">
+              <option :value="0">Conteo + reconteo</option>
+              <option :value="1">Solo conteo (ronda 1)</option>
+              <option :value="2">Solo reconteo (ronda 2)</option>
+            </select>
             <button
               type="button"
               :class="['px-3 py-1 rounded-full text-xs font-semibold border transition-colors', scanTab === 'summary' ? 'bg-blue-600 text-white border-blue-600' : 'border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300']"
@@ -220,7 +225,7 @@
               </tr>
             </thead>
             <tbody class="divide-y divide-gray-50 dark:divide-gray-700/50">
-              <tr v-for="u in scansData.summary" :key="u.userId" class="hover:bg-gray-50 dark:hover:bg-gray-700/20">
+              <tr v-for="u in scanSummary" :key="u.userId" class="hover:bg-gray-50 dark:hover:bg-gray-700/20">
                 <td class="td font-semibold">{{ userLabel(u.userId) }}</td>
                 <td class="td text-right">
                   <span class="inline-flex items-center justify-center rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 px-2.5 py-0.5 text-xs font-bold">{{ u.totalScans.toLocaleString() }}</span>
@@ -307,7 +312,10 @@ const warehouseName = ref<string | null>(null)
 const scansData = ref<SessionScansByUserDto | null>(null)
 const loadingScans = ref(false)
 const scanTab = ref<'summary' | 'detail'>('summary')
+/** 0 = ambas rondas; 1 = conteo inicial; 2 = reconteo. Aplica al resumen, al detalle y a las descargas. */
+const scanRound = ref<0 | 1 | 2>(0)
 const scanSearch = ref('')
+const sufijoRonda = computed(() => scanRound.value === 1 ? '_conteo' : scanRound.value === 2 ? '_reconteo' : '')
 const scanPage = ref(0)
 const userNames = ref<Record<string, string>>({})
 
@@ -340,7 +348,28 @@ function sortIndicator(key: LineSortKey) {
 }
 
 watch([activeFilter, search, pageSize, sortKey, sortDir], () => { page.value = 0 })
-watch(scanSearch, () => { scanPage.value = 0 })
+watch([scanSearch, scanRound], () => { scanPage.value = 0 })
+
+/** Resumen por usuario recalculado en el front para respetar el filtro de ronda (el backend lo trae sumado). */
+const scanSummary = computed<UserScanSummaryDto[]>(() => {
+  if (!scansData.value) return []
+  if (scanRound.value === 0) return scansData.value.summary
+  const porUsuario = new Map<string, UserScanSummaryDto & { items: Set<string> }>()
+  for (const d of scansData.value.detail) {
+    if (d.round !== scanRound.value) continue
+    const actual = porUsuario.get(d.userId)
+    if (!actual) {
+      porUsuario.set(d.userId, { userId: d.userId, userName: d.userName ?? null, totalScans: 1, uniqueItems: 1, firstScan: d.scannedAt, lastScan: d.scannedAt, items: new Set([d.itemCode]) })
+    } else {
+      actual.totalScans++
+      actual.items.add(d.itemCode)
+      actual.uniqueItems = actual.items.size
+      if (d.scannedAt < actual.firstScan) actual.firstScan = d.scannedAt
+      if (d.scannedAt > actual.lastScan) actual.lastScan = d.scannedAt
+    }
+  }
+  return [...porUsuario.values()].map(({ items: _items, ...u }) => u).sort((a, b) => b.totalScans - a.totalScans)
+})
 
 const FILTER_CARDS = computed(() => [
   { filter: 'Balanced' as FilterKey, label: 'Cerrados', count: stats.value?.balanced ?? 0, iconClass: 'text-green-500', numClass: 'text-green-600 dark:text-green-400' },
@@ -399,9 +428,10 @@ const pagedLines = computed(() => sortedLines.value.slice(pageStart.value, pageS
 
 const filteredScanDetail = computed(() => {
   if (!scansData.value) return []
+  const porRonda = scanRound.value === 0 ? scansData.value.detail : scansData.value.detail.filter(d => d.round === scanRound.value)
   const q = scanSearch.value.trim().toLowerCase()
-  if (!q) return scansData.value.detail
-  return scansData.value.detail.filter(d =>
+  if (!q) return porRonda
+  return porRonda.filter(d =>
     d.userId.toLowerCase().includes(q) ||
     userLabel(d.userId).toLowerCase().includes(q) ||
     d.itemCode.toLowerCase().includes(q) ||
@@ -490,9 +520,9 @@ async function descargarConsolidado() {
 function descargarScans() {
   if (!scansData.value) return
   if (scanTab.value === 'summary') {
-    downloadExcel(`toma_${sessionId.slice(0, 8)}_scans_resumen.xlsx`, SCAN_SUMMARY_COLUMNS, scansData.value.summary)
+    downloadExcel(`toma_${sessionId.slice(0, 8)}_scans_resumen${sufijoRonda.value}.xlsx`, SCAN_SUMMARY_COLUMNS, scanSummary.value)
   } else {
-    downloadExcel(`toma_${sessionId.slice(0, 8)}_scans_detalle.xlsx`, SCAN_DETAIL_COLUMNS, filteredScanDetail.value)
+    downloadExcel(`toma_${sessionId.slice(0, 8)}_scans_detalle${sufijoRonda.value}.xlsx`, SCAN_DETAIL_COLUMNS, filteredScanDetail.value)
   }
 }
 
