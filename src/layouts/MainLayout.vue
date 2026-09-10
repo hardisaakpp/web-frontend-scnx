@@ -5,7 +5,7 @@
       class="fixed inset-0 bg-black bg-opacity-50 z-20 md:hidden"></div>
 
     <!-- Sidebar: escritorio = franja estrecha y se expande al pasar el ratón; móvil = panel ancho al abrir -->
-    <aside :class="[
+    <aside id="app-sidebar" :class="[
       'fixed top-0 left-0 h-full flex flex-col bg-gradient-to-b from-white via-slate-50 to-slate-100 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 text-slate-800 dark:text-white transition-transform duration-150 ease-out md:transition-all md:duration-300 z-30 shadow-2xl border-r border-slate-200 dark:border-slate-700/40',
       effectiveSidebarCollapsed ? 'w-20' : 'w-72',
       isSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
@@ -419,7 +419,7 @@
       effectiveSidebarCollapsed ? 'md:ml-20' : 'md:ml-72'
     ]">
       <!-- Mobile Header -->
-      <header class="bg-white dark:bg-gray-800 shadow md:hidden sticky top-0 z-30 transition-colors duration-300">
+      <header id="app-header-mobile" class="bg-white dark:bg-gray-800 shadow md:hidden sticky top-0 z-30 transition-colors duration-300">
         <div class="px-4 py-3 flex items-center justify-between gap-2">
           <div class="flex items-center gap-2 flex-shrink-0">
             <button @click="isSidebarOpen = !isSidebarOpen"
@@ -442,6 +442,7 @@
 
       <!-- Desktop Header -->
       <header
+        id="app-header-desktop"
         class="hidden md:block bg-white dark:bg-gray-800 shadow-sm sticky top-0 z-30 transition-colors duration-300">
         <div class="px-6 py-4 flex items-center justify-between gap-4">
           <div class="flex items-center gap-3 min-w-0 flex-1">
