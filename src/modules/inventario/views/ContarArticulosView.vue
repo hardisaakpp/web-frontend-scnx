@@ -94,19 +94,21 @@
         <table class="min-w-full divide-y divide-gray-100 dark:divide-gray-700">
           <thead class="bg-gray-50 dark:bg-gray-900/40">
             <tr>
-              <th class="th w-10 text-right">#</th>
+              <!-- En tablet (< xl) se ocultan las columnas informativas (#, código de barras, Nivel 2, asignado)
+                   para que Código, Escaneados, cantidad a anotar, Total y Stock SAP entren sin desplazamiento. -->
+              <th class="th w-10 text-right hidden xl:table-cell">#</th>
               <th class="th cursor-pointer select-none" @click="toggleSort('itemCode')">Código{{ sortIndicator('itemCode') }}</th>
-              <th class="th cursor-pointer select-none" @click="toggleSort('barcode')">Cód. Barras{{ sortIndicator('barcode') }}</th>
+              <th class="th cursor-pointer select-none hidden xl:table-cell" @click="toggleSort('barcode')">Cód. Barras{{ sortIndicator('barcode') }}</th>
               <th class="th cursor-pointer select-none" @click="toggleSort('itemDescription')">Nombre{{ sortIndicator('itemDescription') }}</th>
-              <th class="th cursor-pointer select-none" @click="toggleSort('level2')">Nivel 2{{ sortIndicator('level2') }}</th>
-              <th v-if="isRecount" class="th">Asignado a</th>
+              <th class="th cursor-pointer select-none hidden xl:table-cell" @click="toggleSort('level2')">Nivel 2{{ sortIndicator('level2') }}</th>
+              <th v-if="isRecount" class="th hidden xl:table-cell">Asignado a</th>
               <th v-if="isRecount" class="th text-right cursor-pointer select-none" @click="toggleSort('initialTotalCounted')">Total Conteo{{ sortIndicator('initialTotalCounted') }}</th>
               <th class="th text-right cursor-pointer select-none" @click="toggleSort('scannedQuantity')">Escaneados{{ sortIndicator('scannedQuantity') }}</th>
-              <th class="th text-right w-36 cursor-pointer select-none" @click="toggleSort('manualQuantity')">{{ isRecount ? 'Reconteo' : 'Cant. Manual' }}{{ sortIndicator('manualQuantity') }}</th>
+              <th class="th text-right w-24 xl:w-36 cursor-pointer select-none" @click="toggleSort('manualQuantity')">{{ isRecount ? 'Reconteo' : 'Cant. Manual' }}{{ sortIndicator('manualQuantity') }}</th>
               <th class="th text-right font-semibold cursor-pointer select-none" @click="toggleSort('total')">{{ isRecount ? 'Total Reconteo' : 'Total' }}{{ sortIndicator('total') }}</th>
               <th v-if="!isTienda || isRecount" class="th text-right cursor-pointer select-none" @click="toggleSort('systemQuantity')">Stock SAP{{ sortIndicator('systemQuantity') }}</th>
               <th v-if="isRecount" class="th text-right cursor-pointer select-none" @click="toggleSort('difference')">Diferencia{{ sortIndicator('difference') }}</th>
-              <th class="th w-28">Estado</th>
+              <th class="th w-20 xl:w-28">Estado</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-gray-50 dark:divide-gray-700/50">
@@ -118,12 +120,18 @@
                 line.isSubmitted ? 'opacity-60' : ''
               ]"
             >
-              <td class="td text-right text-xs text-gray-400">{{ idx + 1 }}</td>
-              <td class="td font-mono font-medium text-sm">{{ line.itemCode }}</td>
-              <td class="td text-xs text-gray-500 font-mono">{{ line.barcode ?? '—' }}</td>
-              <td class="td text-sm">{{ line.itemDescription ?? '—' }}</td>
-              <td class="td text-xs text-gray-500">{{ line.level2 ?? '—' }}</td>
-              <td v-if="isRecount" class="td text-xs text-gray-500">{{ line.assignedUserId ? userLabel(line.assignedUserId) : '—' }}</td>
+              <td class="td text-right text-xs text-gray-400 hidden xl:table-cell">{{ idx + 1 }}</td>
+              <td class="td font-mono font-medium text-sm whitespace-nowrap">
+                {{ line.itemCode }}
+                <div v-if="line.barcode" class="xl:hidden text-[10px] font-normal text-gray-400">{{ line.barcode }}</div>
+              </td>
+              <td class="td text-xs text-gray-500 font-mono hidden xl:table-cell">{{ line.barcode ?? '—' }}</td>
+              <td class="td text-sm max-w-[14rem] xl:max-w-none">
+                <div class="line-clamp-2 xl:line-clamp-none">{{ line.itemDescription ?? '—' }}</div>
+                <div v-if="isRecount && line.assignedUserId" class="xl:hidden text-[10px] text-gray-400 truncate">{{ userLabel(line.assignedUserId) }}</div>
+              </td>
+              <td class="td text-xs text-gray-500 hidden xl:table-cell">{{ line.level2 ?? '—' }}</td>
+              <td v-if="isRecount" class="td text-xs text-gray-500 hidden xl:table-cell">{{ line.assignedUserId ? userLabel(line.assignedUserId) : '—' }}</td>
               <td v-if="isRecount" class="td text-right text-sm text-gray-500">{{ line.initialTotalCounted }}</td>
               <td class="td text-right">
                 <span v-if="line.scannedQuantity > 0" class="inline-flex items-center px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 text-xs font-semibold">
@@ -509,8 +517,8 @@ onMounted(cargar)
 </script>
 
 <style scoped>
-.th { @apply px-3 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400; }
-.td { @apply px-3 py-2.5 text-sm text-gray-700 dark:text-gray-300; }
+.th { @apply px-2 xl:px-3 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400; }
+.td { @apply px-2 xl:px-3 py-2.5 text-sm text-gray-700 dark:text-gray-300; }
 .btn-secondary { @apply inline-flex items-center rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-60 disabled:cursor-not-allowed; }
 .btn-danger { @apply inline-flex items-center rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed; }
 .badge { @apply inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium; }
@@ -518,7 +526,7 @@ onMounted(cargar)
 .badge-blue { @apply bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300; }
 .badge-gray { @apply bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400; }
 .alert-error { @apply rounded-lg border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 px-3 py-2 text-sm text-red-700 dark:text-red-300; }
-.qty-input { @apply w-28 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-2 py-1 text-sm text-right text-gray-900 dark:text-white focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 transition-colors duration-300; }
+.qty-input { @apply w-20 xl:w-28 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-2 py-1 text-sm text-right text-gray-900 dark:text-white focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 transition-colors duration-300; }
 .qty-input-pending { @apply border-amber-400 dark:border-amber-500; }
 .qty-input-saving { @apply border-blue-400 dark:border-blue-500 opacity-70; }
 .qty-input-saved { @apply border-green-500 dark:border-green-500 bg-green-50 dark:bg-green-900/20; }
