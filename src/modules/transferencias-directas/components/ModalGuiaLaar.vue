@@ -47,6 +47,17 @@ const onInput = (e: Event) => {
 const valida = computed(() => esGuiaValida(guia.value))
 const puedeConfirmar = computed(() => valida.value && !props.cargando)
 
+/** Ya existe una guía guardada: es una confirmación, no una captura desde cero. */
+const yaTieneGuia = computed(() => esGuiaValida(normalizarGuia(props.guiaActual ?? '')))
+
+const titulo = computed(() => (yaTieneGuia.value ? 'Confirmar guía LAAR' : 'Guía Courier'))
+const subtitulo = computed(() =>
+    yaTieneGuia.value
+        ? '¿Es correcta la guía con la que se envía esta solicitud, o deseas corregirla?'
+        : 'Ingresa la guía con la que se envía esta solicitud.'
+)
+const textoConfirmar = computed(() => (yaTieneGuia.value ? 'Confirmar y enviar' : 'Ingresar y enviar'))
+
 const confirmar = () => {
     if (!puedeConfirmar.value) return
     emit('confirmar', guia.value)
@@ -65,10 +76,10 @@ const confirmar = () => {
             </div>
 
             <h3 class="text-xl font-bold leading-6 text-gray-900 dark:text-white mb-2 text-center">
-                Número de guía LAAR
+                {{ titulo }}
             </h3>
             <p class="text-sm text-gray-500 dark:text-gray-400 text-center">
-                Ingresa la guía con la que se envía esta solicitud.
+                {{ subtitulo }}
             </p>
 
             <div class="mt-4">
@@ -103,7 +114,7 @@ const confirmar = () => {
                 </button>
                 <button type="button" @click="confirmar" :disabled="!puedeConfirmar"
                     class="inline-flex justify-center rounded-lg border border-transparent bg-blue-600 hover:bg-blue-700 px-6 py-2 text-sm font-medium text-white disabled:opacity-60 disabled:cursor-not-allowed transition-all shadow-sm">
-                    {{ cargando ? 'Enviando…' : 'Confirmar y enviar' }}
+                    {{ cargando ? 'Enviando…' : textoConfirmar }}
                 </button>
             </div>
         </div>

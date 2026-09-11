@@ -18,9 +18,15 @@ function agregarCodigosDeAcceso(codes: Set<string>, acceso: WarehouseAccessInfo)
  * Filtro de Tienda Origen/Destino compartido entre el Historial y la Bandeja
  * de Aprobación: mismo criterio de visibilidad en ambas pantallas.
  *
- * - Origen se recorta a las tiendas del usuario, salvo que tenga el permiso
- *   'transferenciadirecta.filtro_todastiendas' (o sea Admin, ya cubierto por
- *   el back).
+ * Origen y Destino NO son la misma lista: el back resuelve cada `tipo` con una
+ * regla de negocio distinta (Origen = marca propia del usuario; Destino = las
+ * marcas que `configuracion_envios` permite recibir desde esa marca). Por eso
+ * se piden por separado, igual que en CrearTransferenciasView.vue.
+ *
+ * - Origen se recorta además a las tiendas del usuario, salvo que tenga el
+ *   permiso 'transferenciadirecta.filtro_todastiendas' (o sea Admin, ya
+ *   cubierto por el back): el back no modela grupos/supervisor en este
+ *   endpoint, solo marca.
  * - Destino no se recorta: el back ya resuelve su alcance.
  */
 export function useFiltroTiendas() {
@@ -31,7 +37,8 @@ export function useFiltroTiendas() {
   )
 
   const { accesses, isTienda } = useWarehouseAccessType()
-  const almacenes = ref<TiendaDestino[]>([])
+  const almacenesOrigen = ref<TiendaDestino[]>([])
+  const almacenesDestino = ref<TiendaDestino[]>([])
 
   const tiendasDelUsuario = computed<Set<string>>(() => {
     const codes = new Set<string>()
@@ -41,15 +48,20 @@ export function useFiltroTiendas() {
 
   const opcionesOrigen = computed(() =>
     puedeFiltrarTiendas.value
-      ? almacenes.value
-      : almacenes.value.filter((t) => tiendasDelUsuario.value.has(t.whsCode))
+      ? almacenesOrigen.value
+      : almacenesOrigen.value.filter((t) => tiendasDelUsuario.value.has(t.whsCode))
   )
-  const opcionesDestino = computed(() => almacenes.value)
+  const opcionesDestino = computed(() => almacenesDestino.value)
   const mostrarFiltroOrigen = computed(() => puedeFiltrarTiendas.value || !isTienda.value)
 
   const cargarAlmacenes = async () => {
     try {
-      almacenes.value = await almacenesService.listar('Destino')
+      const [destino, origen] = await Promise.all([
+        almacenesService.listar('Destino'),
+        almacenesService.listar('Origen'),
+      ])
+      almacenesDestino.value = destino
+      almacenesOrigen.value = origen
     } catch {
       // Silencioso: sin almacenes cargados, los combos quedan vacíos pero
       // el resto de la pantalla (listado, paginación) sigue funcionando.
