@@ -5,9 +5,9 @@ import { CalendarIcon } from '@heroicons/vue/24/outline'
 import { useLogsStore } from '../stores/logsStore'
 import { daysAgoLocalDateString, todayLocalDateString } from '../utils/dateRange'
 import BuscarOdcBar from '../components/BuscarOdcBar.vue'
-import SkeletonTable from '@/components/SkeletonTable.vue'
-import ErrorModal from '@/components/ErrorModal.vue'
-import VolverButton from '@/components/VolverButton.vue'
+import SkeletonTable from '@/components/feedback/SkeletonTable.vue'
+import ErrorModal from '@/components/modales/ErrorModal.vue'
+import VolverButton from '@/components/navegacion/VolverButton.vue'
 
 const store = useLogsStore()
 const route = useRoute()

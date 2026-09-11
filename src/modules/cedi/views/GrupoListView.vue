@@ -3,7 +3,7 @@ import { computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ArrowLeftIcon } from '@heroicons/vue/24/outline'
 import { useGrupoStore } from '../stores/grupoStore'
-import QuickTablePagination from '@/components/QuickTablePagination.vue'
+import QuickTablePagination from '@/components/paginacion/QuickTablePagination.vue'
 import type { GrupoEstado } from '../types'
 
 const store = useGrupoStore()

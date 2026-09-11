@@ -73,7 +73,7 @@ import { useToast } from '@/composables/useToast'
 import { mba3ConsultasService } from '../services/mba3ConsultasApi'
 import RemisionesTable from '../components/RemisionesTable.vue'
 import SkeletonTable from '../components/SkeletonTable.vue'
-import QuickTablePagination from '@/components/QuickTablePagination.vue'
+import QuickTablePagination from '@/components/paginacion/QuickTablePagination.vue'
 import LoadingSpinner from '../components/LoadingSpinner.vue'
 import type { Remision } from '../types'
 
