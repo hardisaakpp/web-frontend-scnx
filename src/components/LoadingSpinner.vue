@@ -1,7 +1,6 @@
 <template>
-  <div
+  <output
     :class="containerClass"
-    role="status"
     :aria-label="computedAriaLabel"
     aria-live="polite"
   >
@@ -11,7 +10,7 @@
     ></span>
     <span v-if="message" :class="messageClass">{{ message }}</span>
     <span v-else class="sr-only">{{ computedAriaLabel }}</span>
-  </div>
+  </output>
 </template>
 
 <script setup lang="ts">
