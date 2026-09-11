@@ -165,6 +165,8 @@ export interface OrdenesCompraListFilters {
   search?: string
   referencia_despacho?: string
   numero_oc_sap?: string
+  /** Solo ODCs donde aplica "Reintentar" (PENDIENTE/ERROR) o "Reintentar ST" (ENVIADA con tiendas pendientes). */
+  solo_pendiente_reintento?: boolean
 }
 
 export interface OrdenCompraResponse {
