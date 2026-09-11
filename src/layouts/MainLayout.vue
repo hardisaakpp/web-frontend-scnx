@@ -295,6 +295,21 @@
             <span v-show="!effectiveSidebarCollapsed" class="relative z-10 font-medium">Transacciones</span>
           </router-link>
 
+          <!-- Tesorería: Depósitos Bancarios (entrada única → Hub con submódulos internos) -->
+          <router-link v-if="hasModuleAccess('tesoreria')" to="/tesoreria"
+            class="group flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 relative overflow-hidden"
+            :class="{
+              'bg-gradient-to-r from-blue-600 to-sky-500 text-white shadow-lg shadow-blue-500/50': $route.path.startsWith('/tesoreria'),
+              'text-slate-600 hover:bg-slate-200/70 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800/50 dark:hover:text-white': !$route.path.startsWith('/tesoreria')
+            }" :title="effectiveSidebarCollapsed ? 'Tesorería' : ''">
+            <div
+              class="absolute inset-0 bg-gradient-to-r from-blue-600/20 to-sky-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+            </div>
+            <BuildingLibraryIcon class="h-5 w-5 flex-shrink-0 relative z-10"
+              :class="{ 'scale-110': $route.path.startsWith('/tesoreria') }" />
+            <span v-show="!effectiveSidebarCollapsed" class="relative z-10 font-medium">Tesorería</span>
+          </router-link>
+
           <!-- Transferencias de Stocks -->
           <router-link v-if="hasModuleAccess('transferenciadirecta')" to="/transferencias-stock"
             class="group flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 relative overflow-hidden"
@@ -505,7 +520,8 @@ import {
   ClipboardDocumentListIcon,
   BanknotesIcon,
   ArrowPathRoundedSquareIcon,
-  ChartBarIcon
+  ChartBarIcon,
+  BuildingLibraryIcon
 } from '@heroicons/vue/24/outline'
 import { Pin, PinOff, TruckIcon, ForkliftIcon } from 'lucide-vue-next'
 import { useAuthStore } from '../stores/auth'
@@ -702,7 +718,11 @@ const pageTitle = computed(() => {
     '/transferencias-stock/crearsolicitud': 'Crear Transferencia',
     '/transferencias-stock/historial' : 'Historial de Transferencias',
     '/demanda-otb': 'Demanda OTB',
-    '/demanda-otb/ejemplo': 'Demanda OTB — Ejemplo de gráfico'
+    '/demanda-otb/ejemplo': 'Demanda OTB — Ejemplo de gráfico',
+    '/tesoreria': 'Tesorería',
+    '/tesoreria/mis-depositos': 'Mis Depósitos',
+    '/tesoreria/auditoria': 'Auditoría Mabel',
+    '/tesoreria/configuracion': 'Configuración de Tesorería'
   }
 
   return (route.meta?.title as string) || titles[route.path] || 'SCNexus'
@@ -716,6 +736,7 @@ const logout = () => {
 const promocionSobresSidebarTo = computed(() =>
   promocionSobresDefaultPath(authStore.userPermissions || [])
 )
+
 
 const hasModuleAccess = (moduleName: string): boolean => {
   if (authStore.userRoles?.includes('Admin')) {

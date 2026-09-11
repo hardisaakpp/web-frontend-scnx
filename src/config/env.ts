@@ -36,4 +36,6 @@ export const ENV = {
   CEDI_URL: getEnv('VITE_CEDI_API_URL', '/cedi-api'),
   /** mIAApi — asistente de IA (Cool-turito / SCNEXUS AI) */
   MIA_URL: getEnv('VITE_MIA_API_URL', '/mia-api'),
+  /** api-tesoreria — Depósitos Bancarios y auditoría de Tesorería. */
+  TESORERIA_URL: getEnv('VITE_TESORERIA_API_URL', '/tesoreria-api'),
 };

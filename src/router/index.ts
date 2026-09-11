@@ -26,6 +26,7 @@ import transferenciasDirectasRoutes from '../modules/transferencias-directas/rou
 import integracionesRoutes from '../modules/integraciones/router'
 import cediRoutes from '../modules/cedi/router'
 import demandaOtbRoutes from '../modules/demanda-otb/router'
+import tesoreriaRoutes from '../modules/tesoreria/router'
 
 console.log('🔍 DEBUG usuariosRoutes:', usuariosRoutes)
 console.log('🔍 DEBUG cajaChicaRoutes:', cajaChicaRoutes)
@@ -87,6 +88,7 @@ const router = createRouter({
         ...integracionesRoutes,
         ...cediRoutes,
         ...demandaOtbRoutes,
+        ...tesoreriaRoutes,
         {
           path: 'forbidden',
           name: 'forbidden',
@@ -152,8 +154,14 @@ router.beforeEach(async (to, from, next) => {
 
   // Verificar permisos si están definidos (los administradores tienen acceso automático)
   if (requiredPermissions && requiredPermissions.length > 0) {
-    // Verificar si es admin desde userRoles (ya que isAdmin getter no funciona)
-    const isAdmin = authStore.userRoles?.includes('Admin') || false
+    // Verificar si es admin con tolerancia a variantes como 'Administrador Principal', 'admin', etc.
+    const isAdmin =
+      authStore.isAdmin ||
+      authStore.userRoles?.some((r) => {
+        const s = String(r).toLowerCase()
+        return s === 'admin' || s === 'administrador' || s.includes('admin')
+      }) ||
+      false
     
     if (!isAdmin) {
       const hasPermission = authStore.hasAnyPermission(requiredPermissions)
