@@ -875,6 +875,79 @@ describe('TransferDetailView', () => {
     expect(recepcionApi.recordDifference).not.toHaveBeenCalled()
   })
 
+  it('fills the next pending line on the second scan when the barcode is duplicated', async () => {
+    mockAuth(['recepcion.picking.scan'])
+    const firstLine = buildLine({ lineId: 1827, itemCode: 'A1', quantity: 1, scanned: 0, barcode: '7861228343378' })
+    const secondLine = buildLine({ lineId: 1851, itemCode: 'A1', quantity: 1, scanned: 0, barcode: '7861228343378' })
+    vi.mocked(recepcionApi.getTransfer)
+      .mockResolvedValueOnce(mockGetTransfer(buildTransfer({ lines: [firstLine, secondLine] })))
+      .mockResolvedValueOnce(
+        mockGetTransfer(buildTransfer({ lines: [{ ...firstLine, scanned: 1 }, secondLine] }))
+      )
+      .mockResolvedValue(
+        mockGetTransfer(buildTransfer({ lines: [{ ...firstLine, scanned: 1 }, { ...secondLine, scanned: 1 }] }))
+      )
+    vi.mocked(recepcionApi.scan).mockResolvedValue(undefined)
+
+    const wrapper = mount(TransferDetailView, { global: { stubs: { RouterLink: true } } })
+    await flushPromises()
+
+    await wrapper.find('[data-testid="barcode-scan-input"]').setValue('7861228343378')
+    await wrapper.find('[data-testid="barcode-scan-add-btn"]').trigger('click')
+    await flushPromises()
+    await wrapper.find('[data-testid="barcode-scan-input"]').setValue('7861228343378')
+    await wrapper.find('[data-testid="barcode-scan-add-btn"]').trigger('click')
+    await flushPromises()
+
+    expect(recepcionApi.scan).toHaveBeenCalledTimes(2)
+    expect(recepcionApi.scan).toHaveBeenNthCalledWith(1, 7, {
+      scans: [{ lineId: 1827, scannedQuantity: 1 }],
+      responsibleName: null,
+      courierWaybillNumber: null,
+    })
+    expect(recepcionApi.scan).toHaveBeenNthCalledWith(2, 7, {
+      scans: [{ lineId: 1851, scannedQuantity: 1 }],
+      responsibleName: null,
+      courierWaybillNumber: null,
+    })
+    expect(recepcionApi.recordDifference).not.toHaveBeenCalled()
+  })
+
+  it('records a difference only after every line with the duplicated barcode is complete', async () => {
+    mockAuth(['recepcion.picking.scan'])
+    const firstLine = buildLine({ lineId: 1827, itemCode: 'A1', quantity: 1, scanned: 1, barcode: '7861228343378' })
+    const secondLine = buildLine({ lineId: 1851, itemCode: 'A1', quantity: 1, scanned: 0, barcode: '7861228343378' })
+    vi.mocked(recepcionApi.getTransfer)
+      .mockResolvedValueOnce(mockGetTransfer(buildTransfer({ lines: [firstLine, secondLine] })))
+      .mockResolvedValue(
+        mockGetTransfer(buildTransfer({ lines: [firstLine, { ...secondLine, scanned: 1 }] }))
+      )
+    vi.mocked(recepcionApi.scan).mockResolvedValue(undefined)
+    vi.mocked(recepcionApi.recordDifference).mockResolvedValue(undefined)
+
+    const wrapper = mount(TransferDetailView, { global: { stubs: { RouterLink: true } } })
+    await flushPromises()
+
+    await wrapper.find('[data-testid="barcode-scan-input"]').setValue('7861228343378')
+    await wrapper.find('[data-testid="barcode-scan-add-btn"]').trigger('click')
+    await flushPromises()
+
+    expect(recepcionApi.scan).toHaveBeenCalledWith(7, {
+      scans: [{ lineId: 1851, scannedQuantity: 1 }],
+      responsibleName: null,
+      courierWaybillNumber: null,
+    })
+    expect(recepcionApi.recordDifference).not.toHaveBeenCalled()
+
+    await wrapper.find('[data-testid="barcode-scan-input"]').setValue('7861228343378')
+    await wrapper.find('[data-testid="barcode-scan-add-btn"]').trigger('click')
+    await flushPromises()
+
+    expect(recepcionApi.scan).toHaveBeenCalledTimes(1)
+    expect(recepcionApi.recordDifference).toHaveBeenCalledTimes(1)
+    expect(recepcionApi.recordDifference).toHaveBeenCalledWith(7, { barcode: '7861228343378' })
+  })
+
   it("caps the fill at the line's remaining quantity and redirects each excess unit to its own difference record, fixing legacy's silent-drop bug", async () => {
     mockAuth(['recepcion.picking.scan'])
     const line = buildLine({ lineId: 1, itemCode: 'A1', quantity: 10, scanned: 8, barcode: '7791234' })

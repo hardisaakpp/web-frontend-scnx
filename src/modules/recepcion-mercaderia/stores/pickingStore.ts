@@ -288,6 +288,12 @@ export const usePickingStore = defineStore('recepcionPicking', () => {
     }
   }
 
+  async function recordDifferences(barcode: string, count: number): Promise<void> {
+    for (let i = 0; i < count; i++) {
+      await recordDifference({ barcode })
+    }
+  }
+
   /**
    * Matches legacy recP.php's procesarCodigo() mechanics (sc22, lines ~766-822): no match ->
    * unrecognized code, logged as a difference; match with room -> fill capped at the line's
@@ -307,30 +313,42 @@ export const usePickingStore = defineStore('recepcionPicking', () => {
   ): Promise<{ matchedLine: ReceptionLine | null; fillAmount: number; excess: number } | null> {
     if (!currentTransfer.value) return null
 
-    const line = currentTransfer.value.lines.find((l) => l.barcode === barcode) ?? null
+    const matchingLines = currentTransfer.value.lines.filter((l) => l.barcode === barcode)
+    const line = matchingLines.find((l) => l.scanned < l.quantity) ?? null
 
-    if (!line) {
-      for (let i = 0; i < enteredQty; i++) {
-        await recordDifference({ barcode })
-      }
+    if (matchingLines.length === 0) {
+      await recordDifferences(barcode, enteredQty)
       return { matchedLine: null, fillAmount: 0, excess: enteredQty }
     }
 
-    const available = Math.max(0, line.quantity - line.scanned)
-    const fillAmount = Math.min(enteredQty, available)
-    const excess = enteredQty - fillAmount
+    if (!line) {
+      await recordDifferences(barcode, enteredQty)
+      return { matchedLine: matchingLines[0], fillAmount: 0, excess: enteredQty }
+    }
 
-    if (fillAmount > 0) {
+    let remaining = enteredQty
+    const scans: ScanLineRequest[] = []
+    for (const matchingLine of matchingLines) {
+      const available = Math.max(0, matchingLine.quantity - matchingLine.scanned)
+      const allocated = Math.min(remaining, available)
+      if (allocated > 0) {
+        scans.push({ lineId: matchingLine.lineId, scannedQuantity: matchingLine.scanned + allocated })
+        remaining -= allocated
+      }
+      if (remaining === 0) break
+    }
+    const fillAmount = enteredQty - remaining
+    const excess = remaining
+
+    if (scans.length > 0) {
       await scan({
-        scans: [{ lineId: line.lineId, scannedQuantity: line.scanned + fillAmount }],
+        scans,
         responsibleName: options.responsibleName ?? null,
         courierWaybillNumber: options.courierWaybillNumber ?? null,
       })
     }
 
-    for (let i = 0; i < excess; i++) {
-      await recordDifference({ barcode })
-    }
+    await recordDifferences(barcode, excess)
 
     return { matchedLine: line, fillAmount, excess }
   }
