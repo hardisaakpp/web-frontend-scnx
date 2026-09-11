@@ -88,8 +88,26 @@
                         </div>
                         <div class="form-field">
                             <label for="formItemName">Descripción Factura (ItemName)</label>
-                            <input id="formItemName" v-model="form.itemName" type="text" maxlength="50" placeholder="Se sugiere automáticamente; puede editarla" />
-                            <span class="help">Sugerido: Línea + Género + Marca + Atributo + Color + Pack. Editable: sus cambios no se sobrescriben.</span>
+                            <div class="flex gap-2">
+                                <input
+                                    id="formItemName"
+                                    v-model="form.itemName"
+                                    type="text"
+                                    maxlength="50"
+                                    class="flex-1"
+                                    :disabled="false"
+                                    placeholder="Sugerencia automática o ingrese descripción personalizada"
+                                />
+                                <button
+                                    type="button"
+                                    class="shrink-0 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 px-2.5 text-sm text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800 transition-colors"
+                                    title="Regenerar sugerencia automática"
+                                    @click="regenerarItemName"
+                                >
+                                    🔄
+                                </button>
+                            </div>
+                            <span class="help">Sugerido: Línea + Género + Atributo 2 + Color + Marca + Pack. Editable: sus cambios no se sobrescriben.</span>
                         </div>
 
                         <!-- Nuevos campos SIS-CCPYTD-00014 -->
@@ -791,6 +809,7 @@ import GestorImagenes from '../components/GestorImagenes.vue'
 import KeyboardHelpModal from '../components/KeyboardHelpModal.vue'
 import { useKeyboardShortcuts } from '../composables/useKeyboardShortcuts'
 import { OPCIONES_COST_ACCOUNTING, DEFAULT_COST_ACCOUNTING } from '../constants/costAccounting'
+import { sugerirItemName } from '../utils/formateadores'
 
 const route = useRoute()
 const router = useRouter()
@@ -1160,33 +1179,49 @@ const form = ref({
     isStructuralLocked: false,
 })
 
-// RF-003: Auto-generación de ItemName (Descripción Factura) sin bloquear el
-// input. Solo se sobrescribe mientras el valor actual siga siendo la última
-// sugerencia (o esté vacío); en cuanto el usuario escribe algo distinto,
-// dejamos de pisarlo aunque cambie Marca/Talla/etc. después.
+// Auto-generación de ItemName (Descripción Factura) sin bloquear el input:
+// fórmula oficial N3 + Género + Atributo 2 + Color + Marca + Pack (paridad
+// con GeneradorCodigosService.componer_descripcion_factura en el backend,
+// ver utils/formateadores.ts). Solo se sobrescribe mientras el valor actual
+// siga siendo la última sugerencia (o esté vacío); en cuanto el usuario
+// escribe algo distinto, dejamos de pisarlo aunque cambien los campos de
+// origen después. Solo aplica en CREACIÓN -- en edición, el valor ya
+// guardado no debe autosobreescribirse por cambiar otro campo.
 const ultimoItemNameSugerido = ref('')
 
 function calcularItemNameSugerido(): string {
-    // Buscar descripciones en lugar de usar códigos directamente
-    const n3 = cats.value.lineas.find(l => l.nombre === form.value.uNv3)?.nombre || form.value.uNv3 || ''
     const genero = cats.value.genero.find(g => g.codigo === String(form.value.uGen))?.nombre || form.value.uGen || ''
-    const marca = form.value.uMarca || ''
-    const atributo = form.value.uAtrMed || ''
-    const color = cats.value.color.find(c => c.codigo === String(form.value.uCodColor))?.nombre || form.value.uCodColor || ''
-    const pack = form.value.uIxxPack || ''
+    return sugerirItemName({
+        nv3: form.value.uNv3,
+        genero,
+        atributo2: form.value.uAtrUni,
+        atributo1: form.value.uAtrMed,
+        color: form.value.uIxxColores,
+        marca: form.value.uIxxMarca || form.value.uMarca,
+        pack: form.value.uIxxPack
+    })
+}
 
-    const parts = [n3, genero, marca, atributo, color, pack].filter(Boolean)
-    return parts.join(' ').toUpperCase().substring(0, 50)
+// UX Plus: botón de regeneración rápida -- restablece la sugerencia
+// estándar aunque el usuario ya la hubiera modificado manualmente.
+function regenerarItemName(): void {
+    const sugerido = calcularItemNameSugerido()
+    form.value.itemName = sugerido
+    ultimoItemNameSugerido.value = sugerido
 }
 
 watch([
     () => form.value.uNv3,
     () => form.value.uGen,
-    () => form.value.uMarca,
+    () => form.value.uAtrUni,
     () => form.value.uAtrMed,
-    () => form.value.uCodColor,
+    () => form.value.uIxxColores,
+    () => form.value.uIxxMarca,
+    () => form.value.uMarca,
     () => form.value.uIxxPack
 ], () => {
+    if (isEdit.value) return
+
     const sugerido = calcularItemNameSugerido()
     const valorActual = (form.value.itemName || '').trim()
     const sigueSiendoLaSugerencia = valorActual === '' || valorActual === ultimoItemNameSugerido.value.trim()

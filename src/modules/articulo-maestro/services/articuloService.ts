@@ -152,6 +152,23 @@ export interface ImportacionGrupo {
     imagenes: ImagenArticuloReferencia[]
 }
 
+// Trazabilidad de identificadores autogenerados: una entrada por cada fila
+// COMPLETADO, con los códigos que el backend generó (ItemCode/BarCode/SKU
+// base) y los atributos de la variante creada -- ver ArticuloCreadoResumen
+// en app/schemas/importacion.py.
+export interface ArticuloCreadoResumen {
+    numeroFila: number
+    itemCode: string
+    barCode?: string | null
+    itemName?: string | null
+    codigoBase?: string | null
+    codigoProveedor?: string | null
+    talla?: string | null
+    color?: string | null
+    precio?: number | null
+    estadoSap: string
+}
+
 export interface ImportacionAceptada {
     jobId: number
     estado: EstadoImportacion
@@ -188,6 +205,9 @@ export interface ImportacionTrabajo {
     fechaInicio?: string | null
     fechaFin?: string | null
     grupos: ImportacionGrupo[]
+    // Solo viene poblado en el detalle (getImportacion); el listado paginado
+    // no lo incluye (ver ImportacionTrabajoResumen en el backend).
+    articulosCreados?: ArticuloCreadoResumen[]
 }
 
 // Resumen de un trabajo de importación (GET /articulos/importaciones, listado
@@ -497,6 +517,27 @@ export const articuloService = {
         const link = document.createElement('a')
         link.href = url
         link.download = `errores_importacion_${jobId}.xlsx`
+        document.body.appendChild(link)
+        link.click()
+        link.remove()
+        globalThis.URL.revokeObjectURL(url)
+    },
+
+    // Trazabilidad de identificadores generados: reporte con los ItemCode/
+    // BarCode/SKU base autogenerados para las filas COMPLETADO, pensado para
+    // imprimir etiquetas y órdenes de compra.
+    descargarReporteExitosImportacion: async (jobId: number): Promise<void> => {
+        const response = await apiMaestro.get(
+            `/api/v1/articulos/importaciones/${jobId}/reporte-exitos.xlsx`,
+            { responseType: 'blob' }
+        )
+        const blob = new Blob([response.data as BlobPart], {
+            type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        })
+        const url = globalThis.URL.createObjectURL(blob)
+        const link = document.createElement('a')
+        link.href = url
+        link.download = `articulos_creados_job_${jobId}.xlsx`
         document.body.appendChild(link)
         link.click()
         link.remove()

@@ -36,6 +36,103 @@
             </p>
         </div>
 
+        <!-- Resumen gráfico + guía de reintento: lote con errores parciales
+             (algunos artículos sí se crearon y ya se encolaron a SAP, otros
+             se rechazaron por validación). -->
+        <div
+            v-if="job.estado === 'COMPLETADO_CON_ERRORES'"
+            class="space-y-3"
+        >
+            <div class="flex flex-wrap gap-4 text-sm">
+                <span class="inline-flex items-center gap-1.5 font-semibold text-emerald-700 dark:text-emerald-400">
+                    🟢 {{ job.filasCorrectas }} creado(s) exitosamente (encolado(s) hacia SAP)
+                </span>
+                <span class="inline-flex items-center gap-1.5 font-semibold text-red-700 dark:text-red-400">
+                    🔴 {{ job.filasError }} rechazado(s) por validación
+                </span>
+            </div>
+            <div class="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800 dark:border-amber-800 dark:bg-amber-900/20 dark:text-amber-200">
+                ⚠️ <strong>Atención:</strong> para corregir los artículos rechazados, descargue la plantilla de
+                errores, aplique los ajustes necesarios sobre las celdas señaladas y vuelva a subir ese mismo
+                archivo corregido con el botón <strong>Cargar archivo de correcciones</strong>. No vuelva a subir el
+                archivo completo original: el sistema lo rechazará (error 409) para evitar duplicar el lote.
+            </div>
+        </div>
+
+        <!-- Trazabilidad de identificadores generados: pestañas Creados/
+             Observados solo cuando el lote es MIXTO (algo se creó Y algo
+             quedó observado). Con 100% éxito o 100% fallo se muestra
+             directo, sin la chrome de pestañas. -->
+        <div v-if="mostrarPestanas" class="flex gap-2 border-b border-gray-200 dark:border-gray-700" role="tablist">
+            <button
+                type="button"
+                role="tab"
+                :aria-selected="pestanaActiva === 'exitos'"
+                :class="tabClass('exitos')"
+                @click="pestanaActiva = 'exitos'"
+            >
+                🟢 Creados Exitosamente ({{ articulosCreados.length }})
+            </button>
+            <button
+                type="button"
+                role="tab"
+                :aria-selected="pestanaActiva === 'errores'"
+                :class="tabClass('errores')"
+                @click="pestanaActiva = 'errores'"
+            >
+                🔴 Filas con Observación ({{ job.filasError }})
+            </button>
+        </div>
+
+        <div v-if="articulosCreados.length && (!mostrarPestanas || pestanaActiva === 'exitos')" class="space-y-3">
+            <div class="rounded-lg border border-emerald-200 bg-white p-4 dark:border-emerald-800 dark:bg-gray-900/40">
+                <div class="mb-3 flex flex-wrap items-center justify-between gap-3">
+                    <p class="text-sm font-semibold text-gray-900 dark:text-white">
+                        Artículos creados ({{ articulosCreados.length }})
+                    </p>
+                    <button
+                        type="button"
+                        class="rounded-lg bg-emerald-600 px-3 py-2 text-xs font-semibold text-white hover:bg-emerald-700 disabled:opacity-60"
+                        :disabled="store.downloading"
+                        @click="store.descargarReporteExitos"
+                    >
+                        {{ store.downloading ? 'Descargando...' : `🟢 📥 Descargar Creados (${articulosCreados.length})` }}
+                    </button>
+                </div>
+                <div class="max-h-64 overflow-auto rounded-md border border-gray-200 dark:border-gray-700">
+                    <table class="w-full text-xs text-left">
+                        <thead class="sticky top-0 bg-gray-50 text-gray-500 dark:bg-gray-700/40 dark:text-gray-400">
+                            <tr>
+                                <th class="px-3 py-1.5 font-medium">Fila</th>
+                                <th class="px-3 py-1.5 font-medium">Ref. Prov.</th>
+                                <th class="px-3 py-1.5 font-medium">Color</th>
+                                <th class="px-3 py-1.5 font-medium">Talla</th>
+                                <th class="px-3 py-1.5 font-medium">ItemCode Generado</th>
+                                <th class="px-3 py-1.5 font-medium">BarCode</th>
+                                <th class="px-3 py-1.5 font-medium">SAP</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
+                            <tr v-for="articulo in articulosCreados" :key="articulo.itemCode">
+                                <td class="px-3 py-1.5 text-gray-700 dark:text-gray-300">{{ articulo.numeroFila }}</td>
+                                <td class="px-3 py-1.5 text-gray-700 dark:text-gray-300">{{ articulo.codigoProveedor ?? '—' }}</td>
+                                <td class="px-3 py-1.5 text-gray-700 dark:text-gray-300">{{ articulo.color ?? '—' }}</td>
+                                <td class="px-3 py-1.5 text-gray-700 dark:text-gray-300">{{ articulo.talla ?? '—' }}</td>
+                                <td class="px-3 py-1.5 font-mono font-semibold text-gray-900 dark:text-white">{{ articulo.itemCode }}</td>
+                                <td class="px-3 py-1.5 text-gray-700 dark:text-gray-300">{{ articulo.barCode ?? '—' }}</td>
+                                <td class="px-3 py-1.5">
+                                    <span class="rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-semibold text-blue-700 dark:bg-blue-900/40 dark:text-blue-300">
+                                        {{ articulo.estadoSap }}
+                                    </span>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div v-if="!mostrarPestanas || pestanaActiva === 'errores'" class="space-y-4">
         <!-- H12: restricciones esperables de SAP (campo estructural con
              movimientos/stock) -- no es un fallo del sistema, así que se
              muestran como advertencia informativa, separadas de los
@@ -80,7 +177,7 @@
                     :disabled="store.downloading"
                     @click="store.descargarErroresPlantilla"
                 >
-                    {{ store.downloading ? 'Descargando...' : 'Descargar filas para corregir' }}
+                    {{ store.downloading ? 'Descargando...' : `📥 Descargar Plantilla de Errores (${store.errores.length})` }}
                 </button>
                 <button
                     type="button"
@@ -115,7 +212,7 @@
                         :disabled="store.downloading"
                         @click="store.descargarErroresPlantilla"
                     >
-                        {{ store.downloading ? 'Descargando...' : 'Descargar filas para corregir' }}
+                        {{ store.downloading ? 'Descargando...' : `📥 Descargar Plantilla de Errores (${store.errores.length})` }}
                     </button>
                     <button
                         type="button"
@@ -184,15 +281,16 @@
         >
             Reintentar grupos con error
         </button>
+        </div>
     </div>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { storeToRefs } from 'pinia'
 import Metric from './ImportacionProgresoMetric.vue'
 import { useImportacionArticulosStore } from '../stores/importacionArticulosStore'
-import type { ImportacionGrupo } from '../services/articuloService'
+import type { ArticuloCreadoResumen, ImportacionGrupo } from '../services/articuloService'
 
 function fotosCompletadas(grupo: ImportacionGrupo): number {
     return grupo.imagenes.filter(imagen => imagen.estado === 'COMPLETADA').length
@@ -206,6 +304,41 @@ const job = computed(() => {
     }
     return trabajo.value
 })
+
+// Trazabilidad de identificadores generados (ItemCode/BarCode/SKU base):
+// una fila por artículo COMPLETADO, ya enriquecida por el backend.
+const articulosCreados = computed<ArticuloCreadoResumen[]>(
+    () => job.value.articulosCreados ?? []
+)
+
+const hayObservaciones = computed(
+    () =>
+        store.erroresEstructurales.length > 0 ||
+        store.erroresNoEstructurales.length > 0 ||
+        store.gruposObservados.length > 0
+)
+
+// Las pestañas solo tienen sentido en un lote MIXTO (algo se creó Y algo
+// quedó observado). Con 100% éxito o 100% fallo se muestra el contenido
+// directo, sin la chrome de pestañas (ver mockup del enunciado).
+const mostrarPestanas = computed(
+    () =>
+        job.value.estado === 'COMPLETADO_CON_ERRORES' &&
+        articulosCreados.value.length > 0 &&
+        hayObservaciones.value
+)
+
+const pestanaActiva = ref<'exitos' | 'errores'>('exitos')
+
+function tabClass(pestana: 'exitos' | 'errores'): string {
+    const base = '-mb-px border-b-2 px-4 py-2 text-sm font-semibold transition-colors'
+    if (pestanaActiva.value !== pestana) {
+        return `${base} border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200`
+    }
+    return pestana === 'exitos'
+        ? `${base} border-emerald-600 text-emerald-700 dark:text-emerald-400`
+        : `${base} border-red-600 text-red-700 dark:text-red-400`
+}
 const statusLabel = computed(() => {
     // H09: mientras zipPendiente sea true, el worker todavía está
     // descomprimiendo/subiendo las imágenes a staging -- antes de tocar el

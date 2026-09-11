@@ -292,6 +292,18 @@ export const useImportacionArticulosStore = defineStore(
                 }
             },
 
+            async descargarReporteExitos(): Promise<void> {
+                if (!this.jobId) return
+                this.downloading = true
+                try {
+                    await articuloService.descargarReporteExitosImportacion(
+                        this.jobId
+                    )
+                } finally {
+                    this.downloading = false
+                }
+            },
+
             async descargarErrores(): Promise<void> {
                 if (!this.jobId) return
                 this.downloading = true

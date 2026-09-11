@@ -180,7 +180,11 @@
                         @click="prepararOtraCarga"
                         class="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors mr-auto"
                     >
-                        Cargar otro archivo
+                        {{
+                            importStore.trabajo?.estado === 'COMPLETADO_CON_ERRORES'
+                                ? 'Cargar archivo de correcciones'
+                                : 'Cargar otro archivo'
+                        }}
                     </button>
                     <button
                         @click="handleClose"
@@ -351,8 +355,7 @@ async function handleVerificar(): Promise<void> {
             tipoCarga.value === 'crear' ? selectedZip.value : null
         )
     } catch (err: unknown) {
-        const axiosErr = err as { response?: { data?: { detail?: string } } }
-        cargaError.value = axiosErr?.response?.data?.detail || 'No se pudo verificar el archivo. Verifica el formato e inténtalo de nuevo.'
+        cargaError.value = mensajeDeErrorDeCarga(err, 'No se pudo verificar el archivo. Verifica el formato e inténtalo de nuevo.')
     }
 }
 
@@ -404,10 +407,37 @@ async function handleUpload(): Promise<void> {
         resetZip()
     } catch (err: unknown) {
         // Solo llega aquí si fue un error de red/servidor (no de validación)
-        const axiosErr = err as { response?: { data?: { detail?: string } } }
-        cargaError.value = axiosErr?.response?.data?.detail || 'Error al procesar el archivo. Verifica el formato e inténtalo de nuevo.'
+        cargaError.value = mensajeDeErrorDeCarga(err)
     } finally {
         uploading.value = false
     }
+}
+
+// El backend rechaza con 409 la re-subida del MISMO archivo ya registrado
+// (hash idéntico, ver ImportacionAsyncService.encolar) para evitar duplicar
+// un trabajo -- típicamente porque el usuario, tras un lote con errores
+// parciales, volvió a seleccionar por error el archivo original completo en
+// vez del corregido. El `detail` en ese caso es un objeto estructurado
+// ({mensaje, jobId, estado}), no un string plano como el resto de errores.
+function mensajeDeErrorDeCarga(
+    err: unknown,
+    mensajePorDefecto = 'Error al procesar el archivo. Verifica el formato e inténtalo de nuevo.'
+): string {
+    const axiosErr = err as {
+        response?: {
+            status?: number
+            data?: { detail?: string | { mensaje?: string; jobId?: number | null } }
+        }
+    }
+    const detail = axiosErr?.response?.data?.detail
+    if (axiosErr?.response?.status === 409) {
+        const jobId = typeof detail === 'object' ? detail?.jobId : null
+        return jobId
+            ? `Este archivo ya fue procesado anteriormente (Trabajo #${jobId}). Utilice la opción de reintento con el archivo de correcciones descargado.`
+            : 'Este archivo ya fue procesado anteriormente. Utilice la opción de reintento con el archivo de correcciones descargado.'
+    }
+    if (typeof detail === 'string' && detail) return detail
+    if (typeof detail === 'object' && detail?.mensaje) return detail.mensaje
+    return mensajePorDefecto
 }
 </script>
