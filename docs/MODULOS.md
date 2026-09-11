@@ -232,6 +232,15 @@ Editar `src/layouts/MainLayout.vue`:
 
 Los componentes compartidos entre módulos deben estar en `src/components/`. Los componentes específicos del módulo van en `src/modules/[nombre]/components/`.
 
+> **Ya se empezó a estandarizar esto (2026-09):** `src/components/` está organizado por
+> categoría (`navegacion/`, `paginacion/`, `feedback/`, `modales/`, `datos/`) y hay un
+> contrato mínimo para agregar algo ahí. **Antes de crear un componente nuevo en tu módulo,
+> revisá si ya existe uno genérico equivalente** — y si tu módulo tiene un componente que
+> hoy es copia (o casi copia) de uno de `src/components/`, sos vos quien mejor puede
+> confirmarlo y migrarlo cuando toques ese código. Detalle completo, checklist y el listado
+> de duplicados ya identificados por revisar:
+> [`docs/FUNCIONALIDADES_ESTANDARIZADAS.md` §8.6-8.7](FUNCIONALIDADES_ESTANDARIZADAS.md#86-ubicación-y-organización-de-srccomponents).
+
 ## 🔌 Servicios API
 
 - Usar axios configurado en `src/plugins/axios.ts`
