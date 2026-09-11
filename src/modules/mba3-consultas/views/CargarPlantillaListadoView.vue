@@ -95,7 +95,7 @@
     <div class="space-y-6" :class="{ 'pointer-events-none opacity-75': uploading }">
       <!-- Header: fila título + fila de acciones (misma lógica que PedidoHeaderActions) -->
       <div class="space-y-4">
-        <OdcSapVolverButton
+        <VolverButton
           v-if="odcSapVolverTarget"
           :to="odcSapVolverTarget"
           :title="odcSapVolverTitle"
@@ -345,7 +345,7 @@ import { mba3ConsultasService } from '../services/mba3ConsultasApi'
 import { useFileUpload } from '../composables/useFileUpload'
 import type { CorreccionesPlantilla } from '../composables/useFileUpload'
 import UploadErrorModal from '../components/UploadErrorModal.vue'
-import OdcSapVolverButton from '@/components/OdcSapVolverButton.vue'
+import VolverButton from '@/components/VolverButton.vue'
 import QuickTablePagination from '@/components/QuickTablePagination.vue'
 import LoadingSpinner from '../components/LoadingSpinner.vue'
 import ActualizarButton from '../components/ActualizarButton.vue'

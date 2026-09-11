@@ -1,6 +1,11 @@
 <template>
   <!-- Widget global de SCNEXUS AI (Cool-turito) -->
-  <div class="fixed bottom-4 right-4 z-40 flex flex-col items-end gap-3 print:hidden">
+  <div
+    ref="raizRef"
+    class="fixed bottom-4 right-4 z-40 flex flex-col items-end gap-3 print:hidden"
+    :class="{ 'transition-transform duration-300 ease-[cubic-bezier(0.25,0.8,0.25,1)]': !arrastreActivo }"
+    :style="{ transform: `translate(${offset.x}px, ${offset.y}px)` }"
+  >
     <!-- Panel del chat -->
     <transition name="ct-panel">
       <div
@@ -134,18 +139,20 @@
     </transition>
 
     <!-- Botón flotante: Cool-turito de medio cuerpo, sin círculo contenedor -->
-    <div v-if="!abierto" class="flex items-end gap-2">
+    <div v-if="!abierto" class="flex items-end gap-2" :class="{ 'flex-row-reverse': pegadoIzquierda }">
       <button
         v-if="!globoDescartado"
-        class="mb-8 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded-2xl rounded-br-md shadow-lg px-3.5 py-2 text-[13px] font-semibold text-slate-700 dark:text-slate-200 hover:border-blue-400 transition-colors"
+        class="mb-8 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded-2xl shadow-lg px-3.5 py-2 text-[13px] font-semibold text-slate-700 dark:text-slate-200 hover:border-blue-400 transition-colors"
+        :class="pegadoIzquierda ? 'rounded-bl-md' : 'rounded-br-md'"
         @click="abrir"
       >
         {{ nombreUsuario ? `¡Hola, ${nombreUsuario}!` : '' }} ¿Necesitas ayuda?
       </button>
       <button
-        class="relative ct-fab focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/60 rounded-xl"
+        class="relative ct-fab focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/60 rounded-xl cursor-grab active:cursor-grabbing touch-none"
         aria-label="Abrir asistente SCNEXUS AI"
-        @click="abrir"
+        @pointerdown="iniciarArrastre"
+        @click="onClickFab"
         @mouseenter="saludar()"
       >
         <CoolTurito :expression="expresionFab" variant="half" :size="76" :animation="animacionFab" :gesture="asistente.gesto ?? 'none'" />
@@ -183,9 +190,153 @@ const cuota = ref<MiaCuota | null>(null)
 const areas = ref<MiaArea[]>([])
 const areaSeleccionada = ref<string | null>(null)
 const listaRef = ref<HTMLElement | null>(null)
+const raizRef = ref<HTMLElement | null>(null)
 const ultimoError = ref(false)
 
 const mensajes = ref<Mensaje[]>([])
+
+/**
+ * Arrastre del botón flotante: `offset` es el desplazamiento (px) respecto a la
+ * esquina inferior derecha por defecto (bottom-4 right-4). Al soltar, se imanta al
+ * borde (izquierdo o derecho) más cercano —conserva la altura, como en iOS AssistiveTouch—
+ * y se persiste en localStorage.
+ */
+const CLAVE_POSICION = 'mia-widget-offset'
+const UMBRAL_ARRASTRE = 4
+const MARGEN_BORDE = 16 // mismo margen que bottom-4/right-4 (1rem)
+const offset = ref({ x: 0, y: 0 })
+/** true cuando el fab quedó imantado al borde izquierdo: el globo de saludo se dibuja a su derecha. */
+const pegadoIzquierda = ref(false)
+const arrastreActivo = ref(false)
+let huboMovimiento = false
+let seAcabaDeArrastrar = false
+let inicioArrastre = { x: 0, y: 0, offsetX: 0, offsetY: 0 }
+let baseArrastre = { left: 0, top: 0, width: 0, height: 0 }
+let observadorTamano: ResizeObserver | null = null
+
+/** Borde derecho del sidebar fijo (si está visible en pantalla), para no tapar ni imantar el widget debajo de él. */
+function limiteIzquierdoSidebar(): number {
+  const aside = document.getElementById('app-sidebar')
+  if (!aside) return 0
+  return Math.max(aside.getBoundingClientRect().right, 0)
+}
+
+/** Borde inferior del header (móvil o escritorio, el que esté visible), para no arrastrar el widget encima de él. */
+function limiteSuperiorHeader(): number {
+  let limite = 0
+  for (const id of ['app-header-mobile', 'app-header-desktop']) {
+    const el = document.getElementById(id)
+    if (!el) continue
+    const rect = el.getBoundingClientRect()
+    if (rect.height > 0) limite = Math.max(limite, rect.bottom)
+  }
+  return limite
+}
+
+/**
+ * Posición "natural" (sin el translate de arrastre) para el tamaño ACTUAL del contenido.
+ * Se deriva del ancla CSS (bottom-4 right-4) usando solo rect.width/height, que el transform
+ * no altera. OJO: no usar `rect.left - offset.x` para esto — mientras el propio contenedor o el
+ * sidebar están a mitad de su transición (300ms), rect.left es una posición intermedia que no
+ * coincide con el offset ya confirmado en JS, y el error se arrastra en cascada en cada reajuste.
+ */
+function baseNatural(rect: DOMRect): { left: number; top: number; width: number; height: number } {
+  return {
+    left: window.innerWidth - MARGEN_BORDE - rect.width,
+    top: window.innerHeight - MARGEN_BORDE - rect.height,
+    width: rect.width,
+    height: rect.height,
+  }
+}
+
+function limitarOffset(x: number, y: number, base: typeof baseArrastre): { x: number; y: number } {
+  const minX = limiteIzquierdoSidebar() - base.left
+  const minY = limiteSuperiorHeader() - base.top
+  const maxX = window.innerWidth - base.width - base.left
+  const maxY = window.innerHeight - base.height - base.top
+  return { x: Math.min(Math.max(x, minX), maxX), y: Math.min(Math.max(y, minY), maxY) }
+}
+
+function iniciarArrastre(e: PointerEvent): void {
+  if (e.pointerType === 'mouse' && e.button !== 0) return
+  const el = raizRef.value
+  if (!el) return
+  baseArrastre = baseNatural(el.getBoundingClientRect())
+  inicioArrastre = { x: e.clientX, y: e.clientY, offsetX: offset.value.x, offsetY: offset.value.y }
+  huboMovimiento = false
+  arrastreActivo.value = true
+  window.addEventListener('pointermove', moverArrastre)
+  window.addEventListener('pointerup', terminarArrastre, { once: true })
+}
+
+function moverArrastre(e: PointerEvent): void {
+  const dx = e.clientX - inicioArrastre.x
+  const dy = e.clientY - inicioArrastre.y
+  if (!huboMovimiento && Math.hypot(dx, dy) > UMBRAL_ARRASTRE) huboMovimiento = true
+  if (!huboMovimiento) return
+  offset.value = limitarOffset(inicioArrastre.offsetX + dx, inicioArrastre.offsetY + dy, baseArrastre)
+}
+
+function terminarArrastre(): void {
+  arrastreActivo.value = false
+  window.removeEventListener('pointermove', moverArrastre)
+  if (huboMovimiento) {
+    imantarABorde()
+    seAcabaDeArrastrar = true
+    guardarPosicion()
+  }
+}
+
+/** Al soltar, pega el widget al borde horizontal más cercano (respetando el sidebar); la altura queda donde se soltó. */
+function imantarABorde(): void {
+  const centroX = baseArrastre.left + offset.value.x + baseArrastre.width / 2
+  const pegarIzquierda = centroX < window.innerWidth / 2
+  const xIzquierda = limiteIzquierdoSidebar() - baseArrastre.left + MARGEN_BORDE
+  const xDerecha = window.innerWidth - baseArrastre.width - baseArrastre.left - MARGEN_BORDE
+  const candidato = pegarIzquierda ? xIzquierda : xDerecha
+  offset.value = limitarOffset(candidato, offset.value.y, baseArrastre)
+  pegadoIzquierda.value = pegarIzquierda
+}
+
+function guardarPosicion(): void {
+  try {
+    localStorage.setItem(CLAVE_POSICION, JSON.stringify({ ...offset.value, izquierda: pegadoIzquierda.value }))
+  } catch { /* localStorage no disponible */ }
+}
+
+/** Evita abrir el asistente cuando el click en el fab en realidad fue el final de un arrastre. */
+function onClickFab(): void {
+  if (seAcabaDeArrastrar) { seAcabaDeArrastrar = false; return }
+  abrir()
+}
+
+/**
+ * Con el panel abierto, un click fuera del widget lo cierra (clicks dentro del panel no cuentan).
+ * Escucha 'pointerdown' (no 'click'): ese evento ocurre ANTES del click que abre el chat, así que
+ * para el mismo gesto que abre, este chequeo siempre corre con `abierto` todavía en false y no
+ * puede interferir con la apertura.
+ */
+function cerrarSiClickFuera(e: PointerEvent): void {
+  if (!abierto.value) return
+  if (raizRef.value && !raizRef.value.contains(e.target as Node)) {
+    abierto.value = false
+  }
+}
+
+/**
+ * Recalcula el offset horizontal según el borde al que está pegado el widget, usando el tamaño
+ * ACTUAL del contenido (fab pequeño o panel grande). No basta con acotar el offset guardado: al
+ * abrir/cerrar el chat el ancho cambia drásticamente y ese offset queda desalineado del borde,
+ * dejando a Cool-turito flotando "en el aire". Se llama al cambiar de tamaño de ventana y al
+ * abrir/cerrar el panel.
+ */
+function reajustarOffset(): void {
+  const el = raizRef.value
+  if (!el) return
+  const base = baseNatural(el.getBoundingClientRect())
+  const xAncla = pegadoIzquierda.value ? limiteIzquierdoSidebar() - base.left + MARGEN_BORDE : 0
+  offset.value = limitarOffset(xAncla, offset.value.y, base)
+}
 
 /** Login AD real del usuario autenticado (requisito de mIAApi: nunca un usuario genérico). */
 const usuarioAd = computed(() => authStore.userData?.userName || authStore.user || '')
@@ -205,6 +356,10 @@ function saludar(duracionMs = 3500): void {
   saludando.value = true
   saludoTimeout = setTimeout(() => { saludando.value = false }, duracionMs)
 }
+
+/** El globo "¿Necesitas ayuda?" se retira solo a los 15s si el usuario no lo cerró interactuando. */
+const DURACION_GLOBO_MS = 10_000
+let globoTimeout: ReturnType<typeof setTimeout> | null = null
 
 /** Se duerme sin actividad (mouse/teclado) o al ocultar la pestaña; despierta con cualquier movimiento. */
 const dormido = ref(false)
@@ -228,21 +383,47 @@ function onVisibilidad(): void {
 onMounted(() => {
   saludar()
   reiniciarInactividad()
+  globoTimeout = setTimeout(() => { globoDescartado.value = true }, DURACION_GLOBO_MS)
+  try {
+    const guardado = localStorage.getItem(CLAVE_POSICION)
+    if (guardado) {
+      const datos = JSON.parse(guardado)
+      offset.value = { x: datos.x ?? 0, y: datos.y ?? 0 }
+      pegadoIzquierda.value = !!datos.izquierda
+    }
+  } catch { /* localStorage no disponible */ }
+  nextTick(reajustarOffset)
+  // Cualquier cambio de ancho/alto del widget (abrir/cerrar chat, globo que se descarta,
+  // texto de saludo que cambia al cargar el usuario, etc.) o del sidebar (se expande al pasar
+  // el mouse, 80px→288px) puede dejar el offset desalineado del borde al que está pegado — el
+  // ResizeObserver lo detecta en vivo sin tener que enumerar cada causa.
+  observadorTamano = new ResizeObserver(() => reajustarOffset())
+  if (raizRef.value) observadorTamano.observe(raizRef.value)
+  const sidebar = document.getElementById('app-sidebar')
+  if (sidebar) observadorTamano.observe(sidebar)
   window.addEventListener('mousemove', reiniciarInactividad, { passive: true })
   window.addEventListener('keydown', reiniciarInactividad)
   window.addEventListener('click', reiniciarInactividad)
+  window.addEventListener('pointerdown', cerrarSiClickFuera)
+  window.addEventListener('resize', reajustarOffset)
   document.addEventListener('visibilitychange', onVisibilidad)
 })
 onUnmounted(() => {
   if (saludoTimeout) clearTimeout(saludoTimeout)
   if (idleTimeout) clearTimeout(idleTimeout)
+  if (globoTimeout) clearTimeout(globoTimeout)
+  observadorTamano?.disconnect()
   window.removeEventListener('mousemove', reiniciarInactividad)
   window.removeEventListener('keydown', reiniciarInactividad)
   window.removeEventListener('click', reiniciarInactividad)
+  window.removeEventListener('pointerdown', cerrarSiClickFuera)
+  window.removeEventListener('resize', reajustarOffset)
+  window.removeEventListener('pointermove', moverArrastre)
   document.removeEventListener('visibilitychange', onVisibilidad)
 })
 
 const puedeEnviar = computed(() => borrador.value.trim().length > 0 && !!usuarioAd.value)
+
 
 const horaRenueva = computed(() => {
   if (!cuota.value?.renueva) return ''
@@ -291,6 +472,7 @@ watch(() => route.path.split('/')[1] ?? '', (nuevo, anterior) => {
 async function abrir(): Promise<void> {
   abierto.value = true
   globoDescartado.value = true
+  if (globoTimeout) clearTimeout(globoTimeout)
   if (!mensajes.value.length) {
     const saludo = nombreUsuario.value ? `¡Hola, ${nombreUsuario.value}!` : '¡Hola!'
     mensajes.value.push({

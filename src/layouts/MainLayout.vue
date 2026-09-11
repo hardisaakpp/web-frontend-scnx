@@ -5,7 +5,7 @@
       class="fixed inset-0 bg-black bg-opacity-50 z-20 md:hidden"></div>
 
     <!-- Sidebar: escritorio = franja estrecha y se expande al pasar el ratón; móvil = panel ancho al abrir -->
-    <aside :class="[
+    <aside id="app-sidebar" :class="[
       'fixed top-0 left-0 h-full flex flex-col bg-gradient-to-b from-white via-slate-50 to-slate-100 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 text-slate-800 dark:text-white transition-transform duration-150 ease-out md:transition-all md:duration-300 z-30 shadow-2xl border-r border-slate-200 dark:border-slate-700/40',
       effectiveSidebarCollapsed ? 'w-20' : 'w-72',
       isSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
@@ -325,6 +325,21 @@
             <span v-show="!effectiveSidebarCollapsed" class="relative z-10 font-medium">Recepción Mercadería</span>
           </router-link>
 
+          <!-- Recepción Proveedores -->
+          <router-link v-if="hasModuleAccess('recepcionproveedores')" to="/recepcion-proveedores"
+            class="group flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 relative overflow-hidden"
+            :class="{
+              'bg-gradient-to-r from-blue-600 to-sky-500 text-white shadow-lg shadow-blue-500/50': $route.path.startsWith('/recepcion-proveedores'),
+              'text-slate-600 hover:bg-slate-200/70 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800/50 dark:hover:text-white': !$route.path.startsWith('/recepcion-proveedores')
+            }" :title="effectiveSidebarCollapsed ? 'Recepción Proveedores' : ''">
+            <div
+              class="absolute inset-0 bg-gradient-to-r from-blue-600/20 to-sky-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+            </div>
+            <Search class="h-5 w-5 flex-shrink-0 relative z-10"
+              :class="{ 'scale-110': $route.path.startsWith('/recepcion-proveedores') }" />
+            <span v-show="!effectiveSidebarCollapsed" class="relative z-10 font-medium">Recepción Proveedores</span>
+          </router-link>
+
           <!-- Integraciones (soporte SAP / HITELL) -->
           <router-link v-if="hasModuleAccess('integraciones')" to="/integraciones"
             class="group flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 relative overflow-hidden"
@@ -404,7 +419,7 @@
       effectiveSidebarCollapsed ? 'md:ml-20' : 'md:ml-72'
     ]">
       <!-- Mobile Header -->
-      <header class="bg-white dark:bg-gray-800 shadow md:hidden sticky top-0 z-30 transition-colors duration-300">
+      <header id="app-header-mobile" class="bg-white dark:bg-gray-800 shadow md:hidden sticky top-0 z-30 transition-colors duration-300">
         <div class="px-4 py-3 flex items-center justify-between gap-2">
           <div class="flex items-center gap-2 flex-shrink-0">
             <button @click="isSidebarOpen = !isSidebarOpen"
@@ -427,6 +442,7 @@
 
       <!-- Desktop Header -->
       <header
+        id="app-header-desktop"
         class="hidden md:block bg-white dark:bg-gray-800 shadow-sm sticky top-0 z-30 transition-colors duration-300">
         <div class="px-6 py-4 flex items-center justify-between gap-4">
           <div class="flex items-center gap-3 min-w-0 flex-1">
@@ -457,7 +473,7 @@
           v-if="showOdcSapVolverInMainChrome && odcSapVolverTarget"
           class="flex justify-end mb-4 -mt-1"
         >
-          <OdcSapVolverButton
+          <VolverButton
             :to="odcSapVolverTarget"
             :title="odcSapVolverTitle"
           />
@@ -507,7 +523,7 @@ import {
   ArrowPathRoundedSquareIcon,
   ChartBarIcon
 } from '@heroicons/vue/24/outline'
-import { Pin, PinOff, TruckIcon, ForkliftIcon } from 'lucide-vue-next'
+import { Pin, PinOff, TruckIcon, ForkliftIcon, Search } from 'lucide-vue-next'
 import { useAuthStore } from '../stores/auth'
 import { inicialesDe } from '@/utils/iniciales'
 import { useThemeStore } from '../stores/theme'
@@ -515,7 +531,7 @@ import ToastContainer from '../components/ToastContainer.vue'
 import AssistantWidget from '../components/assistant/AssistantWidget.vue'
 import { useNotificaciones } from '@/composables/useNotificaciones'
 import { useOdcSapVolver } from '@/composables/useOdcSapVolver'
-import OdcSapVolverButton from '@/components/OdcSapVolverButton.vue'
+import VolverButton from '@/components/VolverButton.vue'
 import { useWarehouseAccessType } from '@/modules/inventario/composables/useWarehouseAccessType'
 import { usePickerSessionAccess } from '@/modules/inventario/composables/usePickerSessionAccess'
 import {
@@ -687,6 +703,7 @@ const pageTitle = computed(() => {
     '/recepcion-mercaderia/pendientes': 'Transferencias Pendientes',
     '/recepcion-mercaderia/en-curso': 'Transferencias en Curso',
     '/recepcion-mercaderia/historial': 'Historial',
+    '/recepcion-proveedores': 'Recepción Proveedores',
     '/ruleta': 'Ruleta One Card',
     '/ruleta/enrolador': 'Girar Ruleta',
     '/ruleta/listado': 'Listado de Ruleta',
@@ -741,6 +758,9 @@ const hasModuleAccess = (moduleName: string): boolean => {
     return hasPromocionSobresUiPermission(permissions)
   }
   if (moduleName === 'reposiciones') return true
+  // Sin permisos 'recepcion-proveedores.*' todavia en el catalogo de scnexus-core (modulo nuevo,
+  // ver router.ts): visible para cualquier autenticado por ahora, igual que reposiciones arriba.
+  if (moduleName === 'recepcionproveedores') return true
   if (moduleName === 'recepcionmercaderia') {
     const isAdmin = authStore.userRoles?.includes('Admin') || false
     return isAdmin || permissions.some((permission: string) => permission.toLowerCase().startsWith('recepcion.'))

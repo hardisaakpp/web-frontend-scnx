@@ -133,7 +133,7 @@
       <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md border border-gray-200 dark:border-gray-700 p-6">
         <div class="space-y-4">
           <div v-if="odcSapVolverTarget || !soloLectura" class="flex items-center flex-wrap gap-4">
-            <OdcSapVolverButton
+            <VolverButton
               v-if="odcSapVolverTarget"
               :to="odcSapVolverTarget"
               :title="odcSapVolverTitle"
@@ -319,7 +319,7 @@ import { useProcesoStore } from '../stores/procesoStore'
 import PedidoCabecera from '../components/PedidoCabecera.vue'
 import RedistribucionTiendas from '../components/RedistribucionTiendas.vue'
 import IntegracionSAPModal from '../components/IntegracionSAPModal.vue'
-import OdcSapVolverButton from '@/components/OdcSapVolverButton.vue'
+import VolverButton from '@/components/VolverButton.vue'
 import LoadingSpinner from '../components/LoadingSpinner.vue'
 import { useOdcSapVolver } from '../../../composables/useOdcSapVolver'
 import {

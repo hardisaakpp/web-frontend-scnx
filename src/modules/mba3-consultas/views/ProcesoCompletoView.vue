@@ -82,7 +82,7 @@
       }"
     >
       <div class="space-y-6">
-          <OdcSapVolverButton
+          <VolverButton
             v-if="odcSapVolverTarget"
             :to="odcSapVolverTarget"
             :title="odcSapVolverTitle"
@@ -282,7 +282,7 @@ import OrdenCompraTable from '../components/OrdenCompraTable.vue'
 import SkeletonTable from '../components/SkeletonTable.vue'
 import LoadingSpinner from '../components/LoadingSpinner.vue'
 import IntegracionSAPModal from '../components/IntegracionSAPModal.vue'
-import OdcSapVolverButton from '@/components/OdcSapVolverButton.vue'
+import VolverButton from '@/components/VolverButton.vue'
 import { useOdcSapVolver } from '../../../composables/useOdcSapVolver'
 import QuickTablePagination from '@/components/QuickTablePagination.vue'
 import { ejecutarProcesoCompletoSap } from '../composables/ejecutarProcesoCompletoSap'

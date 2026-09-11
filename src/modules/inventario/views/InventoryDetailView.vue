@@ -1,7 +1,7 @@
 <template>
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
     <div class="space-y-4 mb-6">
-      <OdcSapVolverButton
+      <VolverButton
         to="/inventario/generados"
         title="Volver a inventarios generados"
         class="shrink-0 self-start"
@@ -107,7 +107,7 @@
 <script setup lang="ts">
 import { computed, defineComponent, h, onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
-import OdcSapVolverButton from '@/components/OdcSapVolverButton.vue'
+import VolverButton from '@/components/VolverButton.vue'
 import { inventarioService } from '../services/inventarioApi'
 import type { InventoryDetailDto } from '../types'
 import { inventoryTypeLabel } from '../utils/planningRules'

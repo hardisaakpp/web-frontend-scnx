@@ -1,6 +1,6 @@
 <template>
   <div class="space-y-6">
-    <OdcSapVolverButton to="/mba3-consultas" title="Volver al Dashboard" class="shrink-0 self-start" />
+    <VolverButton to="/mba3-consultas" title="Volver al Dashboard" class="shrink-0 self-start" />
 
     <!-- Header -->
     <div>
@@ -284,7 +284,7 @@ import api from '@/services/api'
 import { notificacionTipoCorreoService, type TipoCorreo } from '../services/domains/notificacionTipoCorreo'
 import { notificacionPersonaCorreoService, type PersonaCorreoRow } from '../services/domains/notificacionPersonaCorreo'
 import LoadingSpinner from '../components/LoadingSpinner.vue'
-import OdcSapVolverButton from '@/components/OdcSapVolverButton.vue'
+import VolverButton from '@/components/VolverButton.vue'
 import { inicialesDe } from '@/utils/iniciales'
 
 const toast = useToast()

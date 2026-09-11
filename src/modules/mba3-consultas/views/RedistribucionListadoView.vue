@@ -3,7 +3,7 @@
     <div class="space-y-6">
       <!-- Header: fila título + fila de acciones (mismo orden que otros listados MBA3) -->
       <div class="space-y-4">
-        <OdcSapVolverButton
+        <VolverButton
           v-if="odcSapVolverTarget"
           :to="odcSapVolverTarget"
           :title="odcSapVolverTitle"
@@ -236,7 +236,7 @@ import {
 } from '../composables/useSortableList'
 import { useOffsetPagination } from '../composables/useOffsetPagination'
 import { useListadoAutoRefresh } from '../composables/useListadoAutoRefresh'
-import OdcSapVolverButton from '@/components/OdcSapVolverButton.vue'
+import VolverButton from '@/components/VolverButton.vue'
 import QuickTablePagination from '@/components/QuickTablePagination.vue'
 import LoadingSpinner from '../components/LoadingSpinner.vue'
 import ActualizarButton from '../components/ActualizarButton.vue'
