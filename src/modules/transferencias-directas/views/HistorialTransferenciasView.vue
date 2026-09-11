@@ -17,23 +17,21 @@ import { ArrowDownTrayIcon, ArrowLeftIcon, MagnifyingGlassIcon, FunnelIcon, Chev
 import { useAuthStore } from '@/stores/auth'
 
 import transferenciasService from '../services/transferenciasService'
-import { type SolicitudResumen, type EstadoTransferencia, type SolicitudDetalle, etiquetaEstado, TiendaDestino, ErrorSap, type StockFaltante } from '../types'
+import { type SolicitudResumen, type EstadoTransferencia, type SolicitudDetalle, etiquetaEstado, ErrorSap, type StockFaltante } from '../types'
 import { parsearErrorSolicitud } from '../utils/erroresApi'
 import TablaHistorial from '../components/TablaHistorial.vue'
 import { useRouter } from 'vue-router'
 import DetalleSolicitudModal from '../components/DetalleSolicitudModal.vue'
 import ModalConfirmacion from '../components/ModalConfirmacion.vue'
-import { useWarehouseAccessType } from '@/modules/inventario/composables/useWarehouseAccessType'
-import almacenesService from '../services/almacenesServices'
+import { useFiltroTiendas, FILTRO_INPUT_CLASS, FILTRO_MINI_LABEL } from '../composables/useFiltroTiendas'
 import { descargarBlob, mensajeDeErrorBlob } from '../utils/descargas'
 import ErroresSapModal from '../components/ErroresSapModal.vue'
 
 const authStore = useAuthStore()
 const router = useRouter()
 
-const puedeFiltrarTiendas = computed(() =>
-  authStore.hasPermission('transferenciadirecta.filtro_todastiendas')
-)
+const { puedeFiltrarTiendas, opcionesOrigen, opcionesDestino, mostrarFiltroOrigen, cargarAlmacenes } =
+  useFiltroTiendas()
 
 // Admin visualiza todas, siempre (mismo criterio que el resto del sistema).
 // Si no es Admin: el aprobador y quien ve todas las tiendas NO ven Borrador/PendienteAprobacion
@@ -46,33 +44,9 @@ const debeExcluirBorradorYPendiente = computed(() => {
 const excluirEstadosSegunPerfil = computed<EstadoTransferencia[] | undefined>(() =>
   debeExcluirBorradorYPendiente.value ? ['Borrador', 'PendienteAprobacion'] : undefined
 )
-const { accesses, isTienda } = useWarehouseAccessType()
-const almacenes = ref<TiendaDestino[]>([])
 
-const tiendasDelUsuario = computed<Set<string>>(() => {
-  const codes = new Set<string>()
-  accesses.value.forEach((a) => {
-    if (a?.codAlmacen) codes.add(a.codAlmacen)
-    a?.warehouseGroups?.forEach((g) => g?.almacenes?.forEach((c) => codes.add(c)))
-  })
-  return codes
-})
-
-const opcionesOrigen = computed(() =>
-  puedeFiltrarTiendas.value
-    ? almacenes.value
-    : almacenes.value.filter((t) => tiendasDelUsuario.value.has(t.whsCode))
-)
-const opcionesDestino = computed(() => almacenes.value)
-const mostrarFiltroOrigen = computed(() => puedeFiltrarTiendas.value || !isTienda.value)
-
-
-
-const inputClass =
-  'w-full h-[35px] px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-xs ' +
-  'bg-white dark:bg-gray-700 text-gray-900 dark:text-white ' +
-  'focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-colors'
-const miniLabel = 'block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1'
+const inputClass = FILTRO_INPUT_CLASS
+const miniLabel = FILTRO_MINI_LABEL
 
 const ESTADOS_BASE: EstadoTransferencia[] = [
    'PendienteEnvioSap', 'Rechazado', 'TransferenciaCreada', 'ErrorEnvioSap',
@@ -220,10 +194,7 @@ const cargar = async () => {
 
 onMounted(async () => {
   await cargar()
-  try {
-    almacenes.value = await almacenesService.listar('Destino')
-  } catch {
-  }
+  await cargarAlmacenes()
 })
 
 const buscar = () => { pagina.value = 1; cargar() }
