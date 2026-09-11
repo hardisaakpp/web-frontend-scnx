@@ -337,7 +337,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from '@vue/reactivity'
+import { ref } from '@vue/reactivity'
 import { onMounted, onUnmounted } from '@vue/runtime-core'
 import { useRouter } from 'vue-router'
 import { useToast } from '@/composables/useToast'
@@ -353,7 +353,7 @@ import SortableTableHead from '../components/SortableTableHead.vue'
 import PedidosListFiltrosBar from '../components/PedidosListFiltrosBar.vue'
 import RequiereAccionToggleButton from '../components/RequiereAccionToggleButton.vue'
 import { useOdcSapVolver } from '../../../composables/useOdcSapVolver'
-import type { PedidoResumido, PedidosListadoFiltros, PedidosListadoMetadata, PlantillasPedidosResponse, EstadoPedidoOption } from '../types'
+import type { PedidoResumido, PedidosListadoFiltros, PedidosListadoMetadata, EstadoPedidoOption } from '../types'
 import { formatDate, formatDateTime } from '../utils/formatters'
 import { esProveedorElRayo } from '../utils/styleHelpers'
 import { PAGE_SIZE_OPTIONS } from '../config/pagination'
@@ -476,7 +476,18 @@ const { sortColumn, sortDirection, toggleSort, resetSort, sortedItems: sortedPed
   storageKey: 'cargar-plantilla-listado'
 })
 
-const contadorPedidosPendientes = computed(() => pedidos.value.filter(p => requiereAccionPedidoCargarPlantilla(p.estado)).length)
+// Contador global de pedidos pendientes (total real del servidor, no depende de la página/tamaño
+// de página cargados -- antes se calculaba filtrando `pedidos.value`, así que un pedido pendiente
+// fuera de la página visible no se contaba y el botón podía incluso desaparecer).
+const contadorPedidosPendientes = ref(0)
+async function actualizarContadorPendientes() {
+  try {
+    const response = await mba3ConsultasService.getPlantillasPedidos({ solo_pendientes_accion: true, limit: 1 })
+    contadorPedidosPendientes.value = response.metadata?.total ?? 0
+  } catch (e) {
+    console.error('Error al cargar el contador global de pedidos pendientes:', e)
+  }
+}
 
 async function cargarEstados() {
   try {
@@ -505,18 +516,21 @@ async function obtenerPedidos() {
   try {
     // ⭐ Usar getPlantillasPedidos en lugar de getPedidosListado
     // El endpoint /api/plantillas/pedidos INCLUYE pedidos BORRADOR (no filtra por usuario)
-    const response: PlantillasPedidosResponse = await mba3ConsultasService.getPlantillasPedidos({
-      estado: filtros.value.estado || undefined,
-      numero_pedido: filtros.value.numero_pedido || undefined,
-      creado_por: filtros.value.creado_por || undefined,
-      modificado_por: filtros.value.modificado_por || undefined,
-      fecha_desde: filtros.value.fecha_desde || undefined,
-      fecha_hasta: filtros.value.fecha_hasta || undefined,
-      tipo_fecha: filtros.value.tipo_fecha,
-      limit: metadata.value.limit,
-      offset: metadata.value.offset,
-      solo_pendientes_accion: filtroSoloPendientes.value || undefined,
-    })
+    const [response] = await Promise.all([
+      mba3ConsultasService.getPlantillasPedidos({
+        estado: filtros.value.estado || undefined,
+        numero_pedido: filtros.value.numero_pedido || undefined,
+        creado_por: filtros.value.creado_por || undefined,
+        modificado_por: filtros.value.modificado_por || undefined,
+        fecha_desde: filtros.value.fecha_desde || undefined,
+        fecha_hasta: filtros.value.fecha_hasta || undefined,
+        tipo_fecha: filtros.value.tipo_fecha,
+        limit: metadata.value.limit,
+        offset: metadata.value.offset,
+        solo_pendientes_accion: filtroSoloPendientes.value || undefined,
+      }),
+      actualizarContadorPendientes(),
+    ])
     pedidos.value = response.data
     metadata.value = response.metadata
     guardarOffset(metadata.value.offset)

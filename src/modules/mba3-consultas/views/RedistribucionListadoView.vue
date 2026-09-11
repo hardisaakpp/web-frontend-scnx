@@ -213,12 +213,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from '@vue/reactivity'
+import { ref } from '@vue/reactivity'
 import { onMounted, onUnmounted } from '@vue/runtime-core'
 import { useRouter } from 'vue-router'
 import { useToast } from '@/composables/useToast'
 import { mba3ConsultasService } from '../services/mba3ConsultasApi'
-import type { PedidosListadoResponse, PedidoResumido, PedidosListadoFiltros, PedidosListadoMetadata, EstadoPedidoOption } from '../types'
+import type { PedidoResumido, PedidosListadoFiltros, PedidosListadoMetadata, EstadoPedidoOption } from '../types'
 import { formatDate, formatDateTime } from '../utils/formatters'
 import { esProveedorElRayo } from '../utils/styleHelpers'
 import { PAGE_SIZE_OPTIONS } from '../config/pagination'
@@ -291,9 +291,22 @@ const {
   dispose: disposeBusquedaNumeroPedido
 } = useFiltroTextoConDebounce(filtros, 'numero_pedido', aplicarFiltros)
 
-const contadorPedidosPendientes = computed(() =>
-  pedidos.value.filter(p => requiereAccionPedidoRedistribucion(p.estado)).length
-)
+// Contador global de pedidos pendientes (total real del servidor, no depende de la página/tamaño
+// de página cargados -- antes se calculaba filtrando `pedidos.value`, así que un pedido pendiente
+// fuera de la página visible no se contaba y el botón podía incluso desaparecer).
+const contadorPedidosPendientes = ref(0)
+async function actualizarContadorPendientes() {
+  try {
+    const response = await mba3ConsultasService.getPedidosListado({
+      solo_redistribucion: true,
+      solo_pendientes_accion: true,
+      limit: 1,
+    })
+    contadorPedidosPendientes.value = response.metadata?.total ?? 0
+  } catch (e) {
+    console.error('Error al cargar el contador global de pedidos pendientes:', e)
+  }
+}
 
 // Columnas de la tabla (ordenables vía SortableTableHead)
 const columnasTabla: SortableColumnDef[] = [
@@ -338,13 +351,16 @@ async function cargarCreadoresYModificadores() {
 async function obtenerPedidos() {
   error.value = null
   try {
-    const response: PedidosListadoResponse = await mba3ConsultasService.getPedidosListado({
-      ...filtros.value,
-      solo_redistribucion: true,
-      limit: metadata.value.limit,
-      offset: metadata.value.offset,
-      solo_pendientes_accion: filtroSoloPendientes.value || undefined,
-    })
+    const [response] = await Promise.all([
+      mba3ConsultasService.getPedidosListado({
+        ...filtros.value,
+        solo_redistribucion: true,
+        limit: metadata.value.limit,
+        offset: metadata.value.offset,
+        solo_pendientes_accion: filtroSoloPendientes.value || undefined,
+      }),
+      actualizarContadorPendientes(),
+    ])
     pedidos.value = response.data
     metadata.value = response.metadata
     guardarOffset(metadata.value.offset)

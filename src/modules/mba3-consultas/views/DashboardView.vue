@@ -30,8 +30,9 @@
         <button
           v-if="authStore.canViewMabel"
           @click="$router.push('/mba3-consultas/cargar-plantilla')"
-          class="bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700 p-4 hover:border-gray-300 dark:hover:border-gray-600 hover:shadow-sm transition-all text-left"
+          class="relative bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700 p-4 hover:border-gray-300 dark:hover:border-gray-600 hover:shadow-sm transition-all text-left"
         >
+          <AccionPendienteBadge :contador="dashboardBadgesStore.cargarPlantilla" />
           <div class="flex items-start gap-3">
             <div class="w-8 h-8 rounded bg-emerald-50 dark:bg-emerald-900/30 flex items-center justify-center flex-shrink-0">
               <svg class="w-4 h-4 text-emerald-600 dark:text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -49,8 +50,9 @@
         <button
           v-if="authStore.canViewProduccionElRayo"
           @click="$router.push('/mba3-consultas/produccion/pedidos')"
-          class="bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700 p-4 hover:border-gray-300 dark:hover:border-gray-600 hover:shadow-sm transition-all text-left"
+          class="relative bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700 p-4 hover:border-gray-300 dark:hover:border-gray-600 hover:shadow-sm transition-all text-left"
         >
+          <AccionPendienteBadge :contador="dashboardBadgesStore.produccion" />
           <div class="flex items-start gap-3">
             <div class="w-8 h-8 rounded bg-amber-50 dark:bg-amber-900/30 flex items-center justify-center flex-shrink-0">
               <svg class="w-4 h-4 text-amber-600 dark:text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -68,8 +70,9 @@
         <button
           v-if="authStore.canViewOrderList"
           @click="$router.push('/mba3-consultas/pedidos')"
-          class="bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700 p-4 hover:border-gray-300 dark:hover:border-gray-600 hover:shadow-sm transition-all text-left"
+          class="relative bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700 p-4 hover:border-gray-300 dark:hover:border-gray-600 hover:shadow-sm transition-all text-left"
         >
+          <AccionPendienteBadge :contador="dashboardBadgesStore.pedidos" />
           <div class="flex items-start gap-3">
             <div class="w-8 h-8 rounded bg-purple-50 dark:bg-purple-900/30 flex items-center justify-center flex-shrink-0">
               <svg class="w-4 h-4 text-purple-600 dark:text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -87,8 +90,9 @@
         <button
           v-if="authStore.canViewMabel"
           @click="$router.push('/mba3-consultas/redistribucion')"
-          class="bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700 p-4 hover:border-gray-300 dark:hover:border-gray-600 hover:shadow-sm transition-all text-left"
+          class="relative bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700 p-4 hover:border-gray-300 dark:hover:border-gray-600 hover:shadow-sm transition-all text-left"
         >
+          <AccionPendienteBadge :contador="dashboardBadgesStore.redistribucion" />
           <div class="flex items-start gap-3">
             <div class="w-8 h-8 rounded bg-teal-50 dark:bg-teal-900/30 flex items-center justify-center flex-shrink-0">
               <svg class="w-4 h-4 text-teal-600 dark:text-teal-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -126,8 +130,9 @@
           v-if="authStore.canViewMabel || authStore.canManageOrder"
           @click="navigateToProceso"
           :disabled="loadingDespachos"
-          class="bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700 p-4 hover:border-gray-300 dark:hover:border-gray-600 hover:shadow-sm transition-all text-left disabled:opacity-50 disabled:cursor-not-allowed"
+          class="relative bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700 p-4 hover:border-gray-300 dark:hover:border-gray-600 hover:shadow-sm transition-all text-left disabled:opacity-50 disabled:cursor-not-allowed"
         >
+          <AccionPendienteBadge :contador="ordenesCompraStore.totalPendientesReintento" />
           <div class="flex items-start gap-3">
             <div class="w-8 h-8 rounded bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center flex-shrink-0">
               <svg class="w-4 h-4 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -416,13 +421,16 @@ import { onMounted } from '@vue/runtime-core'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useOrdenesCompraStore } from '../stores/ordenesCompraStore'
+import { useDashboardBadgesStore } from '../stores/dashboardBadgesStore'
 import { mba3ConsultasService } from '../services/mba3ConsultasApi'
 import { useToast } from '@/composables/useToast'
 import LoadingSpinner from '../components/LoadingSpinner.vue'
+import AccionPendienteBadge from '../components/AccionPendienteBadge.vue'
 
 const router = useRouter()
 const authStore = useAuthStore()
 const ordenesCompraStore = useOrdenesCompraStore()
+const dashboardBadgesStore = useDashboardBadgesStore()
 const toast = useToast()
 
 /** Solo en desarrollo: mostrar botones ODC con Errores y Reporte de Diferencias (ocultos en producción) */
@@ -465,6 +473,13 @@ async function navigateToProceso() {
 }
 
 onMounted(async () => {
-  await ordenesCompraStore.fetchEstadisticas()
+  await Promise.all([
+    ordenesCompraStore.fetchEstadisticas(),
+    dashboardBadgesStore.fetchContadores({
+      canViewMabel: authStore.canViewMabel,
+      canViewOrderList: authStore.canViewOrderList,
+      canViewProduccionElRayo: authStore.canViewProduccionElRayo,
+    }),
+  ])
 })
 </script>
