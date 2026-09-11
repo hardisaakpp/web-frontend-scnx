@@ -1,8 +1,18 @@
 import { ref, computed } from 'vue'
-import { useAuthStore } from '@/stores/auth'
+import { useAuthStore, type WarehouseAccessInfo } from '@/stores/auth'
 import { useWarehouseAccessType } from '@/modules/inventario/composables/useWarehouseAccessType'
 import almacenesService from '../services/almacenesServices'
 import type { TiendaDestino } from '../types'
+
+/** Vuelca en `codes` el almacén directo del acceso y los de sus grupos. */
+function agregarCodigosDeAcceso(codes: Set<string>, acceso: WarehouseAccessInfo): void {
+  if (acceso?.codAlmacen) codes.add(acceso.codAlmacen)
+  for (const grupo of acceso?.warehouseGroups ?? []) {
+    for (const almacen of grupo?.almacenes ?? []) {
+      codes.add(almacen)
+    }
+  }
+}
 
 /**
  * Filtro de Tienda Origen/Destino compartido entre el Historial y la Bandeja
@@ -25,10 +35,7 @@ export function useFiltroTiendas() {
 
   const tiendasDelUsuario = computed<Set<string>>(() => {
     const codes = new Set<string>()
-    accesses.value.forEach((a) => {
-      if (a?.codAlmacen) codes.add(a.codAlmacen)
-      a?.warehouseGroups?.forEach((g) => g?.almacenes?.forEach((c) => codes.add(c)))
-    })
+    accesses.value.forEach((a) => agregarCodigosDeAcceso(codes, a))
     return codes
   })
 
