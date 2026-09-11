@@ -9,10 +9,8 @@ import {
 
 /**
  * E2E de control de acceso de Recepción de Mercadería:
- * - `history.viewall` gatea, dentro de HistoryView.vue, si la vista es la del propio almacén o
- *   la consolidada — decidido una sola vez al montar (fixed per session), sin toggle en pantalla.
- *   La vieja ruta /historial/admin sigue siendo un redirect a /historial (compatibilidad de
- *   bookmarks/links viejos).
+ * - `history.view` y `history.viewall` son permisos independientes. Cualquiera de los dos permite
+ *   entrar a la ruta; `history.viewall` prioriza el historial consolidado cuando está presente.
  * - Pending-transfers está en vivo (featureReadiness.pendingTransfersReady=true, ver
  *   config/featureReadiness.ts) — el banner "Próximamente" es un kill switch manual que hoy no
  *   se alcanza; ese estado degradado ya está cubierto a nivel unitario
@@ -23,10 +21,10 @@ const adminRows: MockHistoryRow[] = [
   { transferId: 1, documentNumber: 'DOC-100', warehouseCode: 'D001', materializedAtUtc: '2026-07-01T09:00:00Z', differencesCount: 0 },
 ]
 
-test.describe('Recepción — RBAC historial admin (history.viewall)', () => {
-  test('usuario sin history.viewall ve la vista de su propio almacén, con export propio (GET history/export, sin permiso especial) pero sin N° transferencia consolidado', async ({ page }) => {
+test.describe('Recepción — RBAC de historial', () => {
+  test('solo history permite entrar y consulta únicamente el historial del propio almacén', async ({ page }) => {
     await installRecepcionAuth(page, { roles: ['User'], permissions: ['recepcion.history.view'] })
-    await installHistoryMocks(page, { rows: [], allRows: adminRows })
+    const mocks = await installHistoryMocks(page, { rows: [], allRows: adminRows })
 
     await page.goto('/recepcion-mercaderia/historial')
 
@@ -35,18 +33,54 @@ test.describe('Recepción — RBAC historial admin (history.viewall)', () => {
     await expect(page.getByTestId('date-to-input')).toBeVisible()
     await expect(page.getByTestId('transfer-number-input')).toHaveCount(0)
     await expect(page.getByTestId('export-csv-btn')).toBeVisible()
+    expect(mocks.getHistoryCalls()).toBe(1)
+    expect(mocks.getAllHistoryCalls()).toBe(0)
   })
 
-  test('el bookmark viejo /historial/admin redirige a /historial y el usuario con history.viewall accede al historial global directamente', async ({ page }) => {
+  test('solo historyAll permite entrar y consulta únicamente el historial ampliado', async ({ page }) => {
+    await installRecepcionAuth(page, { roles: ['User'], permissions: ['recepcion.history.viewall'] })
+    const mocks = await installHistoryMocks(page, { rows: [], allRows: adminRows })
+
+    await page.goto('/recepcion-mercaderia/historial')
+
+    await expect(page.getByRole('heading', { name: /historial de recepciones/i })).toBeVisible()
+    await expect(page.getByTestId('export-csv-btn')).toBeVisible()
+    expect(mocks.getHistoryCalls()).toBe(0)
+    expect(mocks.getAllHistoryCalls()).toBe(1)
+  })
+
+  test('ambos permisos priorizan el historial ampliado', async ({ page }) => {
+    await installRecepcionAuth(page, {
+      roles: ['User'],
+      permissions: ['recepcion.history.view', 'recepcion.history.viewall'],
+    })
+    const mocks = await installHistoryMocks(page, { rows: [], allRows: adminRows })
+
+    await page.goto('/recepcion-mercaderia/historial')
+
+    await expect(page.getByRole('heading', { name: /historial de recepciones/i })).toBeVisible()
+    expect(mocks.getHistoryCalls()).toBe(0)
+    expect(mocks.getAllHistoryCalls()).toBe(1)
+  })
+
+  test('ningún permiso redirige a forbidden sin consultar endpoints de historial', async ({ page }) => {
+    await installRecepcionAuth(page, { roles: ['User'], permissions: [] })
+    const mocks = await installHistoryMocks(page, { rows: [], allRows: adminRows })
+
+    await page.goto('/recepcion-mercaderia/historial')
+
+    await expect(page).toHaveURL(/\/forbidden$/)
+    expect(mocks.getHistoryCalls()).toBe(0)
+    expect(mocks.getAllHistoryCalls()).toBe(0)
+  })
+
+  test('el bookmark viejo /historial/admin redirige a /historial', async ({ page }) => {
     await installRecepcionAuth(page, { roles: ['User'], permissions: ['recepcion.history.viewall'] })
     await installHistoryMocks(page, { rows: [], allRows: adminRows })
 
     await page.goto('/recepcion-mercaderia/historial/admin')
 
     await expect(page).toHaveURL(/\/recepcion-mercaderia\/historial$/)
-    // Con el permiso viewall, la vista consolidada se muestra directamente al montar — no hay
-    // toggle ni estado intermedio (fixed per session, ver HistoryView.vue).
-    await expect(page.getByTestId('export-csv-btn')).toBeVisible()
 
     // La vista abre filtrando por "hoy" por defecto — ampliar el rango para ver el fixture (julio 2026).
     await page.getByTestId('date-from-input').fill('2026-01-01')

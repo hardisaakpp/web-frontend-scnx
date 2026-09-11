@@ -25,8 +25,11 @@ describe('recepcionRoutes', () => {
     expect(findRoute('recepcion-transitorias').meta?.permissions).toEqual(['recepcion.reception.transit.view'])
   })
 
-  it('gates the store history route behind recepcion.history.view', () => {
-    expect(findRoute('recepcion-historial').meta?.permissions).toEqual(['recepcion.history.view'])
+  it('allows the history route with either independent history permission', () => {
+    expect(findRoute('recepcion-historial').meta?.permissions).toEqual([
+      'recepcion.history.view',
+      'recepcion.history.viewall',
+    ])
   })
 
   it('redirects the old admin history path to the merged /historial route, so old bookmarks/links do not 404', () => {
