@@ -288,6 +288,12 @@ export const usePickingStore = defineStore('recepcionPicking', () => {
     }
   }
 
+  async function recordDifferences(barcode: string, count: number): Promise<void> {
+    for (let i = 0; i < count; i++) {
+      await recordDifference({ barcode })
+    }
+  }
+
   /**
    * Matches legacy recP.php's procesarCodigo() mechanics (sc22, lines ~766-822): no match ->
    * unrecognized code, logged as a difference; match with room -> fill capped at the line's
@@ -311,16 +317,12 @@ export const usePickingStore = defineStore('recepcionPicking', () => {
     const line = matchingLines.find((l) => l.scanned < l.quantity) ?? null
 
     if (matchingLines.length === 0) {
-      for (let i = 0; i < enteredQty; i++) {
-        await recordDifference({ barcode })
-      }
+      await recordDifferences(barcode, enteredQty)
       return { matchedLine: null, fillAmount: 0, excess: enteredQty }
     }
 
     if (!line) {
-      for (let i = 0; i < enteredQty; i++) {
-        await recordDifference({ barcode })
-      }
+      await recordDifferences(barcode, enteredQty)
       return { matchedLine: matchingLines[0], fillAmount: 0, excess: enteredQty }
     }
 
@@ -346,9 +348,7 @@ export const usePickingStore = defineStore('recepcionPicking', () => {
       })
     }
 
-    for (let i = 0; i < excess; i++) {
-      await recordDifference({ barcode })
-    }
+    await recordDifferences(barcode, excess)
 
     return { matchedLine: line, fillAmount, excess }
   }
