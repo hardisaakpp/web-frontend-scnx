@@ -1,12 +1,14 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { usePickingStore } from '../stores/pickingStore'
 import { useAuthStore } from '@/stores/auth'
+import type { OrdenPickingLineaResponse } from '../types'
 import LoadingSpinner from '@/components/LoadingSpinner.vue'
 import ErrorModal from '@/components/ErrorModal.vue'
 import ConfirmModal from '@/components/ConfirmModal.vue'
 import SuccessModal from '@/components/SuccessModal.vue'
+import VolverButton from '@/components/VolverButton.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -19,6 +21,7 @@ const usuarioActualId = computed(() => authStore.userData?.id ?? null)
 const codigoInput = ref('')
 const cantidadInput = ref(1)
 const codigoInputEl = ref<HTMLInputElement | null>(null)
+const cantidadInputEl = ref<HTMLInputElement | null>(null)
 
 const mostrarLogs = ref(false)
 const mostrarConfirmarCierre = ref(false)
@@ -51,6 +54,35 @@ async function escanear(): Promise<void> {
   codigoInputEl.value?.focus()
 }
 
+/**
+ * Clic sobre una fila de la tabla: llena el código sin tener que escribirlo/escanearlo y
+ * salta directo a "Cantidad" — mismo flujo que ya conocen (código -> cantidad -> Enter), solo
+ * que el código lo puso el clic en vez del teclado o el lector.
+ */
+function seleccionarLinea(linea: OrdenPickingLineaResponse): void {
+  if (!enProceso.value || linea.estadoLinea === 'Completa' || pickingStore.isSubmitting) return
+  codigoInput.value = linea.itemCode
+  nextTick(() => {
+    cantidadInputEl.value?.focus()
+    cantidadInputEl.value?.select()
+  })
+}
+
+/**
+ * Clic sobre la celda "Pedido": ademas de llenar el código, precarga la cantidad restante
+ * completa. Se precarga el pendiente real (cantidadPendiente - cantidadPickeada), no el
+ * "Pedido" original, para no superar el pendiente si ya hay algo pickeado en la linea.
+ */
+function seleccionarLineaCompleta(linea: OrdenPickingLineaResponse): void {
+  if (!enProceso.value || linea.estadoLinea === 'Completa' || pickingStore.isSubmitting) return
+  codigoInput.value = linea.itemCode
+  cantidadInput.value = linea.cantidadPendiente - linea.cantidadPickeada
+  nextTick(() => {
+    cantidadInputEl.value?.focus()
+    cantidadInputEl.value?.select()
+  })
+}
+
 async function eliminarScan(scanId: number): Promise<void> {
   await pickingStore.eliminarScan(scanId)
   codigoInputEl.value?.focus()
@@ -80,12 +112,6 @@ async function alternarLogs(): Promise<void> {
   }
 }
 
-function volverAOrden(): void {
-  if (pickingStore.sesion) {
-    router.push({ name: 'recepcion-proveedores-detalle', params: { docNum: pickingStore.sesion.docNum } })
-  }
-}
-
 async function confirmarEliminarPicking(): Promise<void> {
   mostrarConfirmarEliminar.value = false
   const docNum = pickingStore.sesion?.docNum
@@ -97,7 +123,6 @@ async function confirmarEliminarPicking(): Promise<void> {
 
 function cerrarModalExito(): void {
   mostrarCierreExitoso.value = false
-  volverAOrden()
 }
 
 onMounted(cargar)
@@ -109,6 +134,12 @@ watch(sesionId, cargar)
     <LoadingSpinner v-if="pickingStore.loading" message="Cargando sesión de picking..." />
 
     <template v-else-if="pickingStore.sesion">
+      <VolverButton
+        :to="`/recepcion-proveedores/ordenes-compra/${pickingStore.sesion.docNum}`"
+        title="Volver a la orden de compra"
+        class="shrink-0 self-start mb-4"
+      />
+
       <div class="flex flex-wrap items-start justify-between gap-4 mb-6">
         <div>
           <h1 class="text-xl font-semibold text-gray-900 dark:text-white">
@@ -197,6 +228,7 @@ watch(sesionId, cargar)
           <label for="cantidad-scan-input" class="text-[10px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Cantidad</label>
           <input
             id="cantidad-scan-input"
+            ref="cantidadInputEl"
             v-model.number="cantidadInput"
             type="number"
             min="1"
@@ -226,11 +258,26 @@ watch(sesionId, cargar)
             </tr>
           </thead>
           <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-            <tr v-for="linea in pickingStore.sesion.lineas" :key="linea.id">
+            <tr
+              v-for="linea in pickingStore.sesion.lineas"
+              :key="linea.id"
+              :class="{
+                'cursor-pointer hover:bg-blue-50 dark:hover:bg-blue-900/20': enProceso && linea.estadoLinea !== 'Completa',
+              }"
+              :title="enProceso && linea.estadoLinea !== 'Completa' ? 'Clic para escanear este producto' : undefined"
+              @click="seleccionarLinea(linea)"
+            >
               <td class="px-4 py-2 text-sm text-gray-900 dark:text-white">{{ linea.itemCode }}</td>
               <td class="px-4 py-2 text-sm text-gray-700 dark:text-gray-300">{{ linea.itemDescription }}</td>
               <td class="px-4 py-2 text-sm text-gray-700 dark:text-gray-300">{{ linea.codeBars }}</td>
-              <td class="px-4 py-2 text-sm text-right text-gray-900 dark:text-white">{{ linea.cantidadPedida }}</td>
+              <td
+                class="px-4 py-2 text-sm text-right text-gray-900 dark:text-white"
+                :class="{ 'cursor-pointer hover:underline': enProceso && linea.estadoLinea !== 'Completa' }"
+                :title="enProceso && linea.estadoLinea !== 'Completa' ? 'Clic para escanear toda la cantidad pendiente' : undefined"
+                @click.stop="seleccionarLineaCompleta(linea)"
+              >
+                {{ linea.cantidadPedida }}
+              </td>
               <td class="px-4 py-2 text-sm text-right font-semibold text-gray-900 dark:text-white">{{ linea.cantidadPickeada }}</td>
               <td class="px-4 py-2 text-sm text-right text-gray-900 dark:text-white">{{ linea.cantidadPendiente - linea.cantidadPickeada }}</td>
               <td class="px-4 py-2 text-sm">

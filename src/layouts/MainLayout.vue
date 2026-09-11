@@ -473,7 +473,7 @@
           v-if="showOdcSapVolverInMainChrome && odcSapVolverTarget"
           class="flex justify-end mb-4 -mt-1"
         >
-          <OdcSapVolverButton
+          <VolverButton
             :to="odcSapVolverTarget"
             :title="odcSapVolverTitle"
           />
@@ -531,7 +531,7 @@ import ToastContainer from '../components/ToastContainer.vue'
 import AssistantWidget from '../components/assistant/AssistantWidget.vue'
 import { useNotificaciones } from '@/composables/useNotificaciones'
 import { useOdcSapVolver } from '@/composables/useOdcSapVolver'
-import OdcSapVolverButton from '@/components/OdcSapVolverButton.vue'
+import VolverButton from '@/components/VolverButton.vue'
 import { useWarehouseAccessType } from '@/modules/inventario/composables/useWarehouseAccessType'
 import { usePickerSessionAccess } from '@/modules/inventario/composables/usePickerSessionAccess'
 import {

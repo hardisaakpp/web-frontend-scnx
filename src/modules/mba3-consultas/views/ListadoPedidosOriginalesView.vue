@@ -1,6 +1,6 @@
 <template>
   <div class="space-y-6">
-    <OdcSapVolverButton
+    <VolverButton
       v-if="odcSapVolverTarget"
       :to="odcSapVolverTarget"
       :title="odcSapVolverTitle"
@@ -257,7 +257,7 @@ import { usePageSizePreference } from '../composables/usePageSizePreference'
 import { useOffsetPagination } from '../composables/useOffsetPagination'
 import { PAGE_SIZE_OPTIONS } from '../config/pagination'
 import QuickTablePagination from '@/components/QuickTablePagination.vue'
-import OdcSapVolverButton from '@/components/OdcSapVolverButton.vue'
+import VolverButton from '@/components/VolverButton.vue'
 import { useOdcSapVolver } from '../../../composables/useOdcSapVolver'
 import type { ArchivoOriginalItem, PedidosListadoMetadata } from '../types'
 

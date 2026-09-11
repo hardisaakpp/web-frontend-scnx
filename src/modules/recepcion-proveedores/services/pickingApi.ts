@@ -46,7 +46,7 @@ export const pickingApi = {
     return data
   },
 
-  async obtenerLogsGeneral(params: { desde?: string; hasta?: string; docNum?: number }): Promise<OrdenPickingLogGeneralResponse[]> {
+  async obtenerLogsGeneral(params: { desde?: string; hasta?: string; docNum?: number; evento?: string }): Promise<OrdenPickingLogGeneralResponse[]> {
     const { data } = await recepcionProveedoresApi.get<OrdenPickingLogGeneralResponse[]>('/picking/logs', { params })
     return data
   },

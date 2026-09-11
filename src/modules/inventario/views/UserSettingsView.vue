@@ -1,7 +1,7 @@
 <template>
   <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
     <div class="mb-6 space-y-4">
-      <OdcSapVolverButton
+      <VolverButton
         to="/inventario"
         title="Volver"
         class="shrink-0 self-start"
@@ -83,7 +83,7 @@
 <script setup lang="ts">
 import { computed, defineComponent, h, onMounted, reactive, ref, type PropType } from 'vue'
 import { useRoute } from 'vue-router'
-import OdcSapVolverButton from '@/components/OdcSapVolverButton.vue'
+import VolverButton from '@/components/VolverButton.vue'
 import { inventarioService } from '../services/inventarioApi'
 import type { UpdateUserSettingsRequest, WarehouseDto } from '../types'
 

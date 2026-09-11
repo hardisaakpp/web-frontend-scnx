@@ -85,6 +85,7 @@ export interface OrdenPickingLogResponse {
   evento: string
   detalle: string | null
   usuarioId: string | null
+  usuarioNombre: string | null
 }
 
 export interface OrdenPickingLogGeneralResponse {
@@ -96,4 +97,5 @@ export interface OrdenPickingLogGeneralResponse {
   evento: string
   detalle: string | null
   usuarioId: string | null
+  usuarioNombre: string | null
 }

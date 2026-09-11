@@ -6,7 +6,9 @@ import { usePickingStore } from '../stores/pickingStore'
 import { downloadExcel } from '@/utils/exportExcel'
 import LoadingSpinner from '@/components/LoadingSpinner.vue'
 import ErrorModal from '@/components/ErrorModal.vue'
+import VolverButton from '@/components/VolverButton.vue'
 import BuscarOdcBar from '../components/BuscarOdcBar.vue'
+import type { EntradaMercaderiaResponse } from '../types'
 
 const route = useRoute()
 const router = useRouter()
@@ -62,6 +64,21 @@ function descargarExcel(): void {
   )
 }
 
+function descargarExcelEntrada(entrada: EntradaMercaderiaResponse): void {
+  downloadExcel(
+    `Entrada_${entrada.docNum}.xlsx`,
+    [
+      { header: 'Línea Entrada', key: 'lineNum' },
+      { header: 'ItemCode', key: 'itemCode', text: true },
+      { header: 'Cantidad', key: 'quantity' },
+      { header: 'OC BaseEntry', key: 'baseEntry' },
+      { header: 'OC BaseLine', key: 'baseLine' },
+    ],
+    entrada.lineas,
+    `Entrada ${entrada.docNum}`
+  )
+}
+
 async function alternarEntradas(): Promise<void> {
   mostrarEntradas.value = !mostrarEntradas.value
   if (mostrarEntradas.value) {
@@ -94,8 +111,10 @@ watch(docNum, cargar)
 
 <template>
   <div class="max-w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+    <VolverButton to="/recepcion-proveedores" title="Volver a la búsqueda" class="shrink-0 self-start mb-4" />
+
     <div class="mb-6 pb-6 border-b border-gray-200 dark:border-gray-700">
-      <BuscarOdcBar />
+      <BuscarOdcBar :initial-doc-num="docNum" :loading="ordenesCompraStore.loading" />
     </div>
 
     <LoadingSpinner v-if="ordenesCompraStore.loading" message="Consultando orden de compra..." />
@@ -121,7 +140,7 @@ watch(docNum, cargar)
           </button>
           <button
             type="button"
-            class="px-3 py-2 text-sm font-medium bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+            class="px-3 py-2 text-sm font-medium bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors"
             @click="descargarExcel"
           >
             Descargar Excel
@@ -157,8 +176,17 @@ watch(docNum, cargar)
             :key="entrada.docEntry"
             class="rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden"
           >
-            <div class="px-4 py-2 text-sm font-medium bg-gray-50 dark:bg-gray-900 text-gray-700 dark:text-gray-300">
-              Entrada DocNum {{ entrada.docNum }} | DocEntry {{ entrada.docEntry }} | Fecha {{ entrada.docDate }}
+            <div class="px-4 py-2 flex flex-wrap items-center justify-between gap-2 bg-gray-50 dark:bg-gray-900">
+              <span class="text-sm font-medium text-gray-700 dark:text-gray-300">
+                Entrada DocNum {{ entrada.docNum }} | DocEntry {{ entrada.docEntry }} | Fecha {{ entrada.docDate }}
+              </span>
+              <button
+                type="button"
+                class="px-3 py-1.5 text-xs font-medium bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors"
+                @click="descargarExcelEntrada(entrada)"
+              >
+                Descargar Excel
+              </button>
             </div>
             <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
               <thead class="bg-gray-50 dark:bg-gray-900">
@@ -199,10 +227,11 @@ watch(docNum, cargar)
         <button
           type="button"
           :disabled="!whsCodeSeleccionado || iniciandoPicking"
-          class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+          class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
           @click="iniciarPicking"
         >
-          Iniciar Picking
+          <LoadingSpinner v-if="iniciandoPicking" layout="inline" size="sm" color="current" aria-label="Iniciando picking" />
+          {{ iniciandoPicking ? 'Iniciando...' : 'Iniciar Picking' }}
         </button>
       </div>
 

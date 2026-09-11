@@ -10,7 +10,7 @@ export const useLogsStore = defineStore('recepcionProveedoresLogs', () => {
   const loading = ref(false)
   const error = ref<string | null>(null)
 
-  async function buscar(filtros: { desde: string; hasta: string; docNum?: number | null }): Promise<void> {
+  async function buscar(filtros: { desde: string; hasta: string; docNum?: number | null; evento?: string | null }): Promise<void> {
     loading.value = true
     error.value = null
     try {
@@ -18,6 +18,7 @@ export const useLogsStore = defineStore('recepcionProveedoresLogs', () => {
         desde: toLocalDayBoundIso(filtros.desde, false),
         hasta: toLocalDayBoundIso(filtros.hasta, true),
         docNum: filtros.docNum ?? undefined,
+        evento: filtros.evento ?? undefined,
       })
     } catch (err: unknown) {
       error.value = mapApiError(err, 'No se pudo cargar el registro de eventos.').message

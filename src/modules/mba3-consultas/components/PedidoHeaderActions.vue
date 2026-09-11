@@ -1,6 +1,6 @@
 <template>
   <div class="space-y-4">
-    <OdcSapVolverButton
+    <VolverButton
       v-if="odcSapVolverTarget"
       :to="odcSapVolverTarget"
       :title="odcSapVolverTitle"
@@ -223,7 +223,7 @@
 
 <script setup lang="ts">
 import { computed, type Ref } from '@vue/reactivity'
-import OdcSapVolverButton from '@/components/OdcSapVolverButton.vue'
+import VolverButton from '@/components/VolverButton.vue'
 import LoadingSpinner from './LoadingSpinner.vue'
 import { useOdcSapVolver } from '../../../composables/useOdcSapVolver'
 

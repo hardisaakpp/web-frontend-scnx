@@ -1,27 +1,61 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
+import { useRoute } from 'vue-router'
 import { CalendarIcon } from '@heroicons/vue/24/outline'
 import { useLogsStore } from '../stores/logsStore'
 import { daysAgoLocalDateString, todayLocalDateString } from '../utils/dateRange'
 import BuscarOdcBar from '../components/BuscarOdcBar.vue'
 import SkeletonTable from '@/components/SkeletonTable.vue'
 import ErrorModal from '@/components/ErrorModal.vue'
+import VolverButton from '@/components/VolverButton.vue'
 
 const store = useLogsStore()
+const route = useRoute()
+
+// Si se llego aqui desde el detalle de una ODC (ver BuscarOdcBar), "Volver" regresa ahi en vez
+// de a la busqueda generica.
+const docNumOrigen = computed(() => {
+  const docNum = route.query.volverA
+  return typeof docNum === 'string' && docNum ? docNum : null
+})
+const volverA = computed(() =>
+  docNumOrigen.value != null ? `/recepcion-proveedores/ordenes-compra/${docNumOrigen.value}` : '/recepcion-proveedores'
+)
+const volverATitulo = computed(() => (docNumOrigen.value != null ? `Volver a la ODC ${docNumOrigen.value}` : 'Volver a la búsqueda'))
+
+// Codigos de dbo.OrdenPickingLog.Evento (ver EventosPickingLog.cs en el backend) con su etiqueta
+// en español para el filtro y la columna Evento de la tabla.
+const EVENTOS: { value: string; label: string }[] = [
+  { value: 'INICIO_SESION', label: 'Inicio de sesión' },
+  { value: 'SCAN', label: 'Escaneo' },
+  { value: 'SCAN_ELIMINADO', label: 'Escaneo eliminado' },
+  { value: 'CIERRE', label: 'Cierre de picking' },
+  { value: 'INTEGRACION_SAP_INICIADA', label: 'Integración SAP iniciada' },
+  { value: 'INTEGRACION_SAP_ENCOLADA', label: 'Integración SAP encolada' },
+  { value: 'INTEGRACION_SAP_COMPLETADA', label: 'Integración SAP completada' },
+  { value: 'INTEGRACION_SAP_ERROR', label: 'Error de integración SAP' },
+  { value: 'PICKING_ELIMINADO', label: 'Picking eliminado' },
+]
+
+function eventoLabel(evento: string): string {
+  return EVENTOS.find((e) => e.value === evento)?.label ?? evento
+}
 
 const desdeInput = ref(daysAgoLocalDateString(4))
 const hastaInput = ref(todayLocalDateString())
 const docNumInput = ref('')
+const eventoInput = ref('')
 
 function buscar(): void {
   const docNum = docNumInput.value ? Number(docNumInput.value) : null
-  store.buscar({ desde: desdeInput.value, hasta: hastaInput.value, docNum })
+  store.buscar({ desde: desdeInput.value, hasta: hastaInput.value, docNum, evento: eventoInput.value || null })
 }
 
 function limpiar(): void {
   desdeInput.value = daysAgoLocalDateString(4)
   hastaInput.value = todayLocalDateString()
   docNumInput.value = ''
+  eventoInput.value = ''
   buscar()
 }
 
@@ -29,7 +63,9 @@ onMounted(buscar)
 </script>
 
 <template>
-  <div class="max-w-5xl mx-auto py-8 px-4">
+  <div class="max-w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+    <VolverButton :to="volverA" :title="volverATitulo" class="shrink-0 self-start mb-4" />
+
     <div class="mb-6 pb-6 border-b border-gray-200 dark:border-gray-700">
       <BuscarOdcBar />
     </div>
@@ -73,6 +109,18 @@ onMounted(buscar)
           placeholder="Nro ODC"
           class="rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white placeholder:text-gray-400 outline-none focus:ring-2 focus:ring-blue-500"
         />
+      </div>
+      <div>
+        <label for="logs-evento-input" class="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">Evento (opcional)</label>
+        <select
+          id="logs-evento-input"
+          v-model="eventoInput"
+          class="rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white outline-none focus:ring-2 focus:ring-blue-500"
+          @change="buscar"
+        >
+          <option value="">Todos</option>
+          <option v-for="opcion in EVENTOS" :key="opcion.value" :value="opcion.value">{{ opcion.label }}</option>
+        </select>
       </div>
       <button
         type="submit"
@@ -124,11 +172,11 @@ onMounted(buscar)
                   'bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300': log.nivel === 'Error',
                 }"
               >
-                {{ log.evento }}
+                {{ eventoLabel(log.evento) }}
               </span>
             </td>
             <td class="px-4 py-2 text-sm text-gray-700 dark:text-gray-300">{{ log.detalle ?? '—' }}</td>
-            <td class="px-4 py-2 text-sm text-gray-500 dark:text-gray-400">{{ log.usuarioId ?? '—' }}</td>
+            <td class="px-4 py-2 text-sm text-gray-500 dark:text-gray-400">{{ log.usuarioNombre ?? log.usuarioId ?? '—' }}</td>
           </tr>
           <tr v-if="store.logs.length === 0">
             <td colspan="6" class="px-4 py-6 text-center text-sm text-gray-500 dark:text-gray-400">
