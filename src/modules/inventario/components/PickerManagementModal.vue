@@ -33,25 +33,14 @@
 
                 <!-- Agregar usuario -->
                 <div>
-                  <label for="nuevoUserId" class="label">Agregar usuario (nombre de usuario AD)</label>
-                  <div class="mt-1 flex gap-2">
-                    <input
-                      id="nuevoUserId"
-                      v-model="nuevoUserId"
-                      type="text"
-                      class="input flex-1"
-                      placeholder="Usuario de red (AD), ej: jperez"
-                      @keydown.enter.prevent="agregarPicker"
+                  <label for="picker-user-search" class="label">Agregar usuario (cuenta de SCNexus / Directorio Activo)</label>
+                  <div class="mt-1">
+                    <UserSearchInput
+                      input-id="picker-user-search"
+                      placeholder="Escribe parte del nombre, usuario de red o correo"
                       :disabled="agregando"
+                      @select="agregarPicker"
                     />
-                    <button
-                      type="button"
-                      class="btn-primary flex-shrink-0"
-                      :disabled="!nuevoUserId.trim() || agregando"
-                      @click="agregarPicker"
-                    >
-                      {{ agregando ? '...' : 'Agregar' }}
-                    </button>
                   </div>
                 </div>
 
@@ -109,7 +98,8 @@ import { ref, watch } from 'vue'
 import { Dialog, DialogPanel, DialogTitle, TransitionRoot, TransitionChild } from '@headlessui/vue'
 import { XMarkIcon } from '@heroicons/vue/24/outline'
 import { inventarioSesionesService } from '../services/inventarioSesionesApi'
-import { findCoreUser } from '@/utils/resolveUserNames'
+import type { CoreUserInfo } from '@/utils/resolveUserNames'
+import UserSearchInput from './UserSearchInput.vue'
 import type { InventorySessionListItemDto, InventorySessionPickerDto } from '../types'
 
 const props = defineProps<{
@@ -121,7 +111,6 @@ const emit = defineEmits<{ close: [] }>()
 
 const pickers = ref<InventorySessionPickerDto[]>([])
 const loadingPickers = ref(false)
-const nuevoUserId = ref('')
 const agregando = ref(false)
 const eliminando = ref<string | null>(null)
 const error = ref<string | null>(null)
@@ -129,7 +118,6 @@ const error = ref<string | null>(null)
 watch(() => props.isOpen, async (open) => {
   if (!open || !props.session) return
   error.value = null
-  nuevoUserId.value = ''
   await cargarPickers()
 })
 
@@ -145,22 +133,19 @@ async function cargarPickers() {
   }
 }
 
-async function agregarPicker() {
-  const texto = nuevoUserId.value.trim()
-  if (!texto || !props.session) return
+/** El buscador solo entrega usuarios que existen en el Core; se guarda el login tal como está registrado. */
+async function agregarPicker(user: CoreUserInfo) {
+  if (!props.session) return
   agregando.value = true
   error.value = null
   try {
-    // Solo usuarios reales del Core / Directorio Activo; se guarda el login tal como está registrado.
-    const user = await findCoreUser(texto)
-    if (!user) {
-      error.value = `El usuario "${texto}" no existe en SCNexus / Directorio Activo. Verifica el nombre de usuario de red.`
+    const userId = user.userName
+    if (pickers.value.some(p => p.userId.toLowerCase() === userId.toLowerCase())) {
+      error.value = `${user.fullName ?? userId} ya está asignado a esta toma.`
       return
     }
-    const userId = user.userName
     const picker = await inventarioSesionesService.addPicker(props.session.sessionId, userId)
     pickers.value.push(picker)
-    nuevoUserId.value = ''
   } catch (e: any) {
     error.value = e.message ?? 'Error al agregar usuario.'
   } finally {

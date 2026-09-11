@@ -265,10 +265,12 @@ export interface InventorySessionListItemDto {
   description?: string | null
   plannedCloseDate?: string | null
   referenceCode?: string | null
-  /** Cuántos artículos distintos entran en el alcance de esta toma (no depende de si ya se contaron). */
-  totalItems: number
-  /** Qué cantidad total (stock del sistema) entra en el alcance de esta toma. */
-  totalQuantity: number
+  /** Avance de conteo: referencias distintas con al menos un registro (todas las rondas). Reemplaza al alcance de stock, que hacía lento el listado. */
+  countedItems: number
+  /** Unidades registradas en la toma (todas las rondas). */
+  countedQuantity: number
+  /** Fecha/hora del último registro de conteo; null si nadie contó. */
+  lastCountAt?: string | null
   /** Fecha de apertura DEFINIDA al crear la toma o el plan — no la real de ejecución (esa está en el Resumen). */
   definedOpenDate: string
   /** Fecha de cierre DEFINIDA al crear la toma o el plan — no la real de cuando cerró el usuario. */

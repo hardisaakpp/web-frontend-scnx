@@ -132,7 +132,8 @@ const FILTROS_DISPONIBLES = [
 
 type FiltroKey = 'uNv1' | 'uNv2' | 'uNv3' | 'uGen' | 'material' | 'pack' | 'coleccion'
 
-const form = ref({ plannedCloseDate: '', description: '', referenceCode: '' })
+// Fecha de cierre por defecto: hoy (la mayoría de tomas directas se abren y cierran el mismo día).
+const form = ref({ plannedCloseDate: new Date().toISOString().slice(0, 10), description: '', referenceCode: '' })
 const bodegasSeleccionadas = ref<string[]>([])
 const filtrosSeleccionados = ref<Record<FiltroKey, string[]>>({
   uNv1: [], uNv2: [], uNv3: [], uGen: [], material: [], pack: [], coleccion: []
@@ -173,7 +174,7 @@ watch(() => props.isOpen, async (open) => {
 })
 
 function resetForm() {
-  form.value = { plannedCloseDate: '', description: '', referenceCode: '' }
+  form.value = { plannedCloseDate: fechaHoyIso.value, description: '', referenceCode: '' }
   bodegasSeleccionadas.value = []
   filtrosSeleccionados.value = { uNv1: [], uNv2: [], uNv3: [], uGen: [], material: [], pack: [], coleccion: [] }
 }
