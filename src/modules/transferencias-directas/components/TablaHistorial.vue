@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { EyeIcon, PencilSquareIcon, InboxIcon, CheckBadgeIcon, PaperAirplaneIcon, ClipboardDocumentCheckIcon, ChevronUpIcon, ChevronDownIcon, ChevronUpDownIcon, ArrowPathIcon } from '@heroicons/vue/24/outline'
+import { EyeIcon, PencilSquareIcon, InboxIcon, CheckBadgeIcon, PaperAirplaneIcon, ClipboardDocumentCheckIcon, ChevronUpIcon, ChevronDownIcon, ChevronUpDownIcon, ArrowPathIcon, TrashIcon } from '@heroicons/vue/24/outline'
 import { APP_LOCALE } from '@/plugins/locale'
 
 import type { SolicitudResumen } from '../types'
@@ -18,6 +18,7 @@ const props = defineProps<{
 const emit = defineEmits<{
     ver: [id: number]
     editar: [id: number]
+    eliminar: [id: number]
     'enviar-aprobacion': [id: number]
     'crear-definitiva': [id: number]
     'ver-errores': [id: number]
@@ -158,6 +159,10 @@ const puedeSolicitar = computed(() => authStore.hasPermission('transferenciadire
                                     title="Enviar a aprobación"
                                     class="p-2 text-indigo-600 hover:bg-indigo-50 dark:text-indigo-400 dark:hover:bg-indigo-900/20 rounded-lg transition-colors">
                                     <PaperAirplaneIcon class="w-5 h-5" />
+                                </button>
+                                <button type="button" @click="emit('eliminar', s.id)" title="Eliminar borrador"
+                                    class="p-2 text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20 rounded-lg transition-colors">
+                                    <TrashIcon class="w-5 h-5" />
                                 </button>
                             </template>
 

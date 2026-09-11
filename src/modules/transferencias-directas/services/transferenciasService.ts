@@ -67,6 +67,14 @@ const transferenciasService = {
     return data
   },
 
+  // DELETE {id} → borrado lógico: pasa a Cancelado (solo desde Borrador)
+  eliminar: async (id: number): Promise<{ estado: EstadoTransferencia }> => {
+    const { data } = await transferenciasDirectasApi.delete<{ estado: EstadoTransferencia }>(
+      `solicitudes-transferencia/${id}`
+    )
+    return data
+  },
+
   /** Reintento manual de envío a SAP (solo si la fila trae puedeReenviarSap). */
   reenviarSap: async (id: number): Promise<{ estado: EstadoTransferencia }> => {
     const { data } = await transferenciasDirectasApi.post<{ estado: EstadoTransferencia }>(
