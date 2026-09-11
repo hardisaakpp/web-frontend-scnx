@@ -67,6 +67,18 @@ const transferenciasService = {
     return data
   },
 
+  // PATCH {id}/guia-envio → actualiza SOLO la guía (no toca productos ni justificación)
+  actualizarGuiaEnvio: async (
+    id: number,
+    guiaEnvio: string
+  ): Promise<{ estado: EstadoTransferencia; guiaEnvio: string }> => {
+    const { data } = await transferenciasDirectasApi.patch<{ estado: EstadoTransferencia; guiaEnvio: string }>(
+      `solicitudes-transferencia/${id}/guia-envio`,
+      { guiaEnvio }
+    )
+    return data
+  },
+
   // DELETE {id} → borrado lógico: pasa a Cancelado (solo desde Borrador)
   eliminar: async (id: number): Promise<{ estado: EstadoTransferencia }> => {
     const { data } = await transferenciasDirectasApi.delete<{ estado: EstadoTransferencia }>(

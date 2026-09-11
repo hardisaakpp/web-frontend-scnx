@@ -23,9 +23,11 @@ import TablaHistorial from '../components/TablaHistorial.vue'
 import { useRouter } from 'vue-router'
 import DetalleSolicitudModal from '../components/DetalleSolicitudModal.vue'
 import ModalConfirmacion from '../components/ModalConfirmacion.vue'
+
 import { useFiltroTiendas, FILTRO_INPUT_CLASS, FILTRO_MINI_LABEL } from '../composables/useFiltroTiendas'
 import { descargarBlob, mensajeDeErrorBlob } from '../utils/descargas'
 import ErroresSapModal from '../components/ErroresSapModal.vue'
+import ModalGuiaLaar from '../components/ModalGuiaLaar.vue'
 
 const authStore = useAuthStore()
 const router = useRouter()
@@ -88,7 +90,7 @@ const totalRegistros = ref(0)
 
 const confirmAbierto = ref(false)
 const confirmCargando = ref(false)
-type AccionConfirmable = 'enviar' | 'definitiva' | 'reenviar' | 'eliminar'
+type AccionConfirmable = 'definitiva' | 'reenviar' | 'eliminar'
 const accionPendiente = ref<AccionConfirmable | null>(null)
 const idPendiente = ref<number | null>(null)
 const confirmError = ref('')
@@ -102,11 +104,6 @@ const exportando = ref(false)
 
 // Textos del modal por acción (un mapa evita ternarios anidados al sumar acciones)
 const TEXTOS_CONFIRMACION: Record<AccionConfirmable, { titulo: string; mensaje: string; ok: string }> = {
-  enviar: {
-    titulo: 'Enviar a aprobación',
-    mensaje: 'Una vez enviada, la solicitud no podrá modificarse. ¿Desea continuar?',
-    ok: 'Enviar',
-  },
   definitiva: {
     titulo: 'Crear transferencia definitiva',
     mensaje: 'Se generará la transferencia en SAP y no podrá revertirse desde aquí. ¿Desea continuar?',
@@ -133,7 +130,6 @@ const confirmTextoOk = computed(() => textosConfirmacion.value?.ok ?? 'Confirmar
 const confirmFaltantes = ref<StockFaltante[]>([])
 
 // Abren el modal
-const pedirEnviarAprobacion = (id: number) => { accionPendiente.value = 'enviar'; idPendiente.value = id; confirmAbierto.value = true }
 const pedirCrearDefinitiva = (id: number) => { accionPendiente.value = 'definitiva'; idPendiente.value = id; confirmAbierto.value = true }
 const pedirReenviarSap = (id: number) => { accionPendiente.value = 'reenviar'; idPendiente.value = id; confirmAbierto.value = true }
 const pedirEliminar = (id: number) => { accionPendiente.value = 'eliminar'; idPendiente.value = id; confirmAbierto.value = true }
@@ -145,6 +141,64 @@ const cancelarConfirm = () => {
   confirmError.value = ''
   confirmFaltantes.value = []
   cargar()
+}
+
+// ─── Envío a aprobación: guía LAAR + envío ──────────────────────────────────
+// La guía se pide aquí (no en el formulario) porque es el momento en que el
+// usuario ya despachó y tiene el número real.
+const guiaAbierto = ref(false)
+const guiaCargando = ref(false)
+const guiaError = ref('')
+const guiaFaltantes = ref<StockFaltante[]>([])
+const guiaIdPendiente = ref<number | null>(null)
+const guiaActual = ref<string | null>(null)
+
+const pedirEnviarAprobacion = (id: number) => {
+  guiaIdPendiente.value = id
+  guiaActual.value = solicitudes.value.find((s) => s.id === id)?.guiaEnvio ?? ''
+  guiaError.value = ''
+  guiaFaltantes.value = []
+  guiaAbierto.value = true
+}
+
+const cerrarGuia = () => {
+  if (guiaCargando.value) return
+  guiaAbierto.value = false
+  guiaIdPendiente.value = null
+  guiaError.value = ''
+  guiaFaltantes.value = []
+}
+
+/**
+ * PATCH de la guía (solo si cambió) y luego POST de envío. Secuencial: si el
+ * PATCH falla no se envía nada. Si el envío falla por stock, la guía ya quedó
+ * persistida, así que el reintento no vuelve a pedirla.
+ */
+const confirmarGuiaYEnviar = async (guia: string) => {
+  const id = guiaIdPendiente.value
+  if (id == null || guiaCargando.value) return
+  guiaCargando.value = true
+  guiaError.value = ''
+  guiaFaltantes.value = []
+  try {
+    if (guia !== (guiaActual.value ?? '').trim().toUpperCase()) {
+      await transferenciasService.actualizarGuiaEnvio(id, guia)
+      guiaActual.value = guia // persistida: un reintento ya no repite el PATCH
+    }
+    await transferenciasService.enviarAprobacion(id)
+    guiaAbierto.value = false
+    guiaIdPendiente.value = null
+    await cargar()
+  } catch (e: any) {
+    const { mensaje, faltantes } = parsearErrorSolicitud(e)
+    guiaError.value = mensaje
+    guiaFaltantes.value = faltantes ?? []
+    const st = e?.response?.status
+    // 409/404: otro usuario ya movió la solicitud → refrescar para ver el estado real
+    if (st === 409 || st === 404) await cargar()
+  } finally {
+    guiaCargando.value = false
+  }
 }
 
 const mostrarFiltros = ref(false)
@@ -225,26 +279,6 @@ const verDetalle = async (id: number) => {
   }
 }
 const cerrarDetalle = () => { detalleAbierto.value = false }
-// Enviar a aprobación (desde la lista)
-const enviandoId = ref<number | null>(null)
-const enviarAprobacion = async (id: number) => {
-  enviandoId.value = id
-  error.value = ''
-  try {
-    await transferenciasService.enviarAprobacion(id)
-    await cargar()
-  } catch (e: any) {
-    const st = e?.response?.status
-    const msg = e?.response?.data?.error ?? e?.response?.data?.mensaje
-    if (st === 400) error.value = msg ?? 'La solicitud no tiene productos o es inválida.'
-    else if (st === 409) { error.value = 'La solicitud ya no está en Borrador.'; await cargar() }
-    else if (st === 404) error.value = 'La solicitud no existe.'
-    else error.value = 'No se pudo enviar a aprobación.'
-  } finally {
-    enviandoId.value = null
-  }
-}
-
 
 const editar = (id: number) => {
   router.push(`/transferencias-stock/editar/${id}`)
@@ -260,8 +294,7 @@ const ejecutarConfirmacion = async () => {
   confirmError.value = ''
   confirmFaltantes.value = []
   try {
-    if (accion === 'enviar') await transferenciasService.enviarAprobacion(id)
-    else if (accion === 'reenviar') await transferenciasService.reenviarSap(id)
+    if (accion === 'reenviar') await transferenciasService.reenviarSap(id)
     else if (accion === 'eliminar') await transferenciasService.eliminar(id)
     else {
       const guiaEnvio = solicitudes.value.find((s) => s.id === id)?.guiaEnvio
@@ -285,7 +318,6 @@ const ejecutarConfirmacion = async () => {
 }
 
 const MENSAJES_FALLBACK: Record<AccionConfirmable, string> = {
-  enviar: 'No se pudo enviar a aprobación.',
   definitiva: 'No se pudo crear la transferencia.',
   reenviar: 'No se pudo reintentar el envío a SAP.',
   eliminar: 'No se pudo eliminar el borrador.',
@@ -520,6 +552,8 @@ const cerrarErrores = () => { erroresAbierto.value = false }
     </section>
     <DetalleSolicitudModal :abierto="detalleAbierto" :detalle="detalleActual" :cargando="cargandoDetalle"
       @cerrar="cerrarDetalle" />
+    <ModalGuiaLaar :abierto="guiaAbierto" :guia-actual="guiaActual" :cargando="guiaCargando" :error="guiaError"
+      :faltantes="guiaFaltantes" @confirmar="confirmarGuiaYEnviar" @cancelar="cerrarGuia" />
     <ModalConfirmacion :abierto="confirmAbierto" :titulo="confirmTitulo" :mensaje="confirmMensaje"
       :texto-confirmar="confirmTextoOk" :cargando="confirmCargando" :error="confirmError" :faltantes="confirmFaltantes"
       :variante="accionPendiente === 'eliminar' ? 'peligro' : 'primary'"
