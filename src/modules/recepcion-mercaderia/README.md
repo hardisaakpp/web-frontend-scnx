@@ -44,9 +44,9 @@ recepcion-mercaderia/
 | `/recepcion-mercaderia/en-curso` | `InProgressView` | `recepcion.reception.view` |
 | `/recepcion-mercaderia/en-curso/:id` | `TransferDetailView` | `recepcion.reception.view` |
 | `/recepcion-mercaderia/transitorias` | `TransitTransfersView` | `recepcion.reception.transit.view` |
-| `/recepcion-mercaderia/historial` | `HistoryView` | `recepcion.history.view` |
+| `/recepcion-mercaderia/historial` | `HistoryView` | `recepcion.history.view` **o** `recepcion.history.viewall` |
 
-`recepcion.history.viewall` no gatea una ruta aparte — habilita en `HistoryView.vue` el toggle "Todos los almacenes" (`GET /history/all` en vez de `GET /history`). Los permisos de acción dentro del detalle (`recepcion.picking.scan`, `recepcion.reception.confirm`, `recepcion.reception.confirm.partial`, `recepcion.diferencias.gestionar`) también se chequean en el componente, no a nivel de ruta — ver `router.ts` para el razonamiento (evita el patrón `beforeEnter` por ruta que sí usa `reposiciones`, considerado redundante).
+Los permisos de historial son independientes y la ruta aplica semántica OR. Con solo `recepcion.history.view`, `HistoryView.vue` consulta `GET /history`; con `recepcion.history.viewall`, incluso si también está asignado el permiso anterior, prioriza `GET /history/all`. Sin ninguno, el guard global redirige a `/forbidden`. Los permisos de acción dentro del detalle (`recepcion.picking.scan`, `recepcion.reception.confirm`, `recepcion.reception.confirm.partial`, `recepcion.diferencias.gestionar`) también se chequean en el componente, no a nivel de ruta — ver `router.ts` para el razonamiento (evita el patrón `beforeEnter` por ruta que sí usa `reposiciones`, considerado redundante).
 
 ## Backend Integrado
 
@@ -62,8 +62,8 @@ Todos bajo el prefijo `recepcion.` (cualquier permiso con ese prefijo, o rol `Ad
 | Permiso | Habilita |
 |---|---|
 | `recepcion.reception.view` | Ver Pendientes, En Curso y Detalle |
-| `recepcion.history.view` | Ver Historial (propio almacén) |
-| `recepcion.history.viewall` | Toggle "Todos los almacenes" en Historial y exportar el consolidado (`GET /history/all/export`) |
+| `recepcion.history.view` | Acceder al Historial y consultar el propio almacén (`GET /history`) |
+| `recepcion.history.viewall` | Acceder al Historial y consultar/exportar el consolidado (`GET /history/all`, `GET /history/all/export`); no requiere `recepcion.history.view` |
 | `recepcion.picking.scan` | Inputs de escaneo (barcode + manual fallback) en el detalle |
 | `recepcion.reception.confirm` | Botón "Confirmar" |
 | `recepcion.reception.confirm.partial` | Botón "Confirmar parcial" |
@@ -72,7 +72,7 @@ Todos bajo el prefijo `recepcion.` (cualquier permiso con ese prefijo, o rol `Ad
 
 Como en todo el repo: estos strings deben existir en SCNexus Core y estar asignados a roles — el frontend no los crea (ver `docs/SISTEMA_PERMISOS.md`).
 
-`GET /history/export` (botón "Exportar Excel" en la vista propia de Historial) no está gateado por ningún permiso adicional — cualquier usuario logueado con `recepcion.history.view` lo puede usar; el backend acota el archivo a los almacenes que ya tiene asignados en Core, mismo criterio que `GET /history`.
+`GET /history/export` (botón "Exportar Excel" en la vista propia de Historial) no está gateado por ningún permiso adicional — cualquier usuario con `recepcion.history.view` lo puede usar; el backend acota el archivo a los almacenes que ya tiene asignados en Core, mismo criterio que `GET /history`.
 
 ## Flujo funcional
 
