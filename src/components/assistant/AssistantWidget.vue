@@ -705,7 +705,11 @@ function reajustarOffset(yAbsolutoPreferido?: number): void {
  * header de escritorio oculto en móvil), cae a flotante.
  */
 const estiloRaiz = computed(() => {
-  anclajeVersion.value // dependencia reactiva: fuerza recálculo ante resize/observers
+  // Se lee (sin usar el valor) solo para registrar anclajeVersion como dependencia reactiva de
+  // este computed y forzar el recalculo ante resize/observers (ver su declaracion). Asignada a
+  // una const, en vez de dejarla como expresion suelta, para no disparar typescript:S905 -- la
+  // lectura de .value ocurre igual dentro del computed, así que el tracking no cambia.
+  const _anclajeVersion = anclajeVersion.value
   if (anclado.value) {
     if (arrastreActivo.value && baseAnclajeArrastre) {
       return {
