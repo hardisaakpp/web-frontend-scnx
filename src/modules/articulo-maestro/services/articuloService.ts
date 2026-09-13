@@ -122,7 +122,7 @@ export async function parsearErrorBlob(error: any): Promise<string> {
     return error?.response?.data?.detail || error?.message || 'Error de conexión.'
 }
 
-export type TipoCargaMasiva = 'crear' | 'actualizar' | 'actualizar_precios'
+export type TipoCargaMasiva = 'crear' | 'actualizar' | 'actualizar_precios' | 'actualizar_estado'
 export type EstadoImportacion =
     | 'ESPERANDO'
     | 'PROCESANDO'
@@ -152,6 +152,23 @@ export interface ImportacionGrupo {
     imagenes: ImagenArticuloReferencia[]
 }
 
+// Trazabilidad de identificadores autogenerados: una entrada por cada fila
+// COMPLETADO, con los códigos que el backend generó (ItemCode/BarCode/SKU
+// base) y los atributos de la variante creada -- ver ArticuloCreadoResumen
+// en app/schemas/importacion.py.
+export interface ArticuloCreadoResumen {
+    numeroFila: number
+    itemCode: string
+    barCode?: string | null
+    itemName?: string | null
+    codigoBase?: string | null
+    codigoProveedor?: string | null
+    talla?: string | null
+    color?: string | null
+    precio?: number | null
+    estadoSap: string
+}
+
 export interface ImportacionAceptada {
     jobId: number
     estado: EstadoImportacion
@@ -172,7 +189,7 @@ export interface ImportacionTrabajo {
     id: number
     nombreArchivo: string
     hashArchivo: string
-    tipo: 'CREAR' | 'ACTUALIZAR' | 'ACTUALIZAR_PRECIOS'
+    tipo: Uppercase<TipoCargaMasiva>
     usuario: string
     estado: EstadoImportacion
     totalGrupos: number
@@ -188,6 +205,9 @@ export interface ImportacionTrabajo {
     fechaInicio?: string | null
     fechaFin?: string | null
     grupos: ImportacionGrupo[]
+    // Solo viene poblado en el detalle (getImportacion); el listado paginado
+    // no lo incluye (ver ImportacionTrabajoResumen en el backend).
+    articulosCreados?: ArticuloCreadoResumen[]
 }
 
 // Resumen de un trabajo de importación (GET /articulos/importaciones, listado
@@ -382,7 +402,7 @@ export const articuloService = {
     ): Promise<ImportacionAceptada> => {
         const formData = new FormData()
         formData.append('file', file)
-        if (zipImagenes) {
+        if (tipo === 'crear' && zipImagenes) {
             formData.append('zip_imagenes', zipImagenes)
         }
         const response = await apiMaestro.post<ImportacionAceptada>(
@@ -413,7 +433,7 @@ export const articuloService = {
     ): Promise<DryRunSummary> => {
         const formData = new FormData()
         formData.append('file', file)
-        if (zipImagenes) {
+        if (tipo === 'crear' && zipImagenes) {
             formData.append('zip_imagenes', zipImagenes)
         }
         const response = await apiMaestro.post<DryRunSummary>(
@@ -421,15 +441,22 @@ export const articuloService = {
             formData,
             {
                 params: { tipo },
-                headers: { 'Content-Type': 'multipart/form-data' }
+                headers: { 'Content-Type': 'multipart/form-data' },
+                // A diferencia de crearImportacion (H09: guarda el ZIP crudo
+                // y responde en <1s), el pre-vuelo SÍ es síncrono en el
+                // backend -- indexa el ZIP completo en memoria y valida cada
+                // fila contra él antes de responder. Mismo timeout ampliado
+                // que crearImportacion para no cortar en lotes grandes.
+                timeout: 120_000
             }
         )
         return response.data
     },
 
-    getImportacion: async (jobId: number): Promise<ImportacionTrabajo> => {
+    getImportacion: async (jobId: number, signal?: AbortSignal): Promise<ImportacionTrabajo> => {
         const response = await apiMaestro.get<ImportacionTrabajo>(
-            `/api/v1/articulos/importaciones/${jobId}`
+            `/api/v1/articulos/importaciones/${jobId}`,
+            { signal }
         )
         return response.data
     },
@@ -501,6 +528,35 @@ export const articuloService = {
         link.click()
         link.remove()
         globalThis.URL.revokeObjectURL(url)
+    },
+
+    // El trabajo identifica la operación en el endpoint existente; el tipo
+    // determina el nombre del archivo en el cliente.
+    descargarReporteExitos: async (
+        trabajoId: number,
+        tipoOperacion: TipoCargaMasiva = 'crear'
+    ): Promise<Blob> => {
+        const response = await apiMaestro.get<Blob>(
+            `/api/v1/articulos/importaciones/${trabajoId}/reporte-exitos.xlsx`,
+            { responseType: 'blob' }
+        )
+        const blob = response.data
+        if (!blob.size || /json|^text\//i.test(blob.type)) {
+            throw new Error('El servidor no devolvió un reporte Excel válido.')
+        }
+        const url = window.URL.createObjectURL(blob)
+        const link = document.createElement('a')
+        try {
+            link.href = url
+            link.download = `articulos_procesados_${tipoOperacion}_${trabajoId}.xlsx`
+            document.body.appendChild(link)
+            link.click()
+        } finally {
+            link.remove()
+            // Permite al navegador iniciar la descarga antes de liberar el Blob.
+            window.setTimeout(() => window.URL.revokeObjectURL(url), 1000)
+        }
+        return blob
     },
 
     // Copia corregible: mismas columnas de la plantilla original + columna

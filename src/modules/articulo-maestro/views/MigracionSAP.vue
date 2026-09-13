@@ -740,11 +740,8 @@ const lotesImportacion = ref<ImportacionTrabajoResumen[]>([])
 const isPolling = ref(false)
 let pollingTimer: ReturnType<typeof setInterval> | null = null
 
-// Tareas SapSyncTarea que NO pertenecen a un lote de importación por Excel
-// (ej. sincronizaciones manuales de esta pantalla: "Traer desde SAP",
-// "Reintentar Fallidos", etc.) -- las que sí pertenecen ya se muestran
-// consolidadas en `lotesImportacion`, así que se excluyen aquí para no
-// duplicar la misma información en dos tarjetas distintas.
+// Solo tareas individuales de un SKU; las de Excel se muestran arriba,
+// consolidadas en `lotesImportacion`, aunque cada subtarea tenga un SKU.
 const tareasSueltas = computed(() => tareasSinLote(recentTasks.value))
 
 // Modales
@@ -963,8 +960,12 @@ async function fetchLotes() {
 async function actualizarActividad() {
     await Promise.all([fetchTasks(), fetchLotes()])
 
-    const hayTareaSueltaActiva = tareasSueltas.value.some(t => t.estado === 'PROCESANDO')
-    if (!hayTareaSueltaActiva && !hayLoteActivo(lotesImportacion.value) && isPolling.value) {
+    // Las subtareas del Excel siguen sincronizando con SAP después de que
+    // termine la importación local; ocultarlas no debe detener el polling.
+    const hayTareaActiva = recentTasks.value.some(t =>
+        ['ESPERANDO', 'PENDIENTE', 'PROCESANDO'].includes(t.estado)
+    )
+    if (!hayTareaActiva && !hayLoteActivo(lotesImportacion.value) && isPolling.value) {
         stopPolling()
     }
 }

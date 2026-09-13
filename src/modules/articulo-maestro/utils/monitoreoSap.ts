@@ -86,14 +86,17 @@ export function calcularProgresoLote(lote: ImportacionTrabajoResumen): ProgresoL
 // Esas tareas ya se resumen en la tarjeta consolidada del lote
 // (calcularProgresoLote), así que se excluyen de la lista de "tareas
 // sueltas" para no duplicar la misma información dos veces.
-const NOMBRE_TAREA_DE_LOTE = /^Importación #\d+ \(grupo /
+// Reconoce creación, precios, estado y nombres de plantilla, incluso si
+// cambian las mayúsculas, los acentos o el prefijo de la tarea.
+const NOMBRE_TAREA_DE_LOTE = /\b(?:importacion|lote)\b[^#\r\n]*#\s*\d+\b|\bplantilla(?:[_\s.-]|$)|\b(?:carga|importacion)[\s_-]+masiva\b/
 
 export function esTareaDeLote(nombreTarea: string): boolean {
-    return NOMBRE_TAREA_DE_LOTE.test(nombreTarea)
+    const nombreNormalizado = nombreTarea.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
+    return NOMBRE_TAREA_DE_LOTE.test(nombreNormalizado)
 }
 
 export function tareasSinLote(tasks: SapTask[]): SapTask[] {
-    return tasks.filter(t => !esTareaDeLote(t.nombre_tarea))
+    return tasks.filter(t => t.total_items === 1 && !esTareaDeLote(t.nombre_tarea))
 }
 
 // Se recalcula en cada re-render (cada 2s, por el polling) -- suficiente

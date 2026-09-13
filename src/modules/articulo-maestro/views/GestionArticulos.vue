@@ -467,26 +467,46 @@ const importStore = useImportacionArticulosStore()
 
 const showKeyboardHelp = ref(false)
 const shortcuts = {
-    'Ctrl+M': {
-        description: 'Nuevo artículo',
+    'ctrl+m': {
+        description: 'Crear nuevo artículo',
         action: () => router.push('/articulo-maestro/nuevo')
     },
-    'Ctrl+F': {
-        description: 'Buscar artículo',
+    'ctrl+f': {
+        description: 'Buscar en tabla',
         action: () => {
             const input = document.querySelector('input[placeholder="Buscar..."]') as HTMLInputElement
             if (input) input.focus()
         }
     },
-    'Esc': {
-        description: 'Cerrar modal',
+    'ctrl+i': {
+        description: 'Abrir importación masiva (Excel + ZIP)',
+        action: () => { showCargaModal.value = true }
+    },
+    '?': {
+        description: 'Abrir catálogo de atajos de teclado',
+        action: () => { showKeyboardHelp.value = !showKeyboardHelp.value }
+    },
+    // Jerarquía por capa visual activa: la más superficial (ayuda) se
+    // cierra primero, la de más abajo (confirmación de borrado individual)
+    // al final -- así Esc siempre cierra "lo último que se abrió" en vez de
+    // saltarse capas intermedias.
+    'esc': {
+        description: 'Cerrar modal o cancelar acción activa',
         action: () => {
             if (showKeyboardHelp.value) {
                 showKeyboardHelp.value = false
+            } else if (modalInspeccionAbierto.value) {
+                modalInspeccionAbierto.value = false
+            } else if (confirmandoBulkDelete.value) {
+                confirmandoBulkDelete.value = false
+            } else if (bulkDeleteResult.value) {
+                bulkDeleteResult.value = null
             } else if (showCargaModal.value) {
-                closeCargaModal()
+                showCargaModal.value = false
             } else if (pendingDeleteCode.value) {
                 pendingDeleteCode.value = null
+            } else {
+                (document.activeElement as HTMLElement | null)?.blur()
             }
         }
     }
