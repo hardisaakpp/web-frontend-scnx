@@ -22,6 +22,8 @@ export const useAssistantStore = defineStore('assistant', {
     reaccion: null as CoolTuritoExpression | null,
     /** Gesto de cuerpo temporal (p. ej. 'caja' = transportando); null = postura normal. */
     gesto: null as CoolTuritoGesture | null,
+    /** true mientras el usuario arrastra el widget; MainLayout la usa para resaltar el cajoncito de anclaje. */
+    arrastrando: false,
   }),
   actions: {
     /** Muestra una expresión (y opcionalmente un gesto) durante `duracionMs` y luego vuelve al estado normal. */
@@ -41,6 +43,10 @@ export const useAssistantStore = defineStore('assistant', {
       reaccionTimeout = null
       this.reaccion = null
       this.gesto = null
+    },
+    /** Marca si el widget está siendo arrastrado (usado para resaltar el cajoncito de anclaje en el header). */
+    marcarArrastre(activo: boolean): void {
+      this.arrastrando = activo
     },
   },
 })

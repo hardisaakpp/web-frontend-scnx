@@ -2,9 +2,12 @@
   <!-- Widget global de SCNEXUS AI (Cool-turito) -->
   <div
     ref="raizRef"
-    class="fixed bottom-4 right-4 z-40 flex flex-col items-end gap-3 print:hidden"
-    :class="{ 'transition-transform duration-300 ease-[cubic-bezier(0.25,0.8,0.25,1)]': !arrastreActivo }"
-    :style="{ transform: `translate(${offset.x}px, ${offset.y}px)` }"
+    class="fixed bottom-4 right-4 z-40 flex flex-col gap-3 print:hidden"
+    :class="[
+      anclado ? 'items-start' : 'items-end',
+      { 'transition-[top,left,transform] duration-300 ease-[cubic-bezier(0.25,0.8,0.25,1)]': !arrastreActivo }
+    ]"
+    :style="estiloRaiz"
   >
     <!-- Panel del chat -->
     <transition name="ct-panel">
@@ -138,10 +141,10 @@
       </div>
     </transition>
 
-    <!-- Botón flotante: Cool-turito de medio cuerpo, sin círculo contenedor -->
-    <div v-if="!abierto" class="flex items-end gap-2" :class="{ 'flex-row-reverse': pegadoIzquierda }">
+    <!-- Botón flotante: Cool-turito de medio cuerpo, sin círculo contenedor (o mini-avatar si está anclado) -->
+    <div v-if="!abierto" class="flex items-end gap-2" :class="{ 'flex-row-reverse': pegadoIzquierda && !anclado }">
       <button
-        v-if="!globoDescartado"
+        v-if="!globoDescartado && !anclado"
         class="mb-8 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded-2xl shadow-lg px-3.5 py-2 text-[13px] font-semibold text-slate-700 dark:text-slate-200 hover:border-blue-400 transition-colors"
         :class="pegadoIzquierda ? 'rounded-bl-md' : 'rounded-br-md'"
         @click="abrir"
@@ -149,14 +152,23 @@
         {{ nombreUsuario ? `¡Hola, ${nombreUsuario}!` : '' }} ¿Necesitas ayuda?
       </button>
       <button
-        class="relative ct-fab focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/60 rounded-xl cursor-grab active:cursor-grabbing touch-none"
-        aria-label="Abrir asistente SCNEXUS AI"
+        class="relative focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/60 rounded-xl cursor-grab active:cursor-grabbing touch-none"
+        :class="anclado ? '' : 'ct-fab'"
+        :aria-label="anclado ? 'Abrir asistente SCNEXUS AI (anclado en el header)' : 'Abrir asistente SCNEXUS AI'"
+        :title="anclado ? 'Abrir mIA · arrastra o clic con el botón central para volver a flotar' : ''"
         @pointerdown="iniciarArrastre"
         @click="onClickFab"
+        @mousedown.middle.prevent="alternarAnclaje"
         @mouseenter="saludar()"
       >
-        <CoolTurito :expression="expresionFab" variant="half" :size="76" :animation="animacionFab" :gesture="asistente.gesto ?? 'none'" />
-        <span class="absolute top-0.5 right-0.5 w-3 h-3 rounded-full bg-emerald-500 border-2 border-white dark:border-slate-900"></span>
+        <CoolTurito
+          :expression="expresionFab"
+          :variant="anclado ? 'head' : 'half'"
+          :size="anclado ? TAMANO_ANCLADO : 76"
+          :animation="anclado ? 'none' : animacionFab"
+          :gesture="asistente.gesto ?? 'none'"
+        />
+        <span v-if="!anclado" class="absolute top-0.5 right-0.5 w-3 h-3 rounded-full bg-emerald-500 border-2 border-white dark:border-slate-900"></span>
       </button>
     </div>
   </div>
@@ -214,6 +226,21 @@ let inicioArrastre = { x: 0, y: 0, offsetX: 0, offsetY: 0 }
 let baseArrastre = { left: 0, top: 0, width: 0, height: 0 }
 let observadorTamano: ResizeObserver | null = null
 
+/**
+ * Anclaje al cajoncito reservado junto al título del header (`#coolturito-dock-slot`,
+ * ver MainLayout.vue): arrastrar el widget hasta ahí (o clic con el botón central sobre él)
+ * lo "estaciona" en el header como mini-avatar, sin dejar de funcionar (sigue abriendo el
+ * chat al click). Repetir el gesto lo devuelve a flotante. Se persiste junto al offset.
+ */
+const anclado = ref(false)
+const TAMANO_ANCLADO = 40 // ancho (px) del SVG variant="head" mientras está anclado
+const ALTO_ANCLADO = Math.round(TAMANO_ANCLADO * 140 / 164) // proporción del viewBox 'head' (28 6 164 140)
+const MARGEN_ACIERTO_ANCLAJE = 20 // tolerancia (px) para soltar cerca del cajoncito, no exactamente encima
+/** Se incrementa en cada cambio de layout (resize, sidebar, etc.) para forzar el recálculo de `estiloRaiz`. */
+const anclajeVersion = ref(0)
+/** Posición (viewport) del propio widget al iniciar un arrastre desde el estado anclado. */
+let baseAnclajeArrastre: { top: number; left: number } | null = null
+
 /** Borde derecho del sidebar fijo (si está visible en pantalla), para no tapar ni imantar el widget debajo de él. */
 function limiteIzquierdoSidebar(): number {
   const aside = document.getElementById('app-sidebar')
@@ -221,7 +248,14 @@ function limiteIzquierdoSidebar(): number {
   return Math.max(aside.getBoundingClientRect().right, 0)
 }
 
-/** Borde inferior del header (móvil o escritorio, el que esté visible), para no arrastrar el widget encima de él. */
+/**
+ * Borde superior hasta el que se puede arrastrar el widget: el borde inferior del header
+ * visible (móvil o escritorio), para no arrastrarlo por encima. Si existe el cajoncito de
+ * anclaje (`#coolturito-dock-slot`), el límite sube hasta su borde superior en su lugar: el
+ * cajoncito vive dentro del propio header, por encima de su borde inferior, así que con el
+ * límite anterior el centro del widget nunca podía entrar en su rango y arrastrar hasta ahí
+ * para anclarlo era imposible.
+ */
 function limiteSuperiorHeader(): number {
   let limite = 0
   for (const id of ['app-header-mobile', 'app-header-desktop']) {
@@ -230,7 +264,34 @@ function limiteSuperiorHeader(): number {
     const rect = el.getBoundingClientRect()
     if (rect.height > 0) limite = Math.max(limite, rect.bottom)
   }
-  return limite
+  const slot = obtenerSlotAnclaje()
+  return slot ? Math.min(limite, slot.top) : limite
+}
+
+/** Rect del cajoncito de anclaje, o null si no existe o no está visible (p. ej. header de escritorio oculto en móvil). */
+function obtenerSlotAnclaje(): DOMRect | null {
+  const rect = document.getElementById('coolturito-dock-slot')?.getBoundingClientRect()
+  return rect && rect.width > 0 && rect.height > 0 ? rect : null
+}
+
+/** Posición (viewport) centrada del mini-avatar dentro del cajoncito. */
+function posicionCentradaEnSlot(rect: DOMRect): { top: number; left: number } {
+  return {
+    top: rect.top + (rect.height - ALTO_ANCLADO) / 2,
+    left: rect.left + (rect.width - TAMANO_ANCLADO) / 2,
+  }
+}
+
+/** true si el centro del rect dado (posición actual del widget) cae sobre el cajoncito, con tolerancia. */
+function coincideConSlotAnclaje(rect: { left: number; top: number; width: number; height: number }): boolean {
+  const slot = obtenerSlotAnclaje()
+  if (!slot) return false
+  const cx = rect.left + rect.width / 2
+  const cy = rect.top + rect.height / 2
+  return (
+    cx >= slot.left - MARGEN_ACIERTO_ANCLAJE && cx <= slot.right + MARGEN_ACIERTO_ANCLAJE &&
+    cy >= slot.top - MARGEN_ACIERTO_ANCLAJE && cy <= slot.bottom + MARGEN_ACIERTO_ANCLAJE
+  )
 }
 
 /**
@@ -261,10 +322,18 @@ function iniciarArrastre(e: PointerEvent): void {
   if (e.pointerType === 'mouse' && e.button !== 0) return
   const el = raizRef.value
   if (!el) return
-  baseArrastre = baseNatural(el.getBoundingClientRect())
-  inicioArrastre = { x: e.clientX, y: e.clientY, offsetX: offset.value.x, offsetY: offset.value.y }
+  if (anclado.value) {
+    const rect = el.getBoundingClientRect()
+    baseAnclajeArrastre = { top: rect.top, left: rect.left }
+    inicioArrastre = { x: e.clientX, y: e.clientY, offsetX: 0, offsetY: 0 }
+    offset.value = { x: 0, y: 0 }
+  } else {
+    baseArrastre = baseNatural(el.getBoundingClientRect())
+    inicioArrastre = { x: e.clientX, y: e.clientY, offsetX: offset.value.x, offsetY: offset.value.y }
+  }
   huboMovimiento = false
   arrastreActivo.value = true
+  asistente.marcarArrastre(true)
   window.addEventListener('pointermove', moverArrastre)
   window.addEventListener('pointerup', terminarArrastre, { once: true })
 }
@@ -274,17 +343,47 @@ function moverArrastre(e: PointerEvent): void {
   const dy = e.clientY - inicioArrastre.y
   if (!huboMovimiento && Math.hypot(dx, dy) > UMBRAL_ARRASTRE) huboMovimiento = true
   if (!huboMovimiento) return
-  offset.value = limitarOffset(inicioArrastre.offsetX + dx, inicioArrastre.offsetY + dy, baseArrastre)
+  if (anclado.value) {
+    offset.value = { x: inicioArrastre.offsetX + dx, y: inicioArrastre.offsetY + dy }
+  } else {
+    offset.value = limitarOffset(inicioArrastre.offsetX + dx, inicioArrastre.offsetY + dy, baseArrastre)
+  }
 }
 
-function terminarArrastre(): void {
+function terminarArrastre(e: PointerEvent): void {
   arrastreActivo.value = false
+  asistente.marcarArrastre(false)
   window.removeEventListener('pointermove', moverArrastre)
-  if (huboMovimiento) {
-    imantarABorde()
-    seAcabaDeArrastrar = true
-    guardarPosicion()
+  if (!huboMovimiento) return
+  seAcabaDeArrastrar = true
+  if (anclado.value) {
+    resolverSueltaDesdeAnclado(e.clientX)
+  } else {
+    resolverSueltaFlotante()
   }
+}
+
+/** Al soltar desde flotante: si cae sobre el cajoncito del header, se ancla; si no, se imanta al borde de siempre. */
+function resolverSueltaFlotante(): void {
+  const rectActual = { left: baseArrastre.left + offset.value.x, top: baseArrastre.top + offset.value.y, width: baseArrastre.width, height: baseArrastre.height }
+  if (coincideConSlotAnclaje(rectActual)) {
+    anclarWidget()
+  } else {
+    imantarABorde()
+  }
+  guardarPosicion()
+}
+
+/** Al soltar desde anclado: si sigue sobre el cajoncito, permanece anclado; si se arrastró fuera, vuelve a flotar. */
+function resolverSueltaDesdeAnclado(ultimoClientX: number): void {
+  if (!baseAnclajeArrastre) return
+  const rectActual = { left: baseAnclajeArrastre.left + offset.value.x, top: baseAnclajeArrastre.top + offset.value.y, width: TAMANO_ANCLADO, height: ALTO_ANCLADO }
+  if (coincideConSlotAnclaje(rectActual)) {
+    offset.value = { x: 0, y: 0 }
+    guardarPosicion()
+    return
+  }
+  desanclarWidget(ultimoClientX, rectActual.top)
 }
 
 /** Al soltar, pega el widget al borde horizontal más cercano (respetando el sidebar); la altura queda donde se soltó. */
@@ -298,9 +397,41 @@ function imantarABorde(): void {
   pegadoIzquierda.value = pegarIzquierda
 }
 
+/** Estaciona a Cool-turito en el cajoncito del header: queda reducido, pero sigue abriendo el chat al click. */
+function anclarWidget(): void {
+  anclado.value = true
+  abierto.value = false
+  offset.value = { x: 0, y: 0 }
+}
+
+/**
+ * Devuelve a Cool-turito a flotante, imantado al borde horizontal más cercano al punto donde se
+ * soltó/activó. `topAbsoluto` (posición vertical en viewport donde quedó al soltar el arrastre)
+ * se conserva igual que en `imantarABorde` — si no se da (p. ej. clic con el botón central,
+ * sin gesto de arrastre), cae a la posición natural inferior.
+ */
+function desanclarWidget(clientX: number, topAbsoluto?: number): void {
+  anclado.value = false
+  pegadoIzquierda.value = clientX < window.innerWidth / 2
+  nextTick(() => {
+    reajustarOffset(topAbsoluto)
+    guardarPosicion()
+  })
+}
+
+/** Alterna anclado/flotante (usado por el clic con el botón central); no depende de dónde esté el puntero. */
+function alternarAnclaje(): void {
+  if (anclado.value) {
+    desanclarWidget(pegadoIzquierda.value ? 0 : window.innerWidth)
+  } else {
+    anclarWidget()
+    guardarPosicion()
+  }
+}
+
 function guardarPosicion(): void {
   try {
-    localStorage.setItem(CLAVE_POSICION, JSON.stringify({ ...offset.value, izquierda: pegadoIzquierda.value }))
+    localStorage.setItem(CLAVE_POSICION, JSON.stringify({ ...offset.value, izquierda: pegadoIzquierda.value, anclado: anclado.value }))
   } catch { /* localStorage no disponible */ }
 }
 
@@ -330,12 +461,45 @@ function cerrarSiClickFuera(e: PointerEvent): void {
  * dejando a Cool-turito flotando "en el aire". Se llama al cambiar de tamaño de ventana y al
  * abrir/cerrar el panel.
  */
-function reajustarOffset(): void {
+function reajustarOffset(yAbsolutoPreferido?: number): void {
   const el = raizRef.value
   if (!el) return
   const base = baseNatural(el.getBoundingClientRect())
   const xAncla = pegadoIzquierda.value ? limiteIzquierdoSidebar() - base.left + MARGEN_BORDE : 0
-  offset.value = limitarOffset(xAncla, offset.value.y, base)
+  const y = yAbsolutoPreferido !== undefined ? yAbsolutoPreferido - base.top : offset.value.y
+  offset.value = limitarOffset(xAncla, y, base)
+}
+
+/**
+ * Posición/estilo del contenedor raíz. Anclado (y sin arrastre en curso): se fija sobre el
+ * cajoncito del header vía top/left, leído en vivo de `anclajeVersion` (getBoundingClientRect
+ * no es reactivo por sí solo). Anclado y arrastrando: el top/left queda congelado en la posición
+ * donde empezó el arrastre y solo se anima el translate, igual que el modo flotante. Si el
+ * cajoncito no existe (p. ej. header de escritorio oculto en móvil), cae a flotante.
+ */
+const estiloRaiz = computed(() => {
+  anclajeVersion.value // dependencia reactiva: fuerza recálculo ante resize/observers
+  if (anclado.value) {
+    if (arrastreActivo.value && baseAnclajeArrastre) {
+      return {
+        top: `${baseAnclajeArrastre.top}px`, left: `${baseAnclajeArrastre.left}px`,
+        right: 'auto', bottom: 'auto',
+        transform: `translate(${offset.value.x}px, ${offset.value.y}px)`,
+      }
+    }
+    const slot = obtenerSlotAnclaje()
+    if (slot) {
+      const pos = posicionCentradaEnSlot(slot)
+      return { top: `${pos.top}px`, left: `${pos.left}px`, right: 'auto', bottom: 'auto', transform: 'none' }
+    }
+  }
+  return { transform: `translate(${offset.value.x}px, ${offset.value.y}px)` }
+})
+
+/** Reposiciona ante cualquier cambio de layout: recalcula el offset flotante, o solo marca sucio el anclaje. */
+function onCambioLayout(): void {
+  if (!anclado.value) reajustarOffset()
+  anclajeVersion.value++
 }
 
 /** Login AD real del usuario autenticado (requisito de mIAApi: nunca un usuario genérico). */
@@ -390,22 +554,25 @@ onMounted(() => {
       const datos = JSON.parse(guardado)
       offset.value = { x: datos.x ?? 0, y: datos.y ?? 0 }
       pegadoIzquierda.value = !!datos.izquierda
+      anclado.value = !!datos.anclado
     }
   } catch { /* localStorage no disponible */ }
-  nextTick(reajustarOffset)
+  nextTick(onCambioLayout)
   // Cualquier cambio de ancho/alto del widget (abrir/cerrar chat, globo que se descarta,
-  // texto de saludo que cambia al cargar el usuario, etc.) o del sidebar (se expande al pasar
-  // el mouse, 80px→288px) puede dejar el offset desalineado del borde al que está pegado — el
-  // ResizeObserver lo detecta en vivo sin tener que enumerar cada causa.
-  observadorTamano = new ResizeObserver(() => reajustarOffset())
+  // texto de saludo que cambia al cargar el usuario, etc.), del sidebar (se expande al pasar
+  // el mouse, 80px→288px) o del cajoncito de anclaje del header puede dejar la posición
+  // desalineada — el ResizeObserver lo detecta en vivo sin tener que enumerar cada causa.
+  observadorTamano = new ResizeObserver(() => onCambioLayout())
   if (raizRef.value) observadorTamano.observe(raizRef.value)
   const sidebar = document.getElementById('app-sidebar')
   if (sidebar) observadorTamano.observe(sidebar)
+  const slotAnclaje = document.getElementById('coolturito-dock-slot')
+  if (slotAnclaje) observadorTamano.observe(slotAnclaje)
   window.addEventListener('mousemove', reiniciarInactividad, { passive: true })
   window.addEventListener('keydown', reiniciarInactividad)
   window.addEventListener('click', reiniciarInactividad)
   window.addEventListener('pointerdown', cerrarSiClickFuera)
-  window.addEventListener('resize', reajustarOffset)
+  window.addEventListener('resize', onCambioLayout)
   document.addEventListener('visibilitychange', onVisibilidad)
 })
 onUnmounted(() => {
@@ -417,7 +584,7 @@ onUnmounted(() => {
   window.removeEventListener('keydown', reiniciarInactividad)
   window.removeEventListener('click', reiniciarInactividad)
   window.removeEventListener('pointerdown', cerrarSiClickFuera)
-  window.removeEventListener('resize', reajustarOffset)
+  window.removeEventListener('resize', onCambioLayout)
   window.removeEventListener('pointermove', moverArrastre)
   document.removeEventListener('visibilitychange', onVisibilidad)
 })

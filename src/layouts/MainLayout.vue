@@ -460,6 +460,16 @@
                 class="h-6 w-6 text-gray-600 dark:text-gray-300 group-hover:scale-110 transition-transform" />
             </button>
             <span class="text-sm text-gray-600 dark:text-gray-300">{{ authStore.fullName || authStore.userName }}</span>
+            <!-- Cajoncito de anclaje para Cool-turito: pegado al borde derecho del header (mismo lado
+                 donde flota por defecto, esquina inferior derecha) — el resto del header sigue sin
+                 ser un destino válido. Centrado verticalmente en la fila (mismo `items-center` del
+                 contenedor), no pegado a ningún borde del header. -->
+            <div
+              id="coolturito-dock-slot"
+              class="flex-none w-12 h-12 rounded-xl border-2 border-dashed transition-colors duration-150"
+              :class="asistente.arrastrando ? 'border-blue-400/70 bg-blue-50/60 dark:bg-blue-500/10' : 'border-transparent'"
+              aria-hidden="true"
+            ></div>
           </div>
         </div>
       </header>
@@ -527,6 +537,7 @@ import { Pin, PinOff, TruckIcon, ForkliftIcon, Search } from 'lucide-vue-next'
 import { useAuthStore } from '../stores/auth'
 import { inicialesDe } from '@/utils/iniciales'
 import { useThemeStore } from '../stores/theme'
+import { useAssistantStore } from '../stores/assistant'
 import ToastContainer from '../components/feedback/ToastContainer.vue'
 import AssistantWidget from '../components/assistant/AssistantWidget.vue'
 import { useNotificaciones } from '@/composables/useNotificaciones'
@@ -543,6 +554,7 @@ const router = useRouter()
 const route = useRoute()
 const authStore = useAuthStore()
 const themeStore = useThemeStore()
+const asistente = useAssistantStore()
 const { connect: connectNotificaciones, disconnect: disconnectNotificaciones } = useNotificaciones()
 const { target: odcSapVolverTarget, title: odcSapVolverTitle } = useOdcSapVolver()
 const { isTienda: isTiendaAccess } = useWarehouseAccessType()
