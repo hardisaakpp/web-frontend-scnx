@@ -173,10 +173,10 @@
                     </div>
 
                     <ImportacionProgreso v-if="importStore.trabajo" @close="handleClose" />
-                    <div v-else-if="importStore.jobId" role="status" class="rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 px-4 py-3 text-sm text-blue-700 dark:text-blue-300">
+                    <output v-else-if="importStore.jobId" class="rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 px-4 py-3 text-sm text-blue-700 dark:text-blue-300">
                         Carga #{{ importStore.jobId }} recibida. Consultando el progreso…
                         <p v-if="importStore.error" class="mt-1">{{ importStore.error }} Se volverá a consultar automáticamente.</p>
-                    </div>
+                    </output>
 
                     <!-- Error general (red, servidor, etc.) -->
                     <div v-if="cargaError" class="rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 px-4 py-3 text-sm text-red-700 dark:text-red-400">

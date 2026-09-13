@@ -1592,7 +1592,9 @@ function mostrarErroresValidacion(firstErrorTab: string): void {
     }, 100)
 }
 
-function resolverMensajeErrorSubmit(detail: string | { msg: string; loc?: string[] }[] | undefined): string {
+type DetalleErrorValidacion = string | { msg: string; loc?: string[] }[]
+
+function resolverMensajeErrorSubmit(detail: DetalleErrorValidacion | undefined): string {
     if (Array.isArray(detail)) return detail.map(d => d.msg).join('. ')
     if (typeof detail === 'string') return detail
     return 'Ocurrió un error al guardar. Revisa los datos e inténtalo de nuevo.'
@@ -1604,7 +1606,7 @@ function resolverMensajeErrorSubmit(detail: string | { msg: string; loc?: string
 // vez del texto técnico del backend. HTTP 409: conflicto de identificador.
 function mostrarToastErrorSubmit(
     status: number | undefined,
-    detail: string | { msg: string; loc?: string[] }[] | undefined,
+    detail: DetalleErrorValidacion | undefined,
     mensaje: string
 ): void {
     const detalleTexto = Array.isArray(detail)
@@ -1648,7 +1650,7 @@ function manejarErrorSubmit(err: unknown): void {
     const axiosErr = err as {
         response?: {
             status?: number
-            data?: { detail?: string | { msg: string; loc?: string[] }[] | DetalleDuplicadoNegocio }
+            data?: { detail?: DetalleErrorValidacion | DetalleDuplicadoNegocio }
         }
     }
     const status = axiosErr?.response?.status
@@ -1662,8 +1664,8 @@ function manejarErrorSubmit(err: unknown): void {
         return
     }
 
-    submitError.value = resolverMensajeErrorSubmit(detail as string | { msg: string; loc?: string[] }[] | undefined)
-    mostrarToastErrorSubmit(status, detail as string | { msg: string; loc?: string[] }[] | undefined, submitError.value)
+    submitError.value = resolverMensajeErrorSubmit(detail as DetalleErrorValidacion | undefined)
+    mostrarToastErrorSubmit(status, detail as DetalleErrorValidacion | undefined, submitError.value)
 }
 
 // Guardar formulario. Único punto de captura de Ctrl+S (FE-CONCURRENCY,

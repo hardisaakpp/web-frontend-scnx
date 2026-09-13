@@ -28,7 +28,7 @@
             </div>
         </div>
 
-        <div v-if="procesamientoFinalizado" role="status" class="space-y-3 rounded-lg border border-emerald-200 bg-emerald-50 p-4 dark:border-emerald-800 dark:bg-emerald-900/20">
+        <output v-if="procesamientoFinalizado" class="space-y-3 rounded-lg border border-emerald-200 bg-emerald-50 p-4 dark:border-emerald-800 dark:bg-emerald-900/20">
             <p class="text-sm font-semibold text-emerald-800 dark:text-emerald-300">
                 ✅ Artículos procesados y encolados para sincronización con SAP Business One.
             </p>
@@ -41,7 +41,7 @@
                 🔍 Ir a Monitoreo de Sincronización SAP
             </button>
             <p v-if="errorNavegacion" role="alert" class="text-xs text-red-700 dark:text-red-300">{{ errorNavegacion }}</p>
-        </div>
+        </output>
 
         <div v-if="(procesamientoFinalizado && job.filasCorrectas > 0) || job.filasError > 0" class="flex flex-wrap gap-3">
             <button
