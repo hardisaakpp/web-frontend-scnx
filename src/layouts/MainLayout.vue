@@ -462,8 +462,10 @@
             <span class="text-sm text-gray-600 dark:text-gray-300">{{ authStore.fullName || authStore.userName }}</span>
             <!-- Cajoncito de anclaje para Cool-turito: pegado al borde derecho del header (mismo lado
                  donde flota por defecto, esquina inferior derecha) — el resto del header sigue sin
-                 ser un destino válido. Centrado verticalmente en la fila (mismo `items-center` del
-                 contenedor), no pegado a ningún borde del header. -->
+                 ser un destino válido. Basta con que el cuerpo de Cool-turito colisione con este
+                 recuadro (no que su centro caiga exactamente dentro) para que se lo pueda anclar, ver
+                 AssistantWidget.vue: colisionaConSlotAnclaje. Centrado verticalmente en la fila (mismo
+                 `items-center` del contenedor), no pegado a ningún borde del header. -->
             <div
               id="coolturito-dock-slot"
               class="flex-none w-12 h-12 rounded-xl border-2 border-dashed transition-colors duration-150"
