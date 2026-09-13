@@ -171,7 +171,7 @@
           <CoolTurito
             :expression="expresionFab"
             :variant="anclado ? 'head' : 'half'"
-            :size="anclado ? TAMANO_ANCLADO : 76"
+            :size="anclado ? TAMANO_ANCLADO : TAMANO_FLOTANTE"
             :animation="anclado ? 'none' : animacionFab"
             :gesture="asistente.gesto ?? 'none'"
           />
@@ -232,6 +232,17 @@ const mensajes = ref<Mensaje[]>([])
 const CLAVE_POSICION = 'mia-widget-offset'
 const UMBRAL_ARRASTRE = 4
 const MARGEN_BORDE = 16 // mismo margen que bottom-4/right-4 (1rem)
+
+/**
+ * `window.innerWidth`/`innerHeight` incluyen el grosor de la scrollbar nativa (cuando la página
+ * tiene una, como suele pasar en las vistas con tablas largas de este panel) -- la scrollbar se
+ * pinta encima de cualquier contenido, incluido un widget `fixed`, así que un límite basado en
+ * `innerWidth`/`innerHeight` deja que una parte del widget quede tapada debajo de ella (se ve
+ * "cortada a la mitad"). `document.documentElement.clientWidth`/`clientHeight` sí excluyen la
+ * scrollbar, así que son el límite real de la zona visible/interactiva para topar el widget.
+ */
+function anchoVisible(): number { return document.documentElement.clientWidth }
+function altoVisible(): number { return document.documentElement.clientHeight }
 const offset = ref({ x: 0, y: 0 })
 /** true cuando el fab quedó imantado al borde izquierdo: el globo de saludo se dibuja a su derecha. */
 const pegadoIzquierda = ref(false)
@@ -253,10 +264,10 @@ let baseArrastre = { left: 0, top: 0, width: 0, height: 0 }
 let observadorTamano: ResizeObserver | null = null
 
 /**
- * Anclaje al cajoncito reservado junto al título del header (`#coolturito-dock-slot`,
- * ver MainLayout.vue): arrastrar el widget hasta ahí (o clic con el botón central sobre él)
- * lo "estaciona" en el header como mini-avatar, sin dejar de funcionar (sigue abriendo el
- * chat al click). Repetir el gesto lo devuelve a flotante. Se persiste junto al offset.
+ * Anclaje al cajoncito reservado junto al título del header (uno por header, móvil y escritorio
+ * -- ver `IDS_SLOT_ANCLAJE`/MainLayout.vue): arrastrar el widget hasta ahí (o clic con el botón
+ * central sobre él) lo "estaciona" en el header como mini-avatar, sin dejar de funcionar (sigue
+ * abriendo el chat al click). Repetir el gesto lo devuelve a flotante. Se persiste junto al offset.
  */
 const anclado = ref(false)
 const TAMANO_ANCLADO = 40 // ancho (px) del SVG variant="head" mientras está anclado
@@ -266,6 +277,13 @@ const MARGEN_ACIERTO_ANCLAJE = 20 // tolerancia (px) para soltar cerca del cajon
 const anclajeVersion = ref(0)
 /** Posición (viewport) del propio widget al iniciar un arrastre desde el estado anclado. */
 let baseAnclajeArrastre: { top: number; left: number } | null = null
+
+/** true por debajo del breakpoint `md` de Tailwind (768px, el mismo que gobierna `hidden md:block`/`md:hidden` en MainLayout.vue). */
+const esMovil = ref(false)
+let mqlMovil: MediaQueryList | null = null
+function actualizarEsMovil(): void { esMovil.value = mqlMovil?.matches ?? false }
+/** Tamaño (px) de Cool-turito de cuerpo completo flotante: más chico en móvil para no ocupar tanta pantalla. */
+const TAMANO_FLOTANTE = computed(() => (esMovil.value ? 56 : 76))
 
 /** Borde derecho del sidebar fijo (si está visible en pantalla), para no tapar ni imantar el widget debajo de él. */
 function limiteIzquierdoSidebar(): number {
@@ -278,9 +296,9 @@ function limiteIzquierdoSidebar(): number {
  * Borde superior hasta el que se puede arrastrar el widget cuya columna horizontal actual es
  * [left, left+width]: el borde inferior del header visible (móvil o escritorio), para no
  * superponerlo con contenido que no le corresponde (título, botón de tema, nombre de usuario).
- * Única excepción: si esa columna se solapa con el cajoncito de anclaje (`#coolturito-dock-slot`,
- * con la misma tolerancia que el acierto de anclaje), el límite sube hasta su borde superior — es
- * la única "puerta" de entrada al header, del ancho del propio cajoncito.
+ * Única excepción: si esa columna se solapa con el cajoncito de anclaje visible (móvil o
+ * escritorio, con la misma tolerancia que el acierto de anclaje), el límite sube hasta su borde
+ * superior — es la única "puerta" de entrada al header, del ancho del propio cajoncito.
  */
 function limiteSuperiorHeader(left: number, width: number): number {
   let limite = 0
@@ -317,10 +335,16 @@ function limiteSuperiorHeaderEstricto(): number {
   return limite
 }
 
-/** Rect del cajoncito de anclaje, o null si no existe o no está visible (p. ej. header de escritorio oculto en móvil). */
+/** ids de los cajoncitos de anclaje: uno por header (móvil/escritorio, ver MainLayout.vue) -- solo uno está visible a la vez (`hidden md:block` / `md:hidden`). */
+const IDS_SLOT_ANCLAJE = ['coolturito-dock-slot-mobile', 'coolturito-dock-slot-desktop']
+
+/** Rect del cajoncito de anclaje actualmente visible (móvil o escritorio), o null si ninguno lo está. */
 function obtenerSlotAnclaje(): DOMRect | null {
-  const rect = document.getElementById('coolturito-dock-slot')?.getBoundingClientRect()
-  return rect && rect.width > 0 && rect.height > 0 ? rect : null
+  for (const id of IDS_SLOT_ANCLAJE) {
+    const rect = document.getElementById(id)?.getBoundingClientRect()
+    if (rect && rect.width > 0 && rect.height > 0) return rect
+  }
+  return null
 }
 
 /** Posición (viewport) centrada del mini-avatar dentro del cajoncito. */
@@ -342,6 +366,27 @@ function colisionaConSlotAnclaje(rect: { left: number; top: number; width: numbe
 }
 
 /**
+ * true si el CURSOR (no el cuerpo arrastrado) cae sobre el cajoncito, con la misma tolerancia.
+ * Usado solo para decidir el amague visual EN VIVO (`promoverAAnclado`, mientras se arrastra el
+ * cuerpo completo) -- a diferencia de `colisionaConSlotAnclaje` (usada al soltar, con el rect
+ * completo del cuerpo arrastrado, sin tocar). Con el cuerpo completo (76px+, bastante más grande
+ * que el cajoncito de 48px), comprobar el rect entero disparaba el amague apenas un BORDE del
+ * cuerpo rozaba la tolerancia, aunque el cursor (y el resto del cuerpo) siguiera bien lejos --
+ * daba la sensación de que el cursor "se despegaba" del mini-avatar apenas se acercaba al header.
+ * Al soltar, la decisión real de anclar sigue siendo la misma de siempre (`resolverSueltaFlotante`
+ * → `colisionaConSlotAnclaje` con el cuerpo completo) -- esto solo decide cuándo se ve el amague
+ * durante el arrastre, no cambia qué termina anclado al soltar.
+ */
+function cursorSobreCajoncito(clientX: number, clientY: number): boolean {
+  const slot = obtenerSlotAnclaje()
+  if (!slot) return false
+  return (
+    clientX >= slot.left - MARGEN_ACIERTO_ANCLAJE && clientX <= slot.right + MARGEN_ACIERTO_ANCLAJE &&
+    clientY >= slot.top - MARGEN_ACIERTO_ANCLAJE && clientY <= slot.bottom + MARGEN_ACIERTO_ANCLAJE
+  )
+}
+
+/**
  * Posición "natural" (sin el translate de arrastre) para el tamaño ACTUAL del contenido.
  * Se deriva del ancla CSS (bottom-4 right-4) usando solo rect.width/height, que el transform
  * no altera. OJO: no usar `rect.left - offset.x` para esto — mientras el propio contenedor o el
@@ -350,8 +395,8 @@ function colisionaConSlotAnclaje(rect: { left: number; top: number; width: numbe
  */
 function baseNatural(rect: DOMRect): { left: number; top: number; width: number; height: number } {
   return {
-    left: window.innerWidth - MARGEN_BORDE - rect.width,
-    top: window.innerHeight - MARGEN_BORDE - rect.height,
+    left: anchoVisible() - MARGEN_BORDE - rect.width,
+    top: altoVisible() - MARGEN_BORDE - rect.height,
     width: rect.width,
     height: rect.height,
   }
@@ -364,10 +409,10 @@ function baseNatural(rect: DOMRect): { left: number; top: number; width: number;
  */
 function limitarOffset(x: number, y: number, base: typeof baseArrastre, estricto = false): { x: number; y: number } {
   const minX = limiteIzquierdoSidebar() - base.left
-  const maxX = window.innerWidth - base.width - base.left
+  const maxX = anchoVisible() - base.width - base.left
   const clampedX = Math.min(Math.max(x, minX), maxX)
   const minY = (estricto ? limiteSuperiorHeaderEstricto() : limiteSuperiorHeader(base.left + clampedX, base.width)) - base.top
-  const maxY = window.innerHeight - base.height - base.top
+  const maxY = altoVisible() - base.height - base.top
   return { x: clampedX, y: Math.min(Math.max(y, minY), maxY) }
 }
 
@@ -392,19 +437,28 @@ function iniciarArrastre(e: PointerEvent): void {
 }
 
 /**
- * Clampa el arrastre del mini-avatar anclado a los límites del propio cajoncito -- su única área
- * de movimiento permitida mientras siga contando como "seguir anclado" (ver
- * `todaviaColisionaConCajoncito`, misma tolerancia que `colisionaConSlotAnclaje` al soltar): no
- * puede tocar el resto del header, ni siquiera de paso.
+ * Clampa el arrastre del mini-avatar anclado a la zona de tolerancia alrededor del cajoncito --
+ * su única área de movimiento permitida mientras siga contando como "seguir anclado" (los mismos
+ * límites que hacen que `colisionaConSlotAnclaje` sea true, no solo el recuadro visual del
+ * cajoncito): no puede tocar el resto del header, ni siquiera de paso. Usar la zona de tolerancia
+ * completa (en vez de solo el recuadro de 48px) es a propósito: adentro de ella el cursor sigue
+ * pegado al mini-avatar (el clamp casi nunca llega a activarse), en vez de quedar plantado en un
+ * recuadro de apenas 6-7px de margen mientras el cursor se sigue moviendo dentro de la tolerancia.
+ *
+ * Además se intersecta con la zona visible real (0/`anchoVisible()`/`altoVisible()`, que excluyen
+ * la scrollbar -- ver su comentario): el cajoncito vive pegado al borde derecho del header, así
+ * que su zona de tolerancia (`MARGEN_ACIERTO_ANCLAJE` de más) puede sobrepasar el borde real de la
+ * pantalla -- sin este tope, el mini-avatar se podía arrastrar hasta quedar tapado debajo de la
+ * scrollbar (o de plano fuera de la ventana), sin ningún impedimento visible.
  */
 function limitarOffsetAlCajoncito(x: number, y: number): { x: number; y: number } {
   if (!baseAnclajeArrastre) return { x, y }
   const slot = obtenerSlotAnclaje()
   if (!slot) return { x, y }
-  const minX = slot.left - baseAnclajeArrastre.left
-  const maxX = slot.right - TAMANO_ANCLADO - baseAnclajeArrastre.left
-  const minY = slot.top - baseAnclajeArrastre.top
-  const maxY = slot.bottom - ALTO_ANCLADO - baseAnclajeArrastre.top
+  const minX = Math.max(slot.left - MARGEN_ACIERTO_ANCLAJE - TAMANO_ANCLADO, 0) - baseAnclajeArrastre.left
+  const maxX = Math.min(slot.right + MARGEN_ACIERTO_ANCLAJE, anchoVisible() - TAMANO_ANCLADO) - baseAnclajeArrastre.left
+  const minY = Math.max(slot.top - MARGEN_ACIERTO_ANCLAJE - ALTO_ANCLADO, 0) - baseAnclajeArrastre.top
+  const maxY = Math.min(slot.bottom + MARGEN_ACIERTO_ANCLAJE, altoVisible() - ALTO_ANCLADO) - baseAnclajeArrastre.top
   return { x: Math.min(Math.max(x, minX), maxX), y: Math.min(Math.max(y, minY), maxY) }
 }
 
@@ -442,6 +496,36 @@ function promoverAFlotante(e: PointerEvent): void {
   })
 }
 
+/**
+ * Simétrico a `promoverAFlotante`: al arrastrar el cuerpo completo (flotante) hasta acercar el
+ * CURSOR al cajoncito (`cursorSobreCajoncito`), lo confina ahí mismo en el mismo gesto (mismo
+ * puntero todavía presionado) -- se ve "encogerse" hacia el cajoncito mientras se lo sigue
+ * arrastrando, en vez de recién notarse al soltar. Se dispara por la posición del CURSOR, no por
+ * el rect completo del cuerpo arrastrado (mucho más grande que el cajoncito): usar el rect
+ * disparaba el amague apenas un borde lejano del cuerpo rozaba la tolerancia, con el cursor todavía
+ * bien lejos del cajoncito -- se sentía como que el cursor "se despegaba" del mini-avatar apenas se
+ * acercaba al header. Al soltar, la decisión real de anclar sigue siendo la de siempre
+ * (`resolverSueltaFlotante` → `colisionaConSlotAnclaje`, con el rect completo) -- no cambia CUÁNDO/SI
+ * algo queda anclado al soltar, solo cuándo se ve el amague durante el arrastre. Si el usuario sigue
+ * arrastrando y se aleja de nuevo del cajoncito antes de soltar, `promoverAFlotante` ya lo revierte
+ * (mismo mecanismo, en sentido inverso).
+ *
+ * A diferencia de `promoverAFlotante` (que sí necesita esperar un `nextTick` para medir el tamaño
+ * del cuerpo completo, desconocido de antemano), acá el tamaño del mini-avatar ya se conoce como
+ * constante (`TAMANO_ANCLADO`/`ALTO_ANCLADO`), así que todo se calcula de una sola vez, sin esperar
+ * ningún render: `baseAnclajeArrastre` queda listo antes de que Vue vuelva a pintar, centrado en el
+ * cursor. Esperar al `nextTick` (como en un primer intento) dejaba `baseAnclajeArrastre` en null
+ * durante ESE primer render, que entonces caía en la posición de reposo centrada en el cajoncito
+ * -- ignorando cursor y arrastre -- y de ahí quedaba el mismo bug de "cursor separado" ya visto y
+ * corregido en `promoverAFlotante`.
+ */
+function promoverAAnclado(e: PointerEvent): void {
+  anclado.value = true
+  baseAnclajeArrastre = { left: e.clientX - TAMANO_ANCLADO / 2, top: e.clientY - ALTO_ANCLADO / 2 }
+  offset.value = limitarOffsetAlCajoncito(0, 0)
+  inicioArrastre = { x: e.clientX, y: e.clientY, offsetX: offset.value.x, offsetY: offset.value.y }
+}
+
 function moverArrastre(e: PointerEvent): void {
   const dx = e.clientX - inicioArrastre.x
   const dy = e.clientY - inicioArrastre.y
@@ -457,14 +541,26 @@ function moverArrastre(e: PointerEvent): void {
     }
     return
   }
-  offset.value = limitarOffset(inicioArrastre.offsetX + dx, inicioArrastre.offsetY + dy, baseArrastre)
+  if (cursorSobreCajoncito(e.clientX, e.clientY)) {
+    promoverAAnclado(e)
+  } else {
+    offset.value = limitarOffset(inicioArrastre.offsetX + dx, inicioArrastre.offsetY + dy, baseArrastre)
+  }
 }
 
 function terminarArrastre(e: PointerEvent): void {
   arrastreActivo.value = false
   asistente.marcarArrastre(false)
   window.removeEventListener('pointermove', moverArrastre)
-  if (!huboMovimiento) return
+  if (!huboMovimiento) {
+    // Tap sin arrastre: abrir aquí mismo (pointerup), no esperar al `click` sintetizado por el
+    // navegador -- en táctil ese click puede llegar tarde o directamente no llegar, y hacía falta
+    // un segundo toque para abrir el chat. Si el click síntetico sí llega después, `onClickFab` ve
+    // `seAcabaDeArrastrar` y no vuelve a abrir (evita abrir dos veces con mouse/touch normales).
+    abrir()
+    seAcabaDeArrastrar = true
+    return
+  }
   seAcabaDeArrastrar = true
   if (anclado.value) {
     resolverSueltaDesdeAnclado(e.clientX)
@@ -489,8 +585,12 @@ function resolverSueltaDesdeAnclado(ultimoClientX: number): void {
   if (!baseAnclajeArrastre) return
   const rectActual = { left: baseAnclajeArrastre.left + offset.value.x, top: baseAnclajeArrastre.top + offset.value.y, width: TAMANO_ANCLADO, height: ALTO_ANCLADO }
   if (colisionaConSlotAnclaje(rectActual)) {
+    // Sin esto, este pequeño ajuste (encajar del todo en el centro del cajoncito) se animaba con
+    // la transición de 300ms -- ya no queda arrastre activo para suprimirla (ver saltarTransicionAnclaje).
+    saltarTransicionAnclaje.value = true
     offset.value = { x: 0, y: 0 }
     guardarPosicion()
+    nextTick(() => requestAnimationFrame(() => { saltarTransicionAnclaje.value = false }))
     return
   }
   desanclarWidget(ultimoClientX, rectActual.top)
@@ -594,12 +694,15 @@ function reajustarOffset(yAbsolutoPreferido?: number): void {
  * cajoncito del header vía top/left, leído en vivo de `anclajeVersion` (getBoundingClientRect
  * no es reactivo por sí solo) — salvo que el chat esté visible (`panelVisible`, no `abierto`
  * directamente -- ver su declaración): el panel (384px de ancho) no cabe centrado en el cajoncito
- * de 48px sin salirse de la pantalla, así que en ese caso cuelga hacia abajo desde el header, con
- * su borde derecho alineado al del cajoncito. Anclado y arrastrando: el top/left queda congelado
- * en la posición donde empezó el arrastre y solo se anima el translate, igual que el modo flotante
- * (el chat no puede estar abierto mientras se arrastra: el fab que inicia el arrastre solo se
- * renderiza con el chat cerrado). Si el cajoncito no existe (p. ej. header de escritorio oculto en
- * móvil), cae a flotante.
+ * de 48px sin salirse de la pantalla, así que en ese caso cuelga hacia abajo desde el header,
+ * pegado al borde visible de la pantalla (mismo margen `MARGEN_BORDE` que el widget flotante en
+ * reposo) -- NO al borde del cajoncito: en el header móvil el cajoncito ya no es el elemento más a
+ * la derecha (el botón de tema quedó a su derecha), así que alinear el panel al cajoncito lo dejaba
+ * corrido hacia la izquierda, con un hueco vacío hasta el borde real. Anclado y arrastrando: el
+ * top/left queda congelado en la posición donde empezó el arrastre y solo se anima el translate,
+ * igual que el modo flotante (el chat no puede estar abierto mientras se arrastra: el fab que
+ * inicia el arrastre solo se renderiza con el chat cerrado). Si el cajoncito no existe (p. ej.
+ * header de escritorio oculto en móvil), cae a flotante.
  */
 const estiloRaiz = computed(() => {
   anclajeVersion.value // dependencia reactiva: fuerza recálculo ante resize/observers
@@ -616,7 +719,7 @@ const estiloRaiz = computed(() => {
       if (panelVisible.value) {
         return {
           top: `${slot.bottom + MARGEN_BORDE}px`, left: 'auto',
-          right: `${window.innerWidth - slot.right}px`, bottom: 'auto',
+          right: `${window.innerWidth - anchoVisible() + MARGEN_BORDE}px`, bottom: 'auto',
           transform: 'none',
         }
       }
@@ -695,6 +798,9 @@ onMounted(() => {
   saludar()
   reiniciarInactividad()
   globoTimeout = setTimeout(() => { globoDescartado.value = true }, DURACION_GLOBO_MS)
+  mqlMovil = window.matchMedia('(max-width: 767.98px)')
+  actualizarEsMovil()
+  mqlMovil.addEventListener('change', actualizarEsMovil)
   try {
     const guardado = localStorage.getItem(CLAVE_POSICION)
     if (guardado) {
@@ -713,8 +819,10 @@ onMounted(() => {
   if (raizRef.value) observadorTamano.observe(raizRef.value)
   const sidebar = document.getElementById('app-sidebar')
   if (sidebar) observadorTamano.observe(sidebar)
-  const slotAnclaje = document.getElementById('coolturito-dock-slot')
-  if (slotAnclaje) observadorTamano.observe(slotAnclaje)
+  for (const id of IDS_SLOT_ANCLAJE) {
+    const slotAnclaje = document.getElementById(id)
+    if (slotAnclaje) observadorTamano.observe(slotAnclaje)
+  }
   window.addEventListener('mousemove', reiniciarInactividad, { passive: true })
   window.addEventListener('keydown', reiniciarInactividad)
   window.addEventListener('click', reiniciarInactividad)
@@ -727,6 +835,7 @@ onUnmounted(() => {
   if (idleTimeout) clearTimeout(idleTimeout)
   if (globoTimeout) clearTimeout(globoTimeout)
   observadorTamano?.disconnect()
+  mqlMovil?.removeEventListener('change', actualizarEsMovil)
   window.removeEventListener('mousemove', reiniciarInactividad)
   window.removeEventListener('keydown', reiniciarInactividad)
   window.removeEventListener('click', reiniciarInactividad)
