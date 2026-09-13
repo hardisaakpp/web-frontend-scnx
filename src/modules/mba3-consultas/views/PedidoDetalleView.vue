@@ -347,7 +347,7 @@
         <!-- Botón Cancelar Pedido (parte inferior) - Estado CONFIRMADO POR PRODUCCION, solo odcsap.view -->
         <div
           v-if="puedeCancelarPorElRayo" 
-          class="mt-6 pb-6 flex items-center justify-between border-t border-gray-200 dark:border-gray-700 pt-6"
+          class="mt-6 pb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-t border-gray-200 dark:border-gray-700 pt-6"
         >
           <div class="text-sm text-gray-600 dark:text-gray-400 max-w-2xl">
             <p class="font-medium">⚠️ Cancelar pedido</p>

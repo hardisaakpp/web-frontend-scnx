@@ -94,12 +94,12 @@
   <div class="max-w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
     <div class="space-y-6" :class="{ 'pointer-events-none opacity-75': uploading }">
       <!-- Header -->
-      <div class="flex items-center justify-between">
+      <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 class="text-3xl font-bold text-gray-900 dark:text-white">Crear Pedido Manual</h1>
           <p class="mt-1 text-sm text-gray-500 dark:text-gray-300">Crea un pedido manualmente ingresando los datos por pantalla</p>
         </div>
-        <div class="flex items-center gap-2">
+        <div class="flex items-center flex-wrap gap-2">
           <button
             @click="goToCargarPlantillas"
             :disabled="uploading"

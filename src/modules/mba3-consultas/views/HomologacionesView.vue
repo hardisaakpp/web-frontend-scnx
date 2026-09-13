@@ -27,7 +27,7 @@
           Administra las homologaciones de SKU que no coinciden entre MBA3 y SAP
         </p>
       </div>
-      <div class="flex items-center gap-3">
+      <div class="flex items-center flex-wrap gap-3">
         <button
           type="button"
           :disabled="cruceEnCurso || store.loading"

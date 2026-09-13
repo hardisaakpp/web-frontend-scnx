@@ -39,7 +39,7 @@
                     </svg>
                     Información MBA3 (Solo lectura)
                   </h3>
-                  <div class="grid grid-cols-2 gap-4">
+                  <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <label class="block text-xs font-medium text-blue-700 dark:text-blue-400 mb-1">SKU MBA3</label>
                       <div class="text-sm font-mono text-blue-900 dark:text-blue-200 bg-white dark:bg-gray-700 px-3 py-2 rounded border border-blue-200 dark:border-blue-700 transition-colors duration-300">
@@ -82,7 +82,7 @@
                     Información SAP (Editable)
                   </h3>
                   <form @submit.prevent="handleSubmit" class="space-y-4">
-                    <div class="grid grid-cols-2 gap-4">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
                         <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">SKU SAP</label>
                         <input

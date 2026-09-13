@@ -94,14 +94,14 @@
   <div class="max-w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
     <div class="space-y-6" :class="{ 'pointer-events-none opacity-75': uploading }">
       <!-- Header -->
-      <div class="flex items-center justify-between">
+      <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 class="text-3xl font-bold text-gray-900 dark:text-white">Gestionar Pedido</h1>
           <p class="mt-1 text-sm text-gray-500 dark:text-gray-300">Editar cantidades, costos y gestionar pedidos</p>
         </div>
         <div class="flex items-center gap-3">
           <!-- Input de búsqueda de pedidos -->
-          <div class="relative">
+          <div class="relative w-full sm:w-auto">
             <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
               <svg class="h-5 w-5 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -113,7 +113,7 @@
               type="text"
               :list="`pedido-history-list-search`"
               placeholder="Buscar por N° de pedido (ej: P-12.48 - 12 - 2025)"
-              class="w-80 pl-10 pr-10 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm transition-colors bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-purple-500 focus:border-purple-500"
+              class="w-full sm:w-80 pl-10 pr-10 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm transition-colors bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-purple-500 focus:border-purple-500"
               autocomplete="off"
             />
             <datalist :id="`pedido-history-list-search`">

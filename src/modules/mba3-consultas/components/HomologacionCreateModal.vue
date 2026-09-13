@@ -39,7 +39,7 @@
                     </svg>
                     Informaciรณn MBA3
                   </h3>
-                  <div class="grid grid-cols-2 gap-4">
+                  <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <label class="block text-xs font-medium text-blue-700 dark:text-blue-300 mb-1">SKU MBA3 *</label>
                       <div class="flex gap-2">
@@ -66,7 +66,7 @@
                       </div>
                     </div>
                   </div>
-                  <div v-if="datosMba3" class="mt-4 grid grid-cols-2 gap-4 text-xs text-blue-700 dark:text-blue-300">
+                  <div v-if="datosMba3" class="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4 text-xs text-blue-700 dark:text-blue-300">
                     <div v-if="datosMba3.corp">
                       <span class="font-medium">Corp:</span> {{ datosMba3.corp }}
                     </div>
@@ -91,7 +91,7 @@
                     Informaciรณn SAP
                   </h3>
                   <form @submit.prevent="handleSubmit" class="space-y-4">
-                    <div class="grid grid-cols-2 gap-4">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
                         <label class="block text-xs font-medium text-gray-700 dark:text-gray-200 mb-1">SKU SAP *</label>
                         <div class="flex gap-2">

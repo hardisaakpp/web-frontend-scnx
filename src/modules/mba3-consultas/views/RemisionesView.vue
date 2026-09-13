@@ -6,9 +6,9 @@
         <h1 class="text-3xl font-bold text-gray-900 dark:text-gray-100">Documentos de Remisión</h1>
         <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Consulta y visualiza los documentos de remisión disponibles</p>
       </div>
-      <div class="flex items-center gap-3">
-        <button 
-          @click="consultarDesdeMBA3" 
+      <div class="flex items-center flex-wrap gap-3">
+        <button
+          @click="consultarDesdeMBA3"
           class="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
           :disabled="consultandoMBA3 || loading"
         >
