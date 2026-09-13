@@ -945,7 +945,7 @@ const ocRangeEnd = computed(() => {
 
 watch(currentPageOC, (page, prev) => {
   if (page !== prev) {
-    void cargarOrdenesCompraPendientes()
+    cargarOrdenesCompraPendientes()
   }
 })
 
@@ -954,7 +954,7 @@ watch(currentPageOC, (page, prev) => {
 function handlePageSizeChangeOC(nuevoTamano: number) {
   guardarPageSizeOC(nuevoTamano)
   if (currentPageOC.value === 1) {
-    void cargarOrdenesCompraPendientes()
+    cargarOrdenesCompraPendientes()
   } else {
     currentPageOC.value = 1
   }
@@ -967,7 +967,7 @@ watch(searchProcesarOC, () => {
     if (currentPageOC.value !== 1) {
       currentPageOC.value = 1
     } else {
-      void cargarOrdenesCompraPendientes()
+      cargarOrdenesCompraPendientes()
     }
   }, SEARCH_DEBOUNCE_MS)
 })
@@ -976,7 +976,7 @@ watch(soloPendienteReintentoOC, () => {
   if (currentPageOC.value !== 1) {
     currentPageOC.value = 1
   } else {
-    void cargarOrdenesCompraPendientes()
+    cargarOrdenesCompraPendientes()
   }
 })
 
