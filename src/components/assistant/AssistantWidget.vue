@@ -422,17 +422,22 @@ function todaviaColisionaConCajoncito(x: number, y: number): boolean {
  * muro/imantado al soltar (`resolverSueltaFlotante`), el mismo efecto que arrastrar y soltar en
  * cualquier parte de la pantalla. Solo aplica al SACARLO del cajoncito -- meterlo ya funciona así
  * (`resolverSueltaFlotante` → `anclarWidget`), no hace falta tocar ese camino.
+ *
+ * Centra el cuerpo completo (bastante más grande que el mini-avatar, y con otra proporción) en el
+ * cursor en vez de conservar la esquina superior izquierda del mini-avatar: como el mini-avatar
+ * venía confinado al cajoncito mientras el cursor podía haberse alejado bastante de él (zona 1 de
+ * `moverArrastre`), esa esquina ya no tiene por qué estar cerca del cursor -- mantenerla fija dejaba
+ * al cuerpo completo (y sobre todo, más alto que ancho) apareciendo lejos del cursor al agrandarse.
  */
 function promoverAFlotante(e: PointerEvent): void {
-  if (!baseAnclajeArrastre) return
-  const leftActual = baseAnclajeArrastre.left + offset.value.x
-  const topActual = baseAnclajeArrastre.top + offset.value.y
   anclado.value = false
   nextTick(() => {
     const el = raizRef.value
     if (!el) return
     baseArrastre = baseNatural(el.getBoundingClientRect())
-    offset.value = limitarOffset(leftActual - baseArrastre.left, topActual - baseArrastre.top, baseArrastre)
+    const leftDeseado = e.clientX - baseArrastre.width / 2
+    const topDeseado = e.clientY - baseArrastre.height / 2
+    offset.value = limitarOffset(leftDeseado - baseArrastre.left, topDeseado - baseArrastre.top, baseArrastre)
     inicioArrastre = { x: e.clientX, y: e.clientY, offsetX: offset.value.x, offsetY: offset.value.y }
   })
 }
