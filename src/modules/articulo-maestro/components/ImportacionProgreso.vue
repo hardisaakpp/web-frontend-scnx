@@ -26,14 +26,42 @@
                 <Metric label="Grupos pendientes" :value="store.gruposPendientes" tone="warning" />
                 <Metric label="Imágenes con error" :value="store.imagenesConError" tone="error" />
             </div>
-            <p
-                v-if="(job.estado === 'COMPLETADO' || job.estado === 'COMPLETADO_CON_ERRORES') && job.filasCorrectas > 0"
-                class="mt-3 text-xs text-gray-500 dark:text-gray-400"
-            >
-                Los artículos guardados correctamente ya se encolaron y se están sincronizando con SAP en segundo plano.
-                Puedes seguir el avance en
-                <router-link to="/articulo-maestro/migracion" class="underline hover:no-underline">Monitoreo de Sincronización SAP</router-link>.
+        </div>
+
+        <div v-if="procesamientoFinalizado" role="status" class="space-y-3 rounded-lg border border-emerald-200 bg-emerald-50 p-4 dark:border-emerald-800 dark:bg-emerald-900/20">
+            <p class="text-sm font-semibold text-emerald-800 dark:text-emerald-300">
+                ✅ Artículos procesados y encolados para sincronización con SAP Business One.
             </p>
+            <button
+                type="button"
+                class="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-60"
+                :disabled="navegando"
+                @click="irAMonitoreoSap"
+            >
+                🔍 Ir a Monitoreo de Sincronización SAP
+            </button>
+            <p v-if="errorNavegacion" role="alert" class="text-xs text-red-700 dark:text-red-300">{{ errorNavegacion }}</p>
+        </div>
+
+        <div v-if="(procesamientoFinalizado && job.filasCorrectas > 0) || job.filasError > 0" class="flex flex-wrap gap-3">
+            <button
+                v-if="procesamientoFinalizado && job.filasCorrectas > 0"
+                type="button"
+                class="rounded-lg bg-emerald-600 px-3 py-2 text-xs font-semibold text-white hover:bg-emerald-700 disabled:opacity-60"
+                :disabled="store.downloading"
+                @click="store.descargarReporteExitos"
+            >
+                {{ store.downloading ? 'Descargando...' : etiquetaReporteExitos }}
+            </button>
+            <button
+                v-if="job.filasError > 0"
+                type="button"
+                class="rounded-lg bg-red-600 px-3 py-2 text-xs font-semibold text-white hover:bg-red-700 disabled:opacity-60"
+                :disabled="store.downloading"
+                @click="store.descargarErroresPlantilla"
+            >
+                {{ store.downloading ? 'Descargando...' : `📥 Descargar Plantilla de Errores (${job.filasError})` }}
+            </button>
         </div>
 
         <!-- Resumen gráfico + guía de reintento: lote con errores parciales
@@ -45,7 +73,7 @@
         >
             <div class="flex flex-wrap gap-4 text-sm">
                 <span class="inline-flex items-center gap-1.5 font-semibold text-emerald-700 dark:text-emerald-400">
-                    🟢 {{ job.filasCorrectas }} creado(s) exitosamente (encolado(s) hacia SAP)
+                    🟢 {{ job.filasCorrectas }} {{ job.tipo === 'CREAR' ? 'creado(s)' : 'actualizado(s)' }} exitosamente (encolado(s) hacia SAP)
                 </span>
                 <span class="inline-flex items-center gap-1.5 font-semibold text-red-700 dark:text-red-400">
                     🔴 {{ job.filasError }} rechazado(s) por validación
@@ -71,7 +99,7 @@
                 :class="tabClass('exitos')"
                 @click="pestanaActiva = 'exitos'"
             >
-                🟢 Creados Exitosamente ({{ articulosCreados.length }})
+                🟢 {{ job.tipo === 'CREAR' ? 'Creados' : 'Actualizados' }} Exitosamente ({{ articulosCreados.length }})
             </button>
             <button
                 type="button"
@@ -88,16 +116,8 @@
             <div class="rounded-lg border border-emerald-200 bg-white p-4 dark:border-emerald-800 dark:bg-gray-900/40">
                 <div class="mb-3 flex flex-wrap items-center justify-between gap-3">
                     <p class="text-sm font-semibold text-gray-900 dark:text-white">
-                        Artículos creados ({{ articulosCreados.length }})
+                        Artículos {{ job.tipo === 'CREAR' ? 'creados' : 'actualizados' }} ({{ articulosCreados.length }})
                     </p>
-                    <button
-                        type="button"
-                        class="rounded-lg bg-emerald-600 px-3 py-2 text-xs font-semibold text-white hover:bg-emerald-700 disabled:opacity-60"
-                        :disabled="store.downloading"
-                        @click="store.descargarReporteExitos"
-                    >
-                        {{ store.downloading ? 'Descargando...' : `🟢 📥 Descargar Creados (${articulosCreados.length})` }}
-                    </button>
                 </div>
                 <div class="max-h-64 overflow-auto rounded-md border border-gray-200 dark:border-gray-700">
                     <table class="w-full text-xs text-left">
@@ -168,17 +188,8 @@
                 (p. ej. manageBatchNumbers) para aplicar precios, descripciones y demás cambios comerciales sin
                 restricciones.
             </p>
-            <!-- Si NO hay errores reales, el botón de descarga vive aquí --
-                 el reporte reimportable ya incluye estas filas igual. -->
+            <!-- El log complementa la plantilla de errores disponible arriba. -->
             <div v-if="!store.erroresNoEstructurales.length" class="mt-3 flex flex-wrap gap-3">
-                <button
-                    type="button"
-                    class="rounded-lg bg-amber-600 px-3 py-2 text-xs font-semibold text-white hover:bg-amber-700 disabled:opacity-60"
-                    :disabled="store.downloading"
-                    @click="store.descargarErroresPlantilla"
-                >
-                    {{ store.downloading ? 'Descargando...' : `📥 Descargar Plantilla de Errores (${store.errores.length})` }}
-                </button>
                 <button
                     type="button"
                     class="text-xs font-semibold text-amber-700 underline disabled:opacity-60 dark:text-amber-300"
@@ -206,14 +217,6 @@
                     </p>
                 </div>
                 <div class="flex shrink-0 flex-col items-end gap-1">
-                    <button
-                        type="button"
-                        class="rounded-lg bg-red-600 px-3 py-2 text-xs font-semibold text-white hover:bg-red-700 disabled:opacity-60"
-                        :disabled="store.downloading"
-                        @click="store.descargarErroresPlantilla"
-                    >
-                        {{ store.downloading ? 'Descargando...' : `📥 Descargar Plantilla de Errores (${store.errores.length})` }}
-                    </button>
                     <button
                         type="button"
                         class="text-xs font-semibold text-red-700 underline disabled:opacity-60 dark:text-red-300"
@@ -288,9 +291,34 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { storeToRefs } from 'pinia'
+import { useRouter } from 'vue-router'
 import Metric from './ImportacionProgresoMetric.vue'
 import { useImportacionArticulosStore } from '../stores/importacionArticulosStore'
-import type { ArticuloCreadoResumen, ImportacionGrupo } from '../services/articuloService'
+import type { ArticuloCreadoResumen, ImportacionGrupo, TipoCargaMasiva } from '../services/articuloService'
+
+const emit = defineEmits<(event: 'close') => void>()
+const router = useRouter()
+const navegando = ref(false)
+const errorNavegacion = ref('')
+
+async function irAMonitoreoSap(): Promise<void> {
+    if (navegando.value) return
+    navegando.value = true
+    errorNavegacion.value = ''
+    const destino = '/articulo-maestro/migracion'
+    try {
+        const fallo = await router.push(destino)
+        if (!fallo || router.currentRoute.value.path === destino) {
+            emit('close')
+        } else {
+            errorNavegacion.value = 'No fue posible abrir el monitoreo de sincronización SAP.'
+        }
+    } catch {
+        errorNavegacion.value = 'No fue posible abrir el monitoreo de sincronización SAP.'
+    } finally {
+        navegando.value = false
+    }
+}
 
 function fotosCompletadas(grupo: ImportacionGrupo): number {
     return grupo.imagenes.filter(imagen => imagen.estado === 'COMPLETADA').length
@@ -304,6 +332,20 @@ const job = computed(() => {
     }
     return trabajo.value
 })
+
+const procesamientoFinalizado = computed(() =>
+    ['COMPLETADO', 'COMPLETADO_CON_ERRORES'].includes(job.value.estado)
+)
+
+const ETIQUETAS_REPORTE: Record<TipoCargaMasiva, string> = {
+    crear: 'Descargar Reporte Completo de Artículos Creados (.xlsx)',
+    actualizar: 'Descargar Reporte de Modificaciones (.xlsx)',
+    actualizar_precios: 'Descargar Reporte de Precios Actualizados (.xlsx)',
+    actualizar_estado: 'Descargar Reporte de Estados Actualizados (.xlsx)'
+}
+const etiquetaReporteExitos = computed(() =>
+    store.tipoOperacion ? ETIQUETAS_REPORTE[store.tipoOperacion] : ''
+)
 
 // Trazabilidad de identificadores generados (ItemCode/BarCode/SKU base):
 // una fila por artículo COMPLETADO, ya enriquecida por el backend.

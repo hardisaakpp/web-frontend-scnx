@@ -10,6 +10,10 @@ import { useToast } from '@/composables/useToast'
 
 const STORAGE_KEY = 'articulo-maestro:importacion-activa'
 const POLL_INTERVAL_MS = 2500
+// Backoff exponencial: si el servidor está lento/caído, espaciar los
+// siguientes intentos en vez de insistir cada 2.5s contra algo que ya
+// está fallando.
+const MAX_POLL_INTERVAL_MS = 10_000
 const TERMINAL_STATES = new Set([
     'COMPLETADO',
     'COMPLETADO_CON_ERRORES',
@@ -23,8 +27,12 @@ interface ImportacionState {
     loading: boolean
     downloading: boolean
     error: string | null
-    pollTimer: ReturnType<typeof setInterval> | null
+    pollTimer: ReturnType<typeof setTimeout> | null
+    pollDelayMs: number
+    pollAbortController: AbortController | null
+    consultaEnCurso: number | null
     verificando: boolean
+    verificacionId: number
     resumenSimulacion: DryRunSummary | null
     errorSimulacion: string | null
     // H13: id del grupo con un reintento selectivo en vuelo -- distingue
@@ -64,13 +72,19 @@ export const useImportacionArticulosStore = defineStore(
             downloading: false,
             error: null,
             pollTimer: null,
+            pollDelayMs: POLL_INTERVAL_MS,
+            pollAbortController: null,
+            consultaEnCurso: null,
             verificando: false,
+            verificacionId: 0,
             resumenSimulacion: null,
             errorSimulacion: null,
             reintentandoGrupoId: null
         }),
 
         getters: {
+            tipoOperacion: (state): TipoCargaMasiva | null =>
+                state.trabajo ? state.trabajo.tipo.toLowerCase() as TipoCargaMasiva : null,
             isTerminal: (state): boolean =>
                 !!state.trabajo && TERMINAL_STATES.has(state.trabajo.estado),
             isActive(): boolean {
@@ -157,24 +171,29 @@ export const useImportacionArticulosStore = defineStore(
                 tipo: TipoCargaMasiva,
                 zipImagenes?: File | null
             ): Promise<void> {
+                const verificacionId = ++this.verificacionId
                 this.verificando = true
                 this.errorSimulacion = null
                 try {
-                    this.resumenSimulacion = await articuloService.verificarImportacion(
+                    const resumen = await articuloService.verificarImportacion(
                         file,
                         tipo,
                         zipImagenes
                     )
+                    if (verificacionId === this.verificacionId) this.resumenSimulacion = resumen
                 } catch (error: unknown) {
+                    if (verificacionId !== this.verificacionId) return
                     this.resumenSimulacion = null
                     this.errorSimulacion = getErrorMessage(error)
                     throw error
                 } finally {
-                    this.verificando = false
+                    if (verificacionId === this.verificacionId) this.verificando = false
                 }
             },
 
             resetVerificacion(): void {
+                this.verificacionId++
+                this.verificando = false
                 this.resumenSimulacion = null
                 this.errorSimulacion = null
             },
@@ -184,6 +203,7 @@ export const useImportacionArticulosStore = defineStore(
                 tipo: TipoCargaMasiva,
                 zipImagenes?: File | null
             ): Promise<void> {
+                if (this.loading || this.isActive) return
                 this.detenerPolling()
                 this.loading = true
                 this.error = null
@@ -195,12 +215,15 @@ export const useImportacionArticulosStore = defineStore(
                         zipImagenes
                     )
                     this.jobId = aceptada.jobId
+                    this.trabajo = null
                     globalThis.localStorage?.setItem(
                         STORAGE_KEY,
                         String(aceptada.jobId)
                     )
-                    await this.actualizar()
                     this.iniciarPolling()
+                    // El 202 confirma la recepción; consultar el progreso
+                    // no debe mantener bloqueado el envío del archivo.
+                    void this.actualizar()
                 } catch (error: unknown) {
                     this.error = getErrorMessage(error)
                     throw error
@@ -215,37 +238,75 @@ export const useImportacionArticulosStore = defineStore(
                 if (!this.isTerminal) this.iniciarPolling()
             },
 
-            async actualizar(): Promise<void> {
-                if (!this.jobId) return
+            async actualizar(signal?: AbortSignal): Promise<void> {
+                const jobId = this.jobId
+                if (!jobId || this.consultaEnCurso === jobId) return
+                this.consultaEnCurso = jobId
                 try {
-                    this.trabajo = await articuloService.getImportacion(
-                        this.jobId
-                    )
+                    const trabajo = await articuloService.getImportacion(jobId, signal)
+                    if (this.jobId !== jobId) return
+                    this.trabajo = trabajo
                     this.error = null
+                    // Éxito: volver al intervalo base -- el backoff solo debe
+                    // durar mientras el servidor siga respondiendo mal.
+                    this.pollDelayMs = POLL_INTERVAL_MS
                     if (this.isTerminal) {
+                        const errores = await articuloService.getErroresImportacion(jobId)
+                        if (this.jobId !== jobId) return
+                        this.errores = errores
                         this.detenerPolling()
-                        this.errores =
-                            await articuloService.getErroresImportacion(
-                                this.jobId
-                            )
                     }
                 } catch (error: unknown) {
+                    // Un abort deliberado (nuevo ciclo de polling, o
+                    // detenerPolling) no es un error de red real -- no debe
+                    // pisar `this.error` ni escalar el backoff.
+                    if (signal?.aborted) return
+                    if (this.jobId !== jobId) return
                     this.error = getErrorMessage(error)
-                    this.detenerPolling()
+                    this.pollDelayMs = Math.min(
+                        this.pollDelayMs * 2,
+                        MAX_POLL_INTERVAL_MS
+                    )
+                } finally {
+                    if (this.consultaEnCurso === jobId) this.consultaEnCurso = null
                 }
+            },
+
+            // Bucle de polling con `setTimeout` recursivo (en vez de
+            // `setInterval` de intervalo fijo): permite backoff exponencial
+            // ante fallas y garantiza que nunca se agende el siguiente tick
+            // mientras el anterior sigue en vuelo. Cada ciclo tiene su propio
+            // AbortController para poder cancelar la petición HTTP en curso
+            // (no solo ignorar su resultado) al desmontar o reiniciar.
+            programarSiguientePoll(): void {
+                this.pollTimer = globalThis.setTimeout(() => {
+                    this.pollAbortController?.abort()
+                    const controller = new AbortController()
+                    this.pollAbortController = controller
+                    void this.actualizar(controller.signal).finally(() => {
+                        // Si `detenerPolling()` corrió durante el await
+                        // (desmontaje, nuevo jobId), `pollTimer` ya es null:
+                        // no reprogramar un ciclo que nadie pidió.
+                        if (this.pollTimer !== null && !this.isTerminal) {
+                            this.programarSiguientePoll()
+                        }
+                    })
+                }, this.pollDelayMs)
             },
 
             iniciarPolling(): void {
                 if (this.pollTimer || !this.jobId || this.isTerminal) return
-                this.pollTimer = globalThis.setInterval(() => {
-                    void this.actualizar()
-                }, POLL_INTERVAL_MS)
+                this.programarSiguientePoll()
             },
 
             detenerPolling(): void {
-                if (!this.pollTimer) return
-                globalThis.clearInterval(this.pollTimer)
-                this.pollTimer = null
+                if (this.pollTimer) {
+                    globalThis.clearTimeout(this.pollTimer)
+                    this.pollTimer = null
+                }
+                this.pollAbortController?.abort()
+                this.pollAbortController = null
+                this.pollDelayMs = POLL_INTERVAL_MS
             },
 
             async reintentar(): Promise<void> {
@@ -293,11 +354,17 @@ export const useImportacionArticulosStore = defineStore(
             },
 
             async descargarReporteExitos(): Promise<void> {
-                if (!this.jobId) return
+                if (!this.trabajo || !this.tipoOperacion || this.downloading) return
                 this.downloading = true
                 try {
-                    await articuloService.descargarReporteExitosImportacion(
-                        this.jobId
+                    await articuloService.descargarReporteExitos(
+                        this.trabajo.id,
+                        this.tipoOperacion
+                    )
+                } catch {
+                    useToast().error(
+                        'No se pudo descargar el reporte',
+                        'Inténtelo nuevamente. La importación conserva su resultado.'
                     )
                 } finally {
                     this.downloading = false

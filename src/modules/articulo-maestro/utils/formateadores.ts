@@ -38,33 +38,53 @@ export interface CamposDescripcionFactura {
     pack?: string | null
 }
 
+export interface TokenDescripcionFactura {
+    etiqueta: string
+    valor: string
+}
+
 /**
- * Sugiere la Descripción de Factura (ItemName): N3 + Género + Atributo 2 +
- * Color + Marca + Pack, omitiendo en silencio (sin dejar dobles espacios)
- * cualquier componente vacío o centinela.
+ * Resuelve los componentes activos (no vacíos/centinela) de la fórmula
+ * oficial N3 + Género + Atributo 2 (con fallback a Atributo 1) + Color +
+ * Marca + Pack, en el mismo orden que compone `sugerirItemName`. Único
+ * punto de verdad para esa fórmula: tanto el texto final como la
+ * previsualización de tokens (Hero de ItemName en FormularioArticulo.vue)
+ * se derivan de esta lista para que no puedan desincronizarse entre sí.
  *
  * El fallback Atributo 2 -> Atributo 1 se resuelve aquí (no con un `||`
  * ingenuo en el llamador): un `atributo2` literalmente "NO APLICA" es
  * "truthy" en JS y bloquearía el fallback si se usara `campos.atributo2 ||
  * campos.atributo1` directamente.
  */
-export function sugerirItemName(campos: CamposDescripcionFactura): string {
+export function construirTokensDescripcionFactura(
+    campos: CamposDescripcionFactura
+): TokenDescripcionFactura[] {
     const atributo = esValorValidoParaDescripcion(campos.atributo2)
         ? campos.atributo2
         : campos.atributo1
 
-    const candidatos = [
-        campos.nv3,
-        campos.genero,
-        atributo,
-        campos.color,
-        campos.marca,
-        campos.pack
+    const candidatos: [string, string | null | undefined][] = [
+        ['Línea', campos.nv3],
+        ['Género', campos.genero],
+        ['Atributo', atributo],
+        ['Color', campos.color],
+        ['Marca', campos.marca],
+        ['Pack', campos.pack],
     ]
 
     return candidatos
-        .filter(esValorValidoParaDescripcion)
-        .map(valor => valor.trim())
+        .filter((par): par is [string, string] => esValorValidoParaDescripcion(par[1]))
+        .map(([etiqueta, valor]) => ({ etiqueta, valor: valor.trim() }))
+}
+
+/**
+ * Sugiere la Descripción de Factura (ItemName): concatena los tokens de
+ * `construirTokensDescripcionFactura`, sin dejar dobles espacios por
+ * componentes omitidos.
+ */
+export function sugerirItemName(campos: CamposDescripcionFactura): string {
+    return construirTokensDescripcionFactura(campos)
+        .map(token => token.valor)
         .join(' ')
         .slice(0, LONGITUD_MAXIMA_ITEM_NAME)
         .trim()
