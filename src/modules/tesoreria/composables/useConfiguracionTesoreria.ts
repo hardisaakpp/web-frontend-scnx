@@ -1,6 +1,7 @@
 import { computed, reactive, ref } from 'vue'
 import { useToast } from '@/composables/useToast'
 import { extraerMensajeError, tesoreriaService } from '../services/tesoreriaService'
+import { toTimeInputValue, toTimeSpanString } from '../utils/formatters'
 import type { ConfiguracionTesoreriaDto } from '../types/tesoreria.types'
 
 // Estado a nivel de módulo (mismo patrón que useMisDepositos.ts): la vista ejecutiva (Card 1) y el
@@ -9,12 +10,17 @@ import type { ConfiguracionTesoreriaDto } from '../types/tesoreria.types'
 const cargando = ref(true)
 const guardando = ref(false)
 
+// form.horaLimiteCorte se mantiene siempre en formato "HH:mm" (el que espera <input type="time">);
+// la conversión a/desde el TimeSpan "HH:mm:ss" del backend ocurre solo al cargar/guardar.
 const form = reactive<ConfiguracionTesoreriaDto>({
   bloqueoNuevoActivo: false,
   diasMaximoNuevo: 5,
   bloqueoDepositoActivo: false,
-  diasMaximoDeposito: 5
+  diasMaximoDeposito: 5,
+  horaLimiteCorte: '14:00'
 })
+
+const HORA_VALIDA = /^([01]\d|2[0-3]):[0-5]\d$/
 
 export function useConfiguracionTesoreria() {
   const toast = useToast()
@@ -26,6 +32,9 @@ export function useConfiguracionTesoreria() {
     if (form.bloqueoDepositoActivo && (form.diasMaximoDeposito < 1 || form.diasMaximoDeposito > 90)) {
       return 'Los días de gracia para el envío a SAP deben estar entre 1 y 90.'
     }
+    if (!HORA_VALIDA.test(form.horaLimiteCorte)) {
+      return 'La hora límite de corte no es válida.'
+    }
     return null
   })
 
@@ -33,7 +42,7 @@ export function useConfiguracionTesoreria() {
     cargando.value = true
     try {
       const data = await tesoreriaService.getConfiguracion()
-      Object.assign(form, data)
+      Object.assign(form, data, { horaLimiteCorte: toTimeInputValue(data.horaLimiteCorte) })
     } catch (err) {
       toast.error('No se pudo cargar la configuración', extraerMensajeError(err))
     } finally {
@@ -45,9 +54,12 @@ export function useConfiguracionTesoreria() {
     if (errorValidacion.value) return false
     guardando.value = true
     try {
-      const actualizada = await tesoreriaService.updateConfiguracion({ ...form })
-      Object.assign(form, actualizada)
-      toast.success('Configuración actualizada', 'Los nuevos días de gracia y candados aplican inmediatamente.')
+      const actualizada = await tesoreriaService.updateConfiguracion({
+        ...form,
+        horaLimiteCorte: toTimeSpanString(form.horaLimiteCorte)
+      })
+      Object.assign(form, actualizada, { horaLimiteCorte: toTimeInputValue(actualizada.horaLimiteCorte) })
+      toast.success('Configuración actualizada', 'Los nuevos días de gracia, hora de corte y candados aplican inmediatamente.')
       return true
     } catch (err) {
       toast.error('No se pudo guardar la configuración', extraerMensajeError(err))

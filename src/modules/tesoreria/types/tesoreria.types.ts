@@ -121,6 +121,9 @@ export interface ConfiguracionTesoreriaDto {
   diasMaximoNuevo: number
   bloqueoDepositoActivo: boolean
   diasMaximoDeposito: number
+  /** Hora local de Ecuador a partir de la cual se bloquea el registro extemporáneo. El backend
+   *  serializa el TimeSpan como "HH:mm:ss" (p. ej. "14:00:00"). */
+  horaLimiteCorte: string
 }
 
 export type UpdateConfiguracionRequest = ConfiguracionTesoreriaDto

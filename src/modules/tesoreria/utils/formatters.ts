@@ -43,3 +43,14 @@ export function diasTranscurridosDesde(fechaDateOnly: string): number {
   fecha.setHours(0, 0, 0, 0)
   return Math.round((hoy.getTime() - fecha.getTime()) / (1000 * 60 * 60 * 24))
 }
+
+/** TimeSpan del backend ("HH:mm:ss", p. ej. "14:00:00") → "HH:mm" para <input type="time">. */
+export function toTimeInputValue(hora: string | null | undefined): string {
+  if (!hora || hora.length < 5) return '14:00'
+  return hora.slice(0, 5)
+}
+
+/** "HH:mm" de <input type="time"> → "HH:mm:ss" (TimeSpan) que espera api-tesoreria. */
+export function toTimeSpanString(horaInput: string): string {
+  return horaInput.length === 5 ? `${horaInput}:00` : horaInput
+}

@@ -51,7 +51,10 @@
           <ul class="mt-4 flex-1 space-y-2.5 text-sm">
             <li class="flex items-center justify-between gap-3">
               <span class="text-gray-600 dark:text-gray-300">
-                Candado nuevos depósitos: <strong class="text-gray-900 dark:text-white">{{ form.diasMaximoNuevo }} días</strong>
+                Candado nuevos depósitos:
+                <strong class="text-gray-900 dark:text-white">
+                  {{ form.diasMaximoNuevo }} día{{ form.diasMaximoNuevo === 1 ? '' : 's' }} (Corte: {{ form.horaLimiteCorte }})
+                </strong>
               </span>
               <EstadoBadge :activo="form.bloqueoNuevoActivo" />
             </li>

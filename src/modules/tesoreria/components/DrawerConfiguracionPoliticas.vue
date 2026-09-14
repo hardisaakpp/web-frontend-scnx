@@ -91,6 +91,23 @@
                   <span class="text-xs text-slate-400">días desde la fecha de venta</span>
                 </div>
               </div>
+
+              <div class="flex flex-col gap-1.5 pt-2 border-t border-slate-800">
+                <label for="horaLimiteCorte" class="text-xs font-semibold text-slate-300">
+                  Hora límite de corte (día siguiente al vencimiento)
+                </label>
+                <div class="flex items-center gap-3">
+                  <input
+                    id="horaLimiteCorte"
+                    v-model="form.horaLimiteCorte"
+                    type="time"
+                    required
+                    :disabled="!form.bloqueoNuevoActivo"
+                    class="w-28 px-3 py-2 text-sm font-semibold border border-slate-700 rounded-lg bg-slate-800 text-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 disabled:opacity-50"
+                  />
+                  <span class="text-xs text-slate-400">hora de Ecuador a partir de la cual se bloquea el registro</span>
+                </div>
+              </div>
             </fieldset>
 
             <!-- Política 2: Envío a SAP -->
