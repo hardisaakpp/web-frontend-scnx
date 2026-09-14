@@ -5,7 +5,7 @@ import { ArrowPathIcon, MagnifyingGlassIcon, RectangleStackIcon } from '@heroico
 import { useSotStore } from '../stores/sotStore'
 import { useGrupoStore } from '../stores/grupoStore'
 import { useToast } from '@/composables/useToast'
-import QuickTablePagination from '@/components/QuickTablePagination.vue'
+import QuickTablePagination from '@/components/paginacion/QuickTablePagination.vue'
 import CrearGrupoModal from '../components/CrearGrupoModal.vue'
 import type { TransferenciaEstado, TipoGrupo } from '../types'
 

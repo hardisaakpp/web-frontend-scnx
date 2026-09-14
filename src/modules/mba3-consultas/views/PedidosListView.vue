@@ -29,7 +29,7 @@
               :contador="contadorPedidosPendientes"
               :activo="filtroSoloPendientes"
               :sufijo="esModoElRayo ? 'requieren tu acción' : 'requieren acción'"
-              titulo-inactivo="Filtrar para ver solo pedidos en estados: Confirmado por Producción, Confirmado y Enviado"
+              :titulo-inactivo="tituloInactivoPendientes"
               @toggle="filtroSoloPendientes = !filtroSoloPendientes; aplicarFiltroPendientes()"
             />
           </div>
@@ -156,7 +156,7 @@
                     : verDetalleCargandoId
                       ? 'opacity-50 pointer-events-none'
                       : 'hover:bg-gray-50 dark:hover:bg-gray-700/50',
-                  requiereAccionPedidoListado(pedido.estado) && esModoElRayo ? 'bg-orange-50/30 dark:bg-orange-900/10 border-l-4 border-orange-500 dark:border-orange-400' : ''
+                  pedidoRequiereAccion(pedido.estado) && esModoElRayo ? 'bg-orange-50/30 dark:bg-orange-900/10 border-l-4 border-orange-500 dark:border-orange-400' : ''
                 ]"
                 @click="verDetalle(pedido.pedido_id)"
               >
@@ -185,7 +185,7 @@
                     <span :class="getEstadoPedidoBadgeClassFull(pedido.estado)">
                       {{ getEstadoPedidoLabel(pedido.estado) }}
                     </span>
-                    <span v-if="requiereAccionPedidoListado(pedido.estado)" class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300" title="Requiere acción">
+                    <span v-if="pedidoRequiereAccion(pedido.estado)" class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300" title="Requiere acción">
                       !
                     </span>
                   </div>
@@ -236,10 +236,10 @@ import { onMounted, onUnmounted } from '@vue/runtime-core'
 import { useRouter, useRoute } from 'vue-router'
 import { useToast } from '@/composables/useToast'
 import { mba3ConsultasService, extractErrorMessage } from '../services/mba3ConsultasApi'
-import type { PedidosListadoResponse, PedidoResumido, PedidosListadoFiltros, PedidosListadoMetadata, EstadoPedidoOption } from '../types'
+import type { PedidoResumido, PedidosListadoFiltros, PedidosListadoMetadata, EstadoPedidoOption } from '../types'
 import { formatDate, formatDateTime } from '../utils/formatters'
 import { esProveedorElRayo } from '../utils/styleHelpers'
-import { getEstadoPedidoLabel, getEstadoPedidoBadgeClassFull, requiereAccionPedidoListado, ESTADOS_QUE_REQUIEREN_ACCION_PEDIDOS } from '../utils/estadoPedido'
+import { getEstadoPedidoLabel, getEstadoPedidoBadgeClassFull, requiereAccionPedidoListado, requiereAccionPedidoProduccion, ESTADOS_QUE_REQUIEREN_ACCION_PEDIDOS } from '../utils/estadoPedido'
 import { PAGE_SIZE_OPTIONS } from '../config/pagination'
 import { useFiltroTextoConDebounce } from '../composables/useFiltroTextoConDebounce'
 import { usePageSizePreference } from '../composables/usePageSizePreference'
@@ -254,8 +254,8 @@ import {
 } from '../composables/useSortableList'
 import { useOffsetPagination } from '../composables/useOffsetPagination'
 import { useListadoAutoRefresh } from '../composables/useListadoAutoRefresh'
-import VolverButton from '@/components/VolverButton.vue'
-import QuickTablePagination from '@/components/QuickTablePagination.vue'
+import VolverButton from '@/components/navegacion/VolverButton.vue'
+import QuickTablePagination from '@/components/paginacion/QuickTablePagination.vue'
 import LoadingSpinner from '../components/LoadingSpinner.vue'
 import ActualizarButton from '../components/ActualizarButton.vue'
 import SortableTableHead from '../components/SortableTableHead.vue'
@@ -325,13 +325,21 @@ async function obtenerPedidos() {
   error.value = null
 
   try {
-    const response: PedidosListadoResponse = await mba3ConsultasService.getPedidosListado({
-      ...filtros.value,
-      limit: metadata.value.limit,
-      offset: metadata.value.offset,
-      solo_pendientes_accion: filtroSoloPendientes.value || undefined,
-      solo_produccion_elrayo: esProduccionElRayo.value || undefined,
-    })
+    const [response] = await Promise.all([
+      mba3ConsultasService.getPedidosListado({
+        ...filtros.value,
+        limit: metadata.value.limit,
+        offset: metadata.value.offset,
+        // En Producción El Rayo, `solo_pendientes_accion` no aplica (el backend lo cruza con
+        // estados CONFIRMADO_POR_PRODUCCION/CONFIRMADO_ENVIADO, que este listado nunca ve --
+        // ver ESTADOS_PRODUCCION_EL_RAYO_IDS): el filtro rápido se implementa filtrando
+        // directo por estado = Nuevo Pedido.
+        estado: (esProduccionElRayo.value && filtroSoloPendientes.value) ? ESTADO_NUEVO_PEDIDO : filtros.value.estado,
+        solo_pendientes_accion: (!esProduccionElRayo.value && filtroSoloPendientes.value) || undefined,
+        solo_produccion_elrayo: esProduccionElRayo.value || undefined,
+      }),
+      actualizarContadorPendientes(),
+    ])
 
     pedidos.value = response.data
     metadata.value = response.metadata
@@ -401,8 +409,38 @@ const {
   dispose: disposeBusquedaNumeroPedido
 } = useFiltroTextoConDebounce(filtros, 'numero_pedido', aplicarFiltros)
 
-// Contador de pedidos pendientes (computado desde los pedidos cargados)
-const contadorPedidosPendientes = computed(() => pedidos.value.filter(p => requiereAccionPedidoListado(p.estado)).length)
+// Estado que el backend usa para "Nuevo Pedido" (acepta con/sin guión bajo, ver pedido_estados.py)
+const ESTADO_NUEVO_PEDIDO = 'NUEVO PEDIDO'
+
+// "Requiere acción" tiene un significado distinto por modo: odcsap.view (Confirmado por
+// Producción/Confirmado y Enviado) vs. produccion-elrayo.view (Nuevo Pedido, el único de los 2
+// estados que ve este modo -- NUEVO_PEDIDO/GESTIONAR_PEDIDO -- que aún no fue "tomado").
+function pedidoRequiereAccion(estado: string): boolean {
+  return esProduccionElRayo.value ? requiereAccionPedidoProduccion(estado) : requiereAccionPedidoListado(estado)
+}
+
+const tituloInactivoPendientes = computed(() =>
+  esProduccionElRayo.value
+    ? 'Filtrar para ver solo pedidos en estado: Nuevo Pedido'
+    : 'Filtrar para ver solo pedidos en estados: Confirmado por Producción, Confirmado y Enviado'
+)
+
+// Contador global de pedidos pendientes (total real del servidor, no depende de la página/tamaño
+// de página cargados -- antes se calculaba filtrando `pedidos.value`, así que un pedido pendiente
+// fuera de la página visible no se contaba y el botón podía incluso desaparecer).
+const contadorPedidosPendientes = ref(0)
+async function actualizarContadorPendientes() {
+  try {
+    const response = await mba3ConsultasService.getPedidosListado(
+      esProduccionElRayo.value
+        ? { estado: ESTADO_NUEVO_PEDIDO, solo_produccion_elrayo: true, limit: 1 }
+        : { solo_pendientes_accion: true, limit: 1 }
+    )
+    contadorPedidosPendientes.value = response.metadata?.total ?? 0
+  } catch (e) {
+    console.error('Error al cargar el contador global de pedidos pendientes:', e)
+  }
+}
 
 // Cargar estados disponibles para el dropdown de filtros
 async function cargarEstados() {

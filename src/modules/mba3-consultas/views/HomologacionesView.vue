@@ -27,7 +27,7 @@
           Administra las homologaciones de SKU que no coinciden entre MBA3 y SAP
         </p>
       </div>
-      <div class="flex items-center gap-3">
+      <div class="flex items-center flex-wrap gap-3">
         <button
           type="button"
           :disabled="cruceEnCurso || store.loading"
@@ -391,7 +391,7 @@ import { useToast } from '@/composables/useToast'
 import { NUMBER_LOCALE } from '@/plugins/locale'
 import HomologacionModal from '../components/HomologacionModal.vue'
 import BuscarSkuModal from '../components/BuscarSkuModal.vue'
-import QuickTablePagination from '@/components/QuickTablePagination.vue'
+import QuickTablePagination from '@/components/paginacion/QuickTablePagination.vue'
 import LoadingSpinner from '../components/LoadingSpinner.vue'
 import { ejecutarCruceProductos } from '../composables/ejecutarCruceProductos'
 import { isProcesoTransientError } from '../utils/procesoAsyncHelpers'

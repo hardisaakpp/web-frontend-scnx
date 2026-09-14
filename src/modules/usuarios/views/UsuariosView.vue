@@ -382,7 +382,7 @@ import { APP_LOCALE } from '@/plugins/locale'
 import { useUsuariosStore } from '../stores/usuariosStore'
 import { useRolesStore } from '../stores/rolesStore'
 import type { Usuario, CreateUsuarioDto, UpdateUsuarioDto } from '../types'
-import VolverButton from '@/components/VolverButton.vue'
+import VolverButton from '@/components/navegacion/VolverButton.vue'
 import UsuarioModal from '../components/UsuarioModal.vue'
 import AsignarRolesModal from '../components/AsignarRolesModal.vue'
 import {

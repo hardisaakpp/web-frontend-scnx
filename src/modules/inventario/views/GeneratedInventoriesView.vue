@@ -77,7 +77,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import VolverButton from '@/components/VolverButton.vue'
+import VolverButton from '@/components/navegacion/VolverButton.vue'
 import { inventarioService } from '../services/inventarioApi'
 import type { GeneratedInventoryDto } from '../types'
 import { inventoryTypeLabel } from '../utils/planningRules'

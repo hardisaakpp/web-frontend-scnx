@@ -284,7 +284,7 @@ import api from '@/services/api'
 import { notificacionTipoCorreoService, type TipoCorreo } from '../services/domains/notificacionTipoCorreo'
 import { notificacionPersonaCorreoService, type PersonaCorreoRow } from '../services/domains/notificacionPersonaCorreo'
 import LoadingSpinner from '../components/LoadingSpinner.vue'
-import VolverButton from '@/components/VolverButton.vue'
+import VolverButton from '@/components/navegacion/VolverButton.vue'
 import { inicialesDe } from '@/utils/iniciales'
 
 const toast = useToast()

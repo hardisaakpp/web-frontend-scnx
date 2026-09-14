@@ -9,7 +9,7 @@
       @click="onBackdropClick"
       :class="[
         'relative bg-white dark:bg-gray-800 rounded-lg shadow-lg overflow-hidden flex flex-col transition-all duration-300 focus:outline-none',
-        isModalMaximized ? 'w-full h-full max-w-none max-h-none rounded-none' : `${anchoModal} w-full max-h-[90vh]`
+        isModalMaximized ? 'w-full h-full max-w-none max-h-none rounded-none' : `${anchoModal} w-[calc(100%-2rem)] max-h-[90vh]`
       ]"
     >
       <!-- Confirmación antes de descartar correcciones ya seleccionadas (cierre accidental) -->

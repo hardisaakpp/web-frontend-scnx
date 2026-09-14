@@ -3,7 +3,7 @@
     <dialog
       ref="modalRef"
       aria-labelledby="modal-title"
-      class="sap-error-detail-modal-dialog relative transform overflow-hidden rounded-lg bg-white dark:bg-gray-900 dark:text-gray-100 shadow-xl transition-all w-full max-w-3xl max-h-[90vh] flex flex-col p-0 m-auto border-0"
+      class="sap-error-detail-modal-dialog relative transform overflow-hidden rounded-lg bg-white dark:bg-gray-900 dark:text-gray-100 shadow-xl transition-all w-[calc(100%-2rem)] max-w-3xl max-h-[90vh] flex flex-col p-0 m-auto border-0"
       @cancel.prevent="cerrarModal"
       @click="onBackdropClick"
     >

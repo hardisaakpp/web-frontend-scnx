@@ -4,7 +4,7 @@ import { useRouter } from 'vue-router'
 import { ArrowPathIcon, MagnifyingGlassIcon } from '@heroicons/vue/24/outline'
 import { useOdcStore } from '../stores/odcStore'
 import { useToast } from '@/composables/useToast'
-import QuickTablePagination from '@/components/QuickTablePagination.vue'
+import QuickTablePagination from '@/components/paginacion/QuickTablePagination.vue'
 import type { OdcEstado } from '../types'
 
 const store = useOdcStore()

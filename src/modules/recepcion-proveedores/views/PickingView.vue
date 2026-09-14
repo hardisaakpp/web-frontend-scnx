@@ -4,11 +4,11 @@ import { useRoute, useRouter } from 'vue-router'
 import { usePickingStore } from '../stores/pickingStore'
 import { useAuthStore } from '@/stores/auth'
 import type { OrdenPickingLineaResponse } from '../types'
-import LoadingSpinner from '@/components/LoadingSpinner.vue'
-import ErrorModal from '@/components/ErrorModal.vue'
-import ConfirmModal from '@/components/ConfirmModal.vue'
-import SuccessModal from '@/components/SuccessModal.vue'
-import VolverButton from '@/components/VolverButton.vue'
+import LoadingSpinner from '@/components/feedback/LoadingSpinner.vue'
+import ErrorModal from '@/components/modales/ErrorModal.vue'
+import ConfirmModal from '@/components/modales/ConfirmModal.vue'
+import SuccessModal from '@/components/modales/SuccessModal.vue'
+import VolverButton from '@/components/navegacion/VolverButton.vue'
 
 const route = useRoute()
 const router = useRouter()

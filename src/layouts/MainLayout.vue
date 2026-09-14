@@ -1,11 +1,11 @@
 <template>
-  <div class="min-h-screen bg-gray-100 dark:bg-gray-900 transition-colors duration-300">
+  <div ref="rootRef" class="min-h-screen bg-gray-100 dark:bg-gray-900 transition-colors duration-300">
     <!-- Overlay para móvil -->
     <div v-if="isSidebarOpen" @click="isSidebarOpen = false"
       class="fixed inset-0 bg-black bg-opacity-50 z-20 md:hidden"></div>
 
     <!-- Sidebar: escritorio = franja estrecha y se expande al pasar el ratón; móvil = panel ancho al abrir -->
-    <aside id="app-sidebar" :class="[
+    <aside id="app-sidebar" ref="sidebarRef" :class="[
       'fixed top-0 left-0 h-full flex flex-col bg-gradient-to-b from-white via-slate-50 to-slate-100 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 text-slate-800 dark:text-white transition-transform duration-150 ease-out md:transition-all md:duration-300 z-30 shadow-2xl border-r border-slate-200 dark:border-slate-700/40',
       effectiveSidebarCollapsed ? 'w-20' : 'w-72',
       isSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
@@ -420,23 +420,38 @@
     ]">
       <!-- Mobile Header -->
       <header id="app-header-mobile" class="bg-white dark:bg-gray-800 shadow md:hidden sticky top-0 z-30 transition-colors duration-300">
-        <div class="px-4 py-3 flex items-center justify-between gap-2">
-          <div class="flex items-center gap-2 flex-shrink-0">
+        <!-- Grilla de 3 columnas simétricas (1fr auto 1fr), no flex+justify-between: desde que el
+             lado derecho tiene 2 elementos (cajoncito + tema) contra 1 del izquierdo (menú), un
+             `flex-1` centraba el título dentro de su propia caja, no respecto a los bordes reales
+             del header -- con columnas 1fr iguales a los costados, el título (ancho "auto") queda
+             centrado de verdad sin importar cuánto pese cada lado. -->
+        <div class="px-4 py-3 grid grid-cols-[1fr_auto_1fr] items-center gap-2">
+          <div class="flex items-center gap-2 flex-shrink-0 justify-self-start">
             <button @click="isSidebarOpen = !isSidebarOpen"
               class="p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
               aria-label="Toggle menu">
               <Bars3Icon class="h-6 w-6 text-gray-800 dark:text-gray-200" />
             </button>
           </div>
-          <h1 class="text-xl font-semibold text-gray-800 dark:text-white truncate min-w-0 text-center flex-1">
+          <h1 class="text-xl font-semibold text-gray-800 dark:text-white truncate min-w-0 text-center">
             SCNexus
           </h1>
-          <button @click="themeStore.toggleTheme()"
-            class="p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors flex-shrink-0"
-            :title="themeStore.isDark ? 'Modo Claro' : 'Modo Oscuro'">
-            <SunIcon v-if="themeStore.isDark" class="h-5 w-5 text-yellow-400" />
-            <MoonIcon v-else class="h-5 w-5 text-gray-600" />
-          </button>
+          <div class="flex items-center gap-2 flex-shrink-0 justify-self-end">
+            <!-- Cajoncito de anclaje para Cool-turito, equivalente al del header de escritorio
+                 (#coolturito-dock-slot-desktop) -- ver ese comentario para el detalle del anclaje. -->
+            <div
+              id="coolturito-dock-slot-mobile"
+              class="flex-none w-12 h-12 rounded-xl border-2 border-dashed transition-colors duration-150"
+              :class="asistente.arrastrando ? 'border-blue-400/70 bg-blue-50/60 dark:bg-blue-500/10' : 'border-transparent'"
+              aria-hidden="true"
+            ></div>
+            <button @click="themeStore.toggleTheme()"
+              class="p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors flex-shrink-0"
+              :title="themeStore.isDark ? 'Modo Claro' : 'Modo Oscuro'">
+              <SunIcon v-if="themeStore.isDark" class="h-5 w-5 text-yellow-400" />
+              <MoonIcon v-else class="h-5 w-5 text-gray-600" />
+            </button>
+          </div>
         </div>
       </header>
 
@@ -460,6 +475,20 @@
                 class="h-6 w-6 text-gray-600 dark:text-gray-300 group-hover:scale-110 transition-transform" />
             </button>
             <span class="text-sm text-gray-600 dark:text-gray-300">{{ authStore.fullName || authStore.userName }}</span>
+            <!-- Cajoncito de anclaje para Cool-turito: pegado al borde derecho del header (mismo lado
+                 donde flota por defecto, esquina inferior derecha) — el resto del header sigue sin
+                 ser un destino válido. Basta con que el cuerpo de Cool-turito colisione con este
+                 recuadro (no que su centro caiga exactamente dentro) para que se lo pueda anclar, ver
+                 AssistantWidget.vue: colisionaConSlotAnclaje. Centrado verticalmente en la fila (mismo
+                 `items-center` del contenedor), no pegado a ningún borde del header. Hay un segundo
+                 cajoncito equivalente en el header móvil (#coolturito-dock-slot-mobile) -- ambos
+                 comparten `AssistantWidget.vue: obtenerSlotAnclaje`, que usa el que esté visible. -->
+            <div
+              id="coolturito-dock-slot-desktop"
+              class="flex-none w-12 h-12 rounded-xl border-2 border-dashed transition-colors duration-150"
+              :class="asistente.arrastrando ? 'border-blue-400/70 bg-blue-50/60 dark:bg-blue-500/10' : 'border-transparent'"
+              aria-hidden="true"
+            ></div>
           </div>
         </div>
       </header>
@@ -527,11 +556,13 @@ import { Pin, PinOff, TruckIcon, ForkliftIcon, Search } from 'lucide-vue-next'
 import { useAuthStore } from '../stores/auth'
 import { inicialesDe } from '@/utils/iniciales'
 import { useThemeStore } from '../stores/theme'
-import ToastContainer from '../components/ToastContainer.vue'
+import { useAssistantStore } from '../stores/assistant'
+import ToastContainer from '../components/feedback/ToastContainer.vue'
 import AssistantWidget from '../components/assistant/AssistantWidget.vue'
 import { useNotificaciones } from '@/composables/useNotificaciones'
 import { useOdcSapVolver } from '@/composables/useOdcSapVolver'
-import VolverButton from '@/components/VolverButton.vue'
+import { useSwipeGesture } from '@/composables/useSwipeGesture'
+import VolverButton from '@/components/navegacion/VolverButton.vue'
 import { useWarehouseAccessType } from '@/modules/inventario/composables/useWarehouseAccessType'
 import { usePickerSessionAccess } from '@/modules/inventario/composables/usePickerSessionAccess'
 import {
@@ -543,6 +574,7 @@ const router = useRouter()
 const route = useRoute()
 const authStore = useAuthStore()
 const themeStore = useThemeStore()
+const asistente = useAssistantStore()
 const { connect: connectNotificaciones, disconnect: disconnectNotificaciones } = useNotificaciones()
 const { target: odcSapVolverTarget, title: odcSapVolverTitle } = useOdcSapVolver()
 const { isTienda: isTiendaAccess } = useWarehouseAccessType()
@@ -568,6 +600,8 @@ const showOdcSapVolverInMainChrome = computed(() => {
 })
 
 const isSidebarOpen = ref(false)
+const sidebarRef = ref<HTMLElement | null>(null)
+const rootRef = ref<HTMLElement | null>(null)
 
 /** Expansión al pasar el ratón (solo escritorio, breakpoint `md`) */
 const isSidebarHoverExpanded = ref(false)
@@ -637,6 +671,24 @@ function onSidebarNavClick(event: MouseEvent) {
   if (!anchor) return
   isSidebarOpen.value = false
 }
+
+/** Móvil: deslizar el dedo de derecha a izquierda sobre el panel abierto lo cierra. */
+useSwipeGesture(sidebarRef, {
+  enabled: () => isSidebarOpen.value && !isDesktopSidebarViewport.value,
+  onSwipe: (direction) => {
+    if (direction === 'left') isSidebarOpen.value = false
+  }
+})
+
+/** Móvil: con el sidebar cerrado, deslizar el dedo desde el borde izquierdo de la
+ * pantalla hacia adentro (derecha) lo abre -- gesto "edge swipe" simétrico al de cierre. */
+useSwipeGesture(rootRef, {
+  edge: { side: 'left' },
+  enabled: () => !isSidebarOpen.value && !isDesktopSidebarViewport.value,
+  onSwipe: (direction) => {
+    if (direction === 'right') isSidebarOpen.value = true
+  }
+})
 
 /** Escritorio: franja estrecha salvo hover. Móvil: ancho completo cuando el panel está abierto */
 const effectiveSidebarCollapsed = computed(() => {

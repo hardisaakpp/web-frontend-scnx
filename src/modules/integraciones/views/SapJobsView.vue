@@ -203,7 +203,7 @@
 <script setup lang="ts">
 import { onMounted, reactive, ref } from 'vue'
 import { ArrowPathIcon } from '@heroicons/vue/24/outline'
-import QuickTablePagination from '@/components/QuickTablePagination.vue'
+import QuickTablePagination from '@/components/paginacion/QuickTablePagination.vue'
 import { useToast } from '@/composables/useToast'
 import IntegracionesTabs from '../components/IntegracionesTabs.vue'
 import EstadoBadge from '../components/EstadoBadge.vue'

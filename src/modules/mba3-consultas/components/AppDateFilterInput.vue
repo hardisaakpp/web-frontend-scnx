@@ -34,10 +34,12 @@
       </svg>
     </div>
 
+    <Teleport to="body">
     <div
       v-if="showPopover"
-      class="absolute z-20 mt-1 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 shadow-lg p-2"
-      style="width: 17rem;"
+      ref="popoverRef"
+      class="fixed z-[100] rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 shadow-lg p-2"
+      :style="{ width: '17rem', ...popoverPosition }"
     >
       <!-- Tipo de fecha (a qué fecha aplica el rango) y rango, juntos en un solo paso -->
       <div class="px-1 pt-1 pb-2">
@@ -127,6 +129,7 @@
         </button>
       </div>
     </div>
+    </Teleport>
   </div>
 </template>
 
@@ -181,12 +184,35 @@ const TIPO_LABELS: Record<TipoFechaFiltro, string> = {
 const WEEK_DAYS = ['Lu', 'Ma', 'Mi', 'Ju', 'Vi', 'Sá', 'Do']
 
 const rootRef = ref<HTMLElement | null>(null)
+const popoverRef = ref<HTMLElement | null>(null)
 const tipoSelectId = useId()
 const showPopover = ref(false)
 const textDesde = ref('')
 const textHasta = ref('')
 // true mientras se espera el clic que define "Hasta" (ya hay un "Desde" elegido en el calendario)
 const seleccionandoHasta = ref(false)
+const popoverPosition = ref<Record<string, string>>({})
+
+// Alto estimado del popover (selector de tipo + rango + calendario + footer): igual que en
+// AppDateInput.vue, se decide arriba/abajo ANTES del primer paint para evitar un salto visual.
+const POPOVER_HEIGHT_ESTIMATE = 420
+const VIEWPORT_MARGIN = 8
+
+function updatePopoverPosition() {
+  const anchor = rootRef.value
+  if (!anchor) return
+  const rect = anchor.getBoundingClientRect()
+  const gap = 4
+  const cabeHaciaAbajo = window.innerHeight - rect.bottom - gap >= POPOVER_HEIGHT_ESTIMATE
+  const left = Math.min(rect.left, window.innerWidth - 17 * 16 - VIEWPORT_MARGIN)
+  popoverPosition.value = cabeHaciaAbajo
+    ? { left: `${Math.max(left, VIEWPORT_MARGIN)}px`, top: `${rect.bottom + gap}px` }
+    : { left: `${Math.max(left, VIEWPORT_MARGIN)}px`, bottom: `${window.innerHeight - rect.top + gap}px` }
+}
+
+function handleReposition() {
+  if (showPopover.value) updatePopoverPosition()
+}
 
 const { viewYear, viewMonth, syncViewToValue } = useCalendarViewState()
 
@@ -210,6 +236,7 @@ function togglePopover() {
   showPopover.value = !showPopover.value
   if (showPopover.value) {
     syncViewToValue(desde.value || hasta.value || '')
+    updatePopoverPosition()
   }
 }
 
@@ -370,7 +397,12 @@ function clearDates() {
 }
 
 function handleDocumentClick(event: MouseEvent) {
-  if (rootRef.value && !rootRef.value.contains(event.target as Node)) {
+  const target = event.target as Node
+  // El popover vive en <Teleport to="body">, fuera del árbol DOM de rootRef --
+  // hay que comprobar ambos para no cerrarlo al hacer clic dentro de él mismo.
+  const dentroDelInput = rootRef.value?.contains(target) ?? false
+  const dentroDelPopover = popoverRef.value?.contains(target) ?? false
+  if (!dentroDelInput && !dentroDelPopover) {
     showPopover.value = false
   }
 }
@@ -378,13 +410,19 @@ function handleDocumentClick(event: MouseEvent) {
 watch(showPopover, (open) => {
   if (open) {
     nextTick(() => document.addEventListener('click', handleDocumentClick))
+    window.addEventListener('scroll', handleReposition, true)
+    window.addEventListener('resize', handleReposition)
   } else {
     document.removeEventListener('click', handleDocumentClick)
     seleccionandoHasta.value = false
+    window.removeEventListener('scroll', handleReposition, true)
+    window.removeEventListener('resize', handleReposition)
   }
 })
 
 onBeforeUnmount(() => {
   document.removeEventListener('click', handleDocumentClick)
+  window.removeEventListener('scroll', handleReposition, true)
+  window.removeEventListener('resize', handleReposition)
 })
 </script>
