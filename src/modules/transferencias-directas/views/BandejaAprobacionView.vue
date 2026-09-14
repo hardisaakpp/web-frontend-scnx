@@ -1,17 +1,12 @@
 <script setup lang="ts">
-import { reactive, ref, computed, onMounted } from 'vue'
+import { reactive, ref, onMounted } from 'vue'
 import { ArrowLeftIcon, MagnifyingGlassIcon, FunnelIcon } from '@heroicons/vue/24/outline'
-import { useAuthStore } from '@/stores/auth'
 import transferenciasService from '../services/transferenciasService'
-import almacenesService from '../services/almacenesServices'
 import TablaHistorial from '../components/TablaHistorial.vue'
 import DetalleSolicitudModal from '../components/DetalleSolicitudModal.vue'
 import type { SolicitudResumen, SolicitudDetalle, StockFaltante } from '../types'
-import { TiendaDestino } from '../types'
 import { parsearErrorSolicitud } from '../utils/erroresApi'
-import { useWarehouseAccessType } from '@/modules/inventario/composables/useWarehouseAccessType'
-
-const authStore = useAuthStore()
+import { useFiltroTiendas, FILTRO_INPUT_CLASS, FILTRO_MINI_LABEL } from '../composables/useFiltroTiendas'
 
 const solicitudes = ref<SolicitudResumen[]>([])
 const cargando = ref(false)
@@ -23,29 +18,7 @@ const totalPaginas = ref(1)
 const totalRegistros = ref(0)
 
 // ─── Filtros de tienda (mismo criterio que el Historial) ────────────────────
-const puedeFiltrarTiendas = computed(() =>
-  authStore.hasPermission('transferenciadirecta.filtro_todastiendas')
-)
-
-const { accesses, isTienda } = useWarehouseAccessType()
-const almacenes = ref<TiendaDestino[]>([])
-
-const tiendasDelUsuario = computed<Set<string>>(() => {
-  const codes = new Set<string>()
-  accesses.value.forEach((a) => {
-    if (a?.codAlmacen) codes.add(a.codAlmacen)
-    a?.warehouseGroups?.forEach((g) => g?.almacenes?.forEach((c) => codes.add(c)))
-  })
-  return codes
-})
-
-const opcionesOrigen = computed(() =>
-  puedeFiltrarTiendas.value
-    ? almacenes.value
-    : almacenes.value.filter((t) => tiendasDelUsuario.value.has(t.whsCode))
-)
-const opcionesDestino = computed(() => almacenes.value)
-const mostrarFiltroOrigen = computed(() => puedeFiltrarTiendas.value || !isTienda.value)
+const { opcionesOrigen, opcionesDestino, mostrarFiltroOrigen, cargarAlmacenes } = useFiltroTiendas()
 
 const mostrarFiltros = ref(false)
 
@@ -54,11 +27,8 @@ const filtros = reactive({
   tiendaDestino: '',
 })
 
-const inputClass =
-  'w-full h-[35px] px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-xs ' +
-  'bg-white dark:bg-gray-700 text-gray-900 dark:text-white ' +
-  'focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-colors'
-const miniLabel = 'block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1'
+const inputClass = FILTRO_INPUT_CLASS
+const miniLabel = FILTRO_MINI_LABEL
 
 const cargar = async () => {
   cargando.value = true
@@ -84,10 +54,7 @@ const cargar = async () => {
 
 onMounted(async () => {
   await cargar()
-  try {
-    almacenes.value = await almacenesService.listar('Destino')
-  } catch {
-  }
+  await cargarAlmacenes()
 })
 
 const buscar = () => { pagina.value = 1; cargar() }

@@ -147,6 +147,21 @@ export type TipoBusquedaProducto = 'itemCode' | 'codeBars' | 'itemName'
 /** Cantidad máxima por producto en una transferencia. */
 export const CANTIDAD_MAX = 99999
 
+// ─── Guía LAAR ───────────────────────────────────────────────────────────────
+// No se pide al crear/editar un borrador: solo al enviar a aprobación, que es
+// cuando el usuario ya despachó y tiene el número real.
+
+/** Largo exacto de la guía LAAR. */
+export const GUIA_LARGO = 10
+
+/** Deja solo alfanuméricos en mayúsculas (lo que acepta el input). */
+export const normalizarGuia = (valor: string): string =>
+  valor.toUpperCase().replace(/[^A-Z0-9]/g, '')
+
+/** Una guía válida son exactamente GUIA_LARGO alfanuméricos. */
+export const esGuiaValida = (valor: string): boolean =>
+  new RegExp(`^[A-Z0-9]{${GUIA_LARGO}}$`).test(valor.trim())
+
 // Línea del detalle de la solicitud (productos)
 export interface DetalleLinea {
   itemCode: string
