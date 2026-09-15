@@ -1,20 +1,14 @@
 <template>
   <Teleport to="body">
-    <div
-      class="fixed inset-0 z-50 overflow-y-auto"
+    <dialog
+      ref="modalRef"
       aria-labelledby="modal-title"
-      role="dialog"
-      aria-modal="true"
-      @click.self="$emit('close')"
+      class="corregir-sku-modal-dialog relative p-0 m-auto border-0 transform overflow-hidden rounded-lg bg-white dark:bg-gray-900 dark:text-gray-100 shadow-xl transition-all w-full max-w-5xl max-h-[90vh] flex flex-col"
+      @cancel.prevent="cerrarModal"
+      @click="onBackdropClick"
     >
-      <!-- Overlay -->
-      <div class="fixed inset-0 bg-gray-500 bg-opacity-75 dark:bg-gray-900 dark:bg-opacity-80 transition-opacity" @click.self="$emit('close')"></div>
-
-      <!-- Modal -->
-      <div class="flex min-h-full items-center justify-center p-4">
-        <div class="relative transform overflow-hidden rounded-lg bg-white dark:bg-gray-900 dark:text-gray-100 shadow-xl transition-all w-full max-w-5xl max-h-[90vh] flex flex-col">
-          <!-- Header -->
-          <div class="bg-gradient-to-r from-red-500 to-red-600 px-6 py-4 flex-shrink-0">
+      <!-- Header -->
+      <div class="bg-gradient-to-r from-red-500 to-red-600 px-6 py-4 flex-shrink-0">
             <div class="flex items-center justify-between">
               <h3 class="text-lg font-semibold text-white flex items-center gap-2">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -23,7 +17,7 @@
                 Corregir SKU - ODC {{ odc?.oc_id?.substring(0, 8) }}...
               </h3>
               <button
-                @click="$emit('close')"
+                @click="cerrarModal"
                 class="text-white hover:text-gray-200 transition-colors"
               >
                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -45,7 +39,7 @@
                 </div>
                 <div>
                   <span class="text-gray-500 dark:text-gray-400">Fecha:</span>
-                  <p class="font-medium text-gray-900 dark:text-gray-100">{{ formatDate(odc?.fecha_generacion) }}</p>
+                  <p class="font-medium text-gray-900 dark:text-gray-100">{{ formatDateTime(odc?.fecha_generacion) }}</p>
                 </div>
                 <div>
                   <span class="text-gray-500 dark:text-gray-400">Error:</span>
@@ -294,7 +288,7 @@
           <!-- Footer -->
           <div class="bg-gray-50 dark:bg-gray-800 px-6 py-4 flex justify-end gap-3 flex-shrink-0 border-t border-gray-200 dark:border-gray-700">
             <button
-              @click="$emit('close')"
+              @click="cerrarModal"
               class="px-4 py-2 text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
             >
               Cancelar
@@ -310,9 +304,7 @@
               {{ guardando ? 'Guardando...' : 'Aplicar Corrección' }}
             </button>
           </div>
-        </div>
-      </div>
-    </div>
+    </dialog>
   </Teleport>
 </template>
 
@@ -320,7 +312,7 @@
 import { ref, computed, watch } from '@vue/reactivity'
 import { onMounted } from '@vue/runtime-core'
 import { useToast } from '@/composables/useToast'
-import { APP_LOCALE } from '@/plugins/locale'
+import { formatDateTime } from '../utils/formatters'
 import { mba3ConsultasService } from '../services/mba3ConsultasApi'
 import type { OrdenCompra, SugerenciaSkuSap, DetalleOC } from '../types'
 
@@ -345,6 +337,22 @@ const infoSkuMba3 = ref<any>(null)
 const detallesOC = ref<DetalleOC[]>([])
 const detalleSeleccionado = ref<DetalleOC | null>(null)
 const cargandoDetalles = ref(false)
+const modalRef = ref<HTMLDialogElement | null>(null)
+
+onMounted(() => {
+  modalRef.value?.showModal()
+})
+
+function cerrarModal(): void {
+  modalRef.value?.close()
+  emit('close')
+}
+
+function onBackdropClick(evento: MouseEvent): void {
+  if (evento.target === modalRef.value) {
+    cerrarModal()
+  }
+}
 
 // Función para extraer SKU del mensaje de error
 function extraerSkuDelError(errorMessage?: string | null, errorCode?: string | null): string {
@@ -500,7 +508,7 @@ async function aplicarCorreccion() {
     if (response.status === 'success') {
       toast.success('Corrección aplicada', `SKU actualizado de ${response.sku_anterior} a ${response.sku_nuevo}`)
       emit('correccionAplicada', response.sku_anterior, response.sku_nuevo)
-      emit('close')
+      cerrarModal()
     } else {
       toast.error('Error al aplicar corrección', response.message || 'No se pudo actualizar el SKU')
     }
@@ -537,20 +545,17 @@ function getScoreBarClass(porcentaje: number): string {
   return 'bg-red-600'
 }
 
-function formatDate(dateString?: string): string {
-  if (!dateString) return '-'
-  try {
-    const date = new Date(dateString)
-    return date.toLocaleDateString(APP_LOCALE, {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    })
-  } catch {
-    return dateString
-  }
-}
 </script>
+
+<style>
+/* ::backdrop del <dialog> nativo: no se puede scopear (pseudo-elemento fuera del arbol normal),
+   por eso el nombre de clase bien especifico y el estilo sin "scoped". Reemplaza al overlay
+   manual bg-gray-500/75 dark:bg-gray-900/80 que envolvia el modal antes de la migracion a <dialog>. */
+.corregir-sku-modal-dialog::backdrop {
+  background-color: rgb(100 116 139 / 0.75);
+}
+.dark .corregir-sku-modal-dialog::backdrop {
+  background-color: rgb(15 23 42 / 0.8);
+}
+</style>
 

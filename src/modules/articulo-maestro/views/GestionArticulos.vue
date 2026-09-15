@@ -180,9 +180,9 @@
                 <!-- Table -->
                 <div v-else class="overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-700">
                     <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700 table-fixed">
-                        <thead class="bg-gray-50 dark:bg-gray-900/50">
+                        <thead class="bg-gray-50 dark:bg-gray-900">
                             <tr>
-                                <th class="px-4 py-3 w-10 sticky left-0 bg-gray-50 dark:bg-gray-900/50 z-10">
+                                <th class="px-4 py-3 w-10 sticky left-0 bg-gray-50 dark:bg-gray-900 z-10">
                                     <input
                                         type="checkbox"
                                         aria-label="Seleccionar todos los artículos de la página"
@@ -205,7 +205,7 @@
                                         </div>
                                     </div>
                                 </th>
-                                <th class="px-4 py-3 text-right text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider w-32 sticky right-0 bg-gray-50 dark:bg-gray-900 z-10 shadow-[-4px_0_4px_rgba(0,0,0,0.05)]">Acciones</th>
+                                <th class="px-4 py-3 text-right text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider w-48 min-w-[195px] sticky right-0 bg-gray-50 dark:bg-gray-900 z-10 border-l border-transparent dark:border-gray-700/60 shadow-[-4px_0_4px_rgba(0,0,0,0.05)] dark:shadow-[-8px_0_12px_rgba(0,0,0,0.5)]">Acciones</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-gray-200 dark:divide-gray-700 bg-white dark:bg-gray-800">
@@ -222,7 +222,8 @@
                                 <td
                                     v-for="col in visibleColumns"
                                     :key="col.key"
-                                    class="px-4 py-3 text-sm text-gray-600 dark:text-gray-300 truncate"
+                                    class="px-4 py-3 text-sm text-gray-600 dark:text-gray-300 max-w-[220px] truncate"
+                                    :title="articuloValor(articulo, col.key) ? String(articuloValor(articulo, col.key)) : ''"
                                 >
                                     <template v-if="col.key === 'uPrArq' || col.key === 'price'">
                                         ${{ Number(articuloValor(articulo, col.key) ?? 0).toFixed(2) }}
@@ -242,7 +243,7 @@
                                         <span
                                             class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold"
                                             :class="estadoBadge(articulo).classes"
-                                            :title="articulo.controlSap?.estado === 'ERROR' ? (articulo.controlSap?.mensaje_sap ?? 'Error de sincronización con SAP.') : ''"
+                                            :title="articulo.controlSap?.estado === 'ERROR' ? (articulo.controlSap?.mensaje_sap_amigable || articulo.controlSap?.mensaje_sap || 'Error de sincronización con SAP.') : ''"
                                         >
                                             <svg v-if="estadoBadge(articulo).spin" class="h-3 w-3 animate-spin" fill="none" viewBox="0 0 24 24">
                                                 <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
@@ -255,7 +256,7 @@
                                         {{ articuloValor(articulo, col.key) ?? '-' }}
                                     </template>
                                 </td>
-                                <td class="px-4 py-3 text-sm text-right whitespace-nowrap sticky right-0 bg-white dark:bg-gray-800 group-hover:bg-gray-50 dark:group-hover:bg-gray-700/50 z-10 shadow-[-4px_0_4px_rgba(0,0,0,0.05)]">
+                                <td class="px-4 py-3 text-sm text-right whitespace-nowrap sticky right-0 bg-white dark:bg-gray-800 group-hover:bg-gray-50 dark:group-hover:bg-gray-700 z-10 w-48 min-w-[195px] border-l border-transparent dark:border-gray-700/60 shadow-[-4px_0_4px_rgba(0,0,0,0.05)] dark:shadow-[-8px_0_12px_rgba(0,0,0,0.5)]">
                                     <button
                                         class="text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300 font-medium mr-3 transition-colors text-xs inline-flex items-center gap-1"
                                         @click="openInspeccion(articulo)"
@@ -441,7 +442,7 @@ import {
     ViewColumnsIcon,
     CheckIcon
 } from '@heroicons/vue/20/solid'
-import { useArticuloStore } from '../stores/articuloStore'
+import { useArticuloStore, type ReporteDiarioError } from '../stores/articuloStore'
 import { useImportacionArticulosStore } from '../stores/importacionArticulosStore'
 import { articuloService, type ArticuloBulkDeleteResponse } from '../services/articuloService'
 import type { Articulo, EstadoSincronizacion } from '../types'
@@ -466,26 +467,46 @@ const importStore = useImportacionArticulosStore()
 
 const showKeyboardHelp = ref(false)
 const shortcuts = {
-    'Ctrl+M': {
-        description: 'Nuevo artículo',
+    'ctrl+m': {
+        description: 'Crear nuevo artículo',
         action: () => router.push('/articulo-maestro/nuevo')
     },
-    'Ctrl+F': {
-        description: 'Buscar artículo',
+    'ctrl+f': {
+        description: 'Buscar en tabla',
         action: () => {
             const input = document.querySelector('input[placeholder="Buscar..."]') as HTMLInputElement
             if (input) input.focus()
         }
     },
-    'Esc': {
-        description: 'Cerrar modal',
+    'ctrl+i': {
+        description: 'Abrir importación masiva (Excel + ZIP)',
+        action: () => { showCargaModal.value = true }
+    },
+    '?': {
+        description: 'Abrir catálogo de atajos de teclado',
+        action: () => { showKeyboardHelp.value = !showKeyboardHelp.value }
+    },
+    // Jerarquía por capa visual activa: la más superficial (ayuda) se
+    // cierra primero, la de más abajo (confirmación de borrado individual)
+    // al final -- así Esc siempre cierra "lo último que se abrió" en vez de
+    // saltarse capas intermedias.
+    'esc': {
+        description: 'Cerrar modal o cancelar acción activa',
         action: () => {
             if (showKeyboardHelp.value) {
                 showKeyboardHelp.value = false
+            } else if (modalInspeccionAbierto.value) {
+                modalInspeccionAbierto.value = false
+            } else if (confirmandoBulkDelete.value) {
+                confirmandoBulkDelete.value = false
+            } else if (bulkDeleteResult.value) {
+                bulkDeleteResult.value = null
             } else if (showCargaModal.value) {
-                closeCargaModal()
+                showCargaModal.value = false
             } else if (pendingDeleteCode.value) {
                 pendingDeleteCode.value = null
+            } else {
+                (document.activeElement as HTMLElement | null)?.blur()
             }
         }
     }
@@ -746,6 +767,42 @@ watch(
     }
 )
 
+// H12: notifica el resultado de la importación una sola vez por trabajo.
+// Se observa `importStore.errores` (no `trabajo.estado`) porque el store
+// puebla `errores` en un segundo await DESPUÉS de que `trabajo` ya reporta
+// el estado terminal (ver `actualizar()`): esperar a que `errores` cambie
+// evita decidir Warning/Error antes de saber si las filas observadas son
+// solo restricciones de SAP.
+const jobNotificado = ref<number | null>(null)
+watch(
+    () => importStore.errores,
+    () => {
+        if (!importStore.isTerminal || importStore.jobId === null) return
+        if (jobNotificado.value === importStore.jobId) return
+        jobNotificado.value = importStore.jobId
+
+        const estado = importStore.trabajo?.estado
+        const correctas = importStore.trabajo?.filasCorrectas ?? 0
+        if (estado === 'COMPLETADO') {
+            toast.success('Importación completada', `${correctas} fila(s) aplicadas correctamente.`)
+        } else if (importStore.soloBloqueosEstructurales) {
+            // Ninguna fila observada es un error real -- todas son columnas
+            // estructurales omitidas porque el artículo ya tiene
+            // movimientos/stock en SAP (H12): advertencia, no error
+            // destructivo.
+            toast.warning(
+                'Importación completada con restricciones de SAP',
+                `${correctas} fila(s) aplicadas · ${importStore.erroresEstructurales.length} omitida(s) por movimientos en SAP (ver detalle).`
+            )
+        } else {
+            toast.error(
+                'Importación completada con errores',
+                `${correctas} fila(s) aplicadas · ${importStore.erroresNoEstructurales.length} fila(s) con errores (ver detalle).`
+            )
+        }
+    }
+)
+
 // ─── Manejo normalizado de errores HTTP ───
 // El backend ya traduce los 422 de Pydantic a mensajes de negocio en español
 // (ver app/core/error_translator.py): cada item de `detail` trae un `msg` ya
@@ -866,10 +923,16 @@ async function handleDescargarReporte() {
     try {
         await store.descargarReporteDiario()
     } catch (err: unknown) {
-        // El store ya desempaqueta el error de axios y relanza el mensaje
-        // (string) directamente, ver articuloStore.descargarReporteDiario.
-        const mensaje = typeof err === 'string' ? err : extraerMensajeError(err, 'Inténtalo de nuevo.')
-        toast.error('No se pudo descargar el reporte', mensaje)
+        // El store ya desempaqueta el Blob de error (ver parsearErrorBlob en
+        // articuloService) y relanza { status, message }. Un 404 significa
+        // "no hubo artículos ese día" — no es un fallo real, así que se
+        // muestra como aviso informativo en vez de error genérico en rojo.
+        const { status, message } = err as ReporteDiarioError
+        if (status === 404) {
+            toast.info('Sin artículos para reportar', message)
+        } else {
+            toast.error('No se pudo descargar el reporte', message || 'Inténtalo de nuevo.')
+        }
     } finally {
         downloadingReport.value = false
     }

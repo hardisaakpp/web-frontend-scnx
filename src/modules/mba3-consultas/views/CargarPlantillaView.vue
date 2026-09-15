@@ -123,7 +123,13 @@
           <div class="w-full">
             <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-2 transition-colors duration-300">Enviando ODC a SAP</h3>
             <p class="text-sm text-gray-600 dark:text-gray-300 mb-4 transition-colors duration-300">{{ sapMessage || 'Preparando proceso...' }}</p>
-            
+            <p
+              v-if="sapAvisoEsperaLarga"
+              class="text-xs text-amber-600 dark:text-amber-400 mb-2 transition-colors duration-300"
+            >
+              {{ SAP_SLOW_SYNC_LIKELY_MESSAGE }}
+            </p>
+
             <!-- Barra de progreso -->
             <div class="w-full space-y-2">
               <div class="flex items-center justify-between text-sm">
@@ -264,6 +270,7 @@
         :generando-o-c="generandoOC"
         :confirmando="confirmando"
         :descargando-plano-mba="descargandoPlanoMba"
+        :descargando-plano-mba-bodega="descargandoPlanoMbaBodega"
         :can-generar-o-c="canGenerarOC"
         :es-modo-mabel-trading="esModoMabelTrading"
         :pedido="pedido"
@@ -285,18 +292,39 @@
         <template v-if="pedido && !loading" #toolbar-extra>
           <button
             type="button"
+            @click="handleDescargarMargenExcel"
+            :disabled="descargandoMargen"
+            class="shrink-0 px-4 py-2 bg-emerald-700 dark:bg-emerald-600 text-white rounded-lg hover:bg-emerald-800 dark:hover:bg-emerald-700 transition-colors text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+            title="Descargar el análisis completo del Margen de Rentabilidad por producto"
+          >
+            <svg v-if="!descargandoMargen" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            {{ descargandoMargen ? 'Descargando...' : 'Descargar Análisis de Margen' }}
+          </button>
+          <button
+            v-if="!puedeRechazarProduccionPospuesta"
+            type="button"
             @click="handleDescartar"
             :disabled="descartando || !(pedido?.puede_descartar ?? false)"
             class="shrink-0 px-4 py-2 border border-red-300 dark:border-red-600 text-red-700 dark:text-red-300 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {{ descartando ? 'Descartando...' : 'Descartar' }}
           </button>
+          <ProduccionPospuestaActions
+            :puede-rechazar="puedeRechazarProduccionPospuesta"
+            :puede-aceptar="puedeAceptarProduccionPospuesta"
+            :rechazando="cancelandoPedidoPospuesto"
+            :aceptando="aceptandoProduccionPospuesta"
+            @rechazar="handleRechazarProduccionPospuesta"
+            @aceptar="handleAceptarProduccionPospuesta"
+          />
           <button
             v-if="esPedidoBorrador"
             type="button"
             @click="handleEnviar"
             :disabled="enviando"
-            class="shrink-0 px-4 py-2 bg-indigo-600 dark:bg-indigo-500 text-white rounded-lg hover:bg-indigo-700 dark:hover:bg-indigo-600 transition-colors text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+            class="shrink-0 px-4 py-2 bg-green-600 dark:bg-green-500 text-white rounded-lg hover:bg-green-700 dark:hover:bg-green-600 transition-colors text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {{ enviando ? 'Enviando...' : 'Enviar' }}
           </button>
@@ -370,13 +398,14 @@
           :pedido="pedido"
           :copy-feedback="copyFeedback"
           :editable="!esModoMabelTrading"
-          :editable-estado="false"
           :default-expanded="!esModoMabelTrading"
           :show-inmediato-option="true"
+          :guardando-fecha-pedido="guardandoFechaPedido"
+          :guardando-fecha-entrega="guardandoFechaEntrega"
           @copy-to-clipboard="copyToClipboard"
           @update-fecha-pedido="handleUpdateFechaPedido"
           @update-fecha-entrega="handleUpdateFechaEntrega"
-          @update-estado="handleUpdateEstado"
+          @ver-detalle-sap="handleVerDetalleSap"
         />
 
         <!-- Job SAP async aún en Celery (p. ej. tras timeout del navegador) -->
@@ -448,56 +477,14 @@
         <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md border border-gray-200 dark:border-gray-700 p-6">
           <div class="flex items-center justify-between mb-4">
             <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Productos del Pedido</h2>
-            <div class="relative">
-              <button
-                @click="showColumnSelector = !showColumnSelector"
-                class="px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors flex items-center gap-2 text-gray-700 dark:text-gray-300"
-              >
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
-                </svg>
-                Columnas
-              </button>
-              
-              <!-- Dropdown de selección de columnas -->
-              <div
-                v-if="showColumnSelector"
-                @click.stop
-                class="absolute right-0 top-full mt-2 w-64 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-50 p-3"
-              >
-                <div class="flex items-center justify-between mb-2 px-2">
-                  <div class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Seleccionar columnas</div>
-                  <div v-if="isSyncing" class="flex items-center gap-1">
-                    <LoadingSpinner layout="inline" size="xs" aria-label="Guardando preferencias" />
-                    <span class="text-xs text-indigo-600 dark:text-indigo-400">Guardando...</span>
-                  </div>
-                </div>
-                <div class="space-y-1 max-h-80 overflow-y-auto">
-                  <label
-                    v-for="column in availableColumnsWithVisibility"
-                    :key="column.key"
-                    :class="[
-                      'flex items-center gap-2 px-2 py-2 rounded transition-colors',
-                      column.fixed 
-                        ? 'cursor-not-allowed opacity-60 bg-gray-50 dark:bg-gray-900' 
-                        : 'hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer'
-                    ]"
-                  >
-                    <input
-                      type="checkbox"
-                      :checked="column.visible"
-                      :disabled="column.fixed"
-                      @change="!column.fixed && toggleColumnVisibility(column.key)"
-                      class="w-4 h-4 text-indigo-600 border-gray-300 dark:border-gray-600 rounded focus:ring-indigo-500 dark:focus:ring-indigo-400 disabled:opacity-50 disabled:cursor-not-allowed"
-                    />
-                    <span class="text-sm text-gray-700 dark:text-gray-300">
-                      {{ column.label }}
-                      <span v-if="column.fixed" class="text-xs text-gray-500 dark:text-gray-500 ml-1">(fija)</span>
-                    </span>
-                  </label>
-                </div>
-              </div>
-            </div>
+            <ColumnSelectorDropdown
+              :columns="availableColumnsWithVisibility"
+              :is-open="columnVisibility.isOpen.value"
+              :selector-id="columnVisibility.selectorId"
+              :is-syncing="isSyncing"
+              @toggle-open="columnVisibility.toggleOpen"
+              @toggle-column="columnVisibility.toggleColumnVisibility"
+            />
           </div>
           <div class="overflow-x-auto">
             <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
@@ -535,9 +522,7 @@
                     :class="[
                       'px-4 py-4 text-sm',
                       column.align === 'right' ? 'text-right whitespace-nowrap' : column.align === 'center' ? 'text-center whitespace-nowrap' : '',
-                      isColumnaModificada(detalle.pedido_detalle_id, column.key) && column.key !== 'numero'
-                        ? 'bg-amber-50 dark:bg-amber-900/20 border-l-2 border-amber-500 dark:border-amber-400'
-                        : '',
+                      claseResaltadoModificado(detalle.pedido_detalle_id, column.key),
                       column.key === 'codigo_interno' && detalle.codigo_interno != null && isCodigoCorregidoHighlight(detalle.codigo_interno)
                         ? 'bg-emerald-50 dark:bg-emerald-900/25 border-l-2 border-emerald-500 dark:border-emerald-400'
                         : '',
@@ -635,6 +620,15 @@
       @apply-corrections="aplicarCorreccionesYContinuar"
     />
 
+    <!-- Modal de integración SAP: al hacer clic en un "Número OC SAP" de la cabecera -->
+    <IntegracionSAPModal
+      :is-open="showIntegracionSAPModal"
+      :detalle="integracionSAPDetalle"
+      :solicitudes-transferencia="integracionSAPSolicitudes"
+      :estado-general="integracionSAPEstadoGeneral"
+      @close="showIntegracionSAPModal = false"
+    />
+
   </div>
 </template>
 
@@ -643,8 +637,8 @@ import { ref, computed, watch, type Ref } from '@vue/reactivity'
 import { onMounted, onActivated, onUnmounted, nextTick, Teleport } from '@vue/runtime-core'
 import { useRoute, useRouter } from 'vue-router'
 import { useToast } from '@/composables/useToast'
+import { useAuthStore } from '@/stores/auth'
 import { lastNotification } from '@/composables/useNotificaciones'
-import { useTablePreferences } from '@/composables/useTablePreferences'
 import { mba3ConsultasService, extractErrorMessage } from '../services/mba3ConsultasApi'
 import type { PedidoCompleto, ReporteDiferenciasResponse, UploadPlantillaResponse } from '../types'
 // Utilidades extraídas
@@ -678,21 +672,35 @@ import {
 } from '../utils/redistribucionHelpers'
 // Composables
 import { useFileUpload, RESALTADO_CODIGOS_STORAGE_PREFIX } from '../composables/useFileUpload'
+import type { CorreccionesPlantilla } from '../composables/useFileUpload'
 import { useColumnManagement } from '../composables/useColumnManagement'
+import { useProductosPedidoColumnas } from '../composables/useProductosPedidoColumnas'
 import { usePedidoDetalle } from '../composables/usePedidoDetalle'
+import { useFechaPedidoHandlers } from '../composables/useFechaPedidoHandlers'
 import { useRedistribucion } from '../composables/useRedistribucion'
 import {
   ejecutarProcesoCompletoSap,
   getPendingOdcSapProcessingState,
 } from '../composables/ejecutarProcesoCompletoSap'
 import { useSapProcessProgress } from '../composables/useSapProcessProgress'
-import { isTransientClientError, SAP_MAY_STILL_PROCESSING_MESSAGE } from '../utils/httpErrors'
+import { useProduccionPospuestaActions } from '../composables/useProduccionPospuestaActions'
+import { useVerDetalleSapModal } from '../composables/useVerDetalleSapModal'
+import {
+  isTransientClientError,
+  SAP_MAY_STILL_PROCESSING_MESSAGE,
+  SAP_SLOW_SYNC_LIKELY_MESSAGE,
+  extraerMensajeErrorAnidado,
+} from '../utils/httpErrors'
+import { descargarBlobComoArchivo } from '../utils/downloadHelpers'
 // Componentes
 import PedidoHeaderActions from '../components/PedidoHeaderActions.vue'
+import ProduccionPospuestaActions from '../components/ProduccionPospuestaActions.vue'
 import PedidoCabecera from '../components/PedidoCabecera.vue'
 import RedistribucionTiendas from '../components/RedistribucionTiendas.vue'
 import UploadErrorModal from '../components/UploadErrorModal.vue'
+import IntegracionSAPModal from '../components/IntegracionSAPModal.vue'
 import LoadingSpinner from '../components/LoadingSpinner.vue'
+import ColumnSelectorDropdown from '../components/ColumnSelectorDropdown.vue'
 
 // Constantes de configuración
 const SCROLL_DELAY_MS = 100
@@ -703,6 +711,7 @@ const COPY_FEEDBACK_DURATION_MS = 2000
 const route = useRoute()
 const router = useRouter()
 const toast = useToast()
+const authStore = useAuthStore()
 
 // ⭐ Función para manejar el click en "Crear Pedido Manual"
 function handleCrearPedido() {
@@ -758,76 +767,37 @@ async function handleDescartar() {
 
 const pedido = ref<PedidoCompleto | null>(null)
 
+// Req. 1.2: par "Rechazar" / "Aceptar" en Producción Pospuesta (compartido con PedidoDetalleView.vue)
+const {
+  puedeRechazar: puedeRechazarProduccionPospuesta,
+  puedeAceptar: puedeAceptarProduccionPospuesta,
+  rechazando: cancelandoPedidoPospuesto,
+  aceptando: aceptandoProduccionPospuesta,
+  handleRechazar: handleRechazarProduccionPospuesta,
+  handleAceptar: handleAceptarProduccionPospuesta,
+} = useProduccionPospuestaActions(pedido)
+
 // ⭐ HU-08: Estado del modal de exportación MBA
 // ⭐ HU-08: Descarga directa del archivo plano MBA (un clic, sin modal)
 const descargandoPlanoMba = ref(false)
+// Bodega del botón que disparó la descarga en curso (pedidos con más de una ODC) --
+// permite mostrar el spinner solo en ese botón, no en todos (ver PedidoHeaderActions.vue)
+const descargandoPlanoMbaBodega = ref<string | undefined>(undefined)
+
+// Req. 1.4/1.5: descarga del Análisis de Margen de Rentabilidad
+const descargandoMargen = ref(false)
 
 // ⭐ Set para rastrear columnas modificadas (formato: "detalleId:columnKey")
 const columnasModificadas = ref<Set<string>>(new Set())
 
+// Rol responsable de la última modificación de cada columna ('PRODUCCION_ELRAYO' | 'ODCSAP' | null),
+// misma clave "detalleId:columnKey". Determina el color de resaltado de COSTO UNIT. (púrpura/ámbar).
+const rolesModificacion = ref<Map<string, string | null>>(new Map())
+
 // Gestión de columnas visibles en la tabla
-const showColumnSelector = ref(false)
 const confirmando = ref(false)
-const draggedColumnKey = ref<string | null>(null)
-const dragOverColumnKey = ref<string | null>(null)
 
 // La interfaz EditingCell ahora está importada desde composables/useColumnManagement
-
-// ⭐ Funciones para persistencia en sessionStorage (fallback/migración)
-// ⚠️ NOTA: El backend es la fuente principal de verdad. sessionStorage solo se usa como fallback.
-function getStorageKey(): string {
-  return `pedido_columnas_modificadas_${numeroPedido.value}`
-}
-
-function guardarColumnasModificadasEnStorage() {
-  if (!numeroPedido.value) return
-  
-  try {
-    const storageKey = getStorageKey()
-    const columnasArray = Array.from(columnasModificadas.value)
-    sessionStorage.setItem(storageKey, JSON.stringify(columnasArray))
-  } catch (e) {
-    console.warn('Error al guardar columnas modificadas en sessionStorage (fallback):', e)
-  }
-}
-
-function cargarColumnasModificadasDesdeStorage() {
-  if (!numeroPedido.value) return
-  
-  // Solo cargar desde sessionStorage si no hay modificaciones ya cargadas desde el backend
-  // Esto permite migración gradual de datos
-  if (columnasModificadas.value.size > 0) {
-    if (import.meta.env.DEV) console.log('ℹ️ [PedidoDetalleView] Modificaciones ya cargadas desde backend, omitiendo sessionStorage')
-    return
-  }
-  
-  try {
-    const storageKey = getStorageKey()
-    const stored = sessionStorage.getItem(storageKey)
-    
-    if (stored) {
-      const columnasArray = JSON.parse(stored) as string[]
-      // Limpiar antes de cargar desde storage
-      columnasModificadas.value.clear()
-      columnasModificadas.value = new Set(columnasArray)
-      if (import.meta.env.DEV) console.log(`ℹ️ [PedidoDetalleView] Cargadas ${columnasArray.length} modificaciones desde sessionStorage (fallback)`)
-    }
-  } catch (e) {
-    console.warn('Error al cargar columnas modificadas desde sessionStorage (fallback):', e)
-  }
-}
-
-function limpiarColumnasModificadasEnStorage() {
-  if (!numeroPedido.value) return
-  
-  try {
-    const storageKey = getStorageKey()
-    sessionStorage.removeItem(storageKey)
-    columnasModificadas.value.clear()
-  } catch (e) {
-    console.warn('Error al limpiar columnas modificadas en sessionStorage:', e)
-  }
-}
 
 // ⭐ EXTENSIÓN DEL TIPO: Agregar comentario al tipo PedidoDetalle localmente
 // La interfaz ColumnConfig ahora está importada desde utils/formatters
@@ -841,103 +811,49 @@ const availableColumns: ColumnConfig[] = [
   { key: 'pack', label: 'Pack', visible: false, align: 'left', format: 'text' },
   { key: 'costo_doc_sin_iva', label: 'Costo Unit.', visible: true, align: 'right', format: 'currency' },
   { key: 'descuento_1', label: 'Descuento', visible: false, align: 'right', format: 'number' },
-  { key: 'pvp', label: 'PVP', visible: false, align: 'right', format: 'currency' },
+  // Solo mabel.view: PVP (precio de venta al público) queda fuera del selector de
+  // columnas para odcsap.view y produccion-elrayo.view (ver ocultar_pvp_si_no_mabel).
+  ...(authStore.canViewMabel
+    ? [{ key: 'pvp', label: 'PVP', visible: false, align: 'right' as const, format: 'currency' as const }]
+    : []),
+  { key: 'costo_margen', label: 'Costo', visible: true, align: 'right', format: 'currency' },
+  { key: 'margen', label: 'Margen', visible: true, align: 'right', format: 'percent' },
   { key: 'subtotal', label: 'Subtotal', visible: false, align: 'right', format: 'number' },
+  // Solo mabel.view: cantidad que Mabel Trading cargó originalmente en la plantilla Excel,
+  // inmutable desde el INSERT (ver cantidad_solicitada_original en PedidoDetalleRepository.insert).
+  ...(authStore.canViewMabel
+    ? [{ key: 'cantidad_solicitada_original', label: 'Solicitado Mabel', visible: true, align: 'right', format: 'number' } as ColumnConfig]
+    : []),
   { key: 'total', label: 'Total', visible: true, align: 'right', format: 'number' },
   { key: 'comentario', label: 'Comentario', visible: true, align: 'left', format: 'text' }
 ]
 
-// ⭐ CAMBIO: Usar composable useTablePreferences
-// Asegurar que la columna 'numero' esté siempre visible y al inicio
-const defaultVisibleColumns = availableColumns.filter(col => col.visible || col.fixed).map(col => col.key)
-const defaultColumnOrder = availableColumns.map(col => col.key)
-
+// Orquestación de columnas (preferencias, visibilidad, drag & drop) y totales/numeroPedido,
+// compartida con PedidoDetalleView.vue vía useProductosPedidoColumnas (mismo tableId).
 const {
   visibleColumns,
   columnOrder,
-  orderedVisibleColumns: orderedVisibleColumnKeys,
+  orderedVisibleColumnKeys,
   savePreferences,
-  resetPreferences: resetTablePreferences,
-  selectAllColumns: selectAllTableColumns,
-  isSyncing
-} = useTablePreferences({
-  tableId: 'productos-pedido',
-  defaultVisibleColumns,
-  defaultColumnOrder,
-  enableFilters: false,
-  enablePageSize: false
-})
-
-// ⭐ NUEVO: Computed para obtener objetos ColumnConfig ordenados
-// Asegurar que la columna 'numero' siempre esté al inicio
-const orderedVisibleColumns = computed(() => {
-  const ordered = orderedVisibleColumnKeys.value
-    .map(key => availableColumns.find(col => col.key === key))
-    .filter((col): col is ColumnConfig => col !== undefined)
-  
-  // Separar columnas fijas y no fijas
-  const fixedColumns = ordered.filter(col => col.fixed)
-  const nonFixedColumns = ordered.filter(col => !col.fixed)
-  
-  // Asegurar que 'numero' esté al inicio si existe
-  const numeroColumn = fixedColumns.find(col => col.key === 'numero')
-  const otherFixedColumns = fixedColumns.filter(col => col.key !== 'numero')
-  
-  // Reconstruir el orden: primero 'numero', luego otras fijas, luego no fijas
-  return [
-    ...(numeroColumn ? [numeroColumn] : []),
-    ...otherFixedColumns,
-    ...nonFixedColumns
-  ]
-})
-
-// ⭐ NUEVO: Computed para obtener todas las columnas con su estado de visibilidad
-const availableColumnsWithVisibility = computed(() => {
-  return availableColumns.map(col => ({
-    ...col,
-    visible: col.fixed ? true : visibleColumns.value.includes(col.key)
-  }))
-})
-
-// ⭐ Asegurar que la columna 'numero' siempre esté visible
-watch(
-  () => visibleColumns.value,
-  (newVisible) => {
-    if (!newVisible.includes('numero')) {
-      visibleColumns.value = ['numero', ...newVisible.filter((key: string) => key !== 'numero')]
-      savePreferences()
-    }
-  },
-  { immediate: true }
-)
-
-// ⭐ Totales: usar pedido.totales del backend cuando exista; si no, recalcular desde detalles (fallback)
-const totalesCostoUnitario = computed(() => {
-  const t = pedido.value?.totales
-  if (t != null && typeof t.total_costo_unitario === 'number') return t.total_costo_unitario
-  if (!pedido.value?.detalles) return 0
-  return pedido.value.detalles.reduce((sum: number, detalle: any) => sum + (detalle.costo_doc_sin_iva || 0), 0)
-})
-
-const totalesSubtotal = computed(() => {
-  const t = pedido.value?.totales
-  if (t != null && typeof t.total_subtotal === 'number') return t.total_subtotal
-  if (!pedido.value?.detalles) return 0
-  return pedido.value.detalles.reduce((sum: number, detalle: any) => sum + (detalle.subtotal || 0), 0)
-})
-
-const totalesTotal = computed(() => {
-  const t = pedido.value?.totales
-  if (t != null && typeof t.total_total === 'number') return t.total_total
-  if (!pedido.value?.detalles) return 0
-  return pedido.value.detalles.reduce((sum: number, detalle: any) => sum + (detalle.total || 0), 0)
-})
-
-// El parámetro de ruta ahora es numero_pedido
-const numeroPedido = computed(() => {
-  const id = route.params.id as string
-  return id ? decodeURIComponent(id) : ''
-})
+  resetTablePreferences,
+  selectAllTableColumns,
+  isSyncing,
+  columnVisibility,
+  draggedColumnKey,
+  dragOverColumnKey,
+  handleDragStart,
+  handleDragOver,
+  handleDragLeave,
+  handleDrop,
+  handleDragEnd,
+  orderedVisibleColumns,
+  availableColumnsWithVisibility,
+  totalesCostoUnitario,
+  totalesSubtotal,
+  totalesTotal,
+  numeroPedido,
+  columnasModificadasStorage
+} = useProductosPedidoColumnas(availableColumns, pedido, columnasModificadas, rolesModificacion)
 
 /** Número de pedido para el que se muestra el botón "Finalizado" (solo Cargar plantilla, estado Despachar y Facturar). */
 const NUMERO_PEDIDO_FINALIZADO = 'P-12.01 - 12 - 2025'
@@ -963,9 +879,11 @@ const {
   sapProgress,
   sapFase,
   sapMessage,
+  sapAvisoEsperaLarga,
   resetSapProgress,
   startSapProgressSimulation,
   applySapPollingUpdate,
+  marcarPosibleEsperaLarga,
   completeSapProgress,
   stopSimulation: stopSapProgressSimulation,
 } = useSapProcessProgress()
@@ -1030,11 +948,7 @@ async function handleFinalizarPedido() {
     await loadPedido()
   } catch (e: any) {
     console.error('Error al finalizar pedido:', e)
-    const status = e.response?.status
-    const data = e.response?.data
-    const errorCode = data?.error
-    const detail = data?.detail
-    const msg = (typeof detail === 'object' && detail?.message) ? detail.message : (typeof detail === 'string' ? detail : null) ?? data?.message ?? e.message
+    const { status, errorCode, msg } = extraerMensajeErrorAnidado(e)
 
     if (status === 400 && (errorCode === 'estado_no_despachar_y_facturar' || msg?.includes('Despachar y Facturar'))) {
       toast.error('Estado incorrecto', 'Solo se puede finalizar un pedido cuando está en estado "Despachar y Facturar".')
@@ -1058,29 +972,9 @@ const pedidoDetalle = usePedidoDetalle({
   numeroPedido,
   esModoMabelTrading,
   columnasModificadas,
-  limpiarColumnasModificadasEnStorage: () => {
-    if (!numeroPedido.value) return
-    try {
-      const storageKey = `pedido_columnas_modificadas_${numeroPedido.value}`
-      sessionStorage.removeItem(storageKey)
-      columnasModificadas.value.clear()
-    } catch (e) {
-      console.warn('Error al limpiar columnas modificadas en sessionStorage:', e)
-    }
-  },
-  cargarColumnasModificadasDesdeStorage: () => {
-    if (!numeroPedido.value) return
-    try {
-      const storageKey = `pedido_columnas_modificadas_${numeroPedido.value}`
-      const stored = sessionStorage.getItem(storageKey)
-      if (stored) {
-        const columnasArray = JSON.parse(stored) as string[]
-        columnasModificadas.value = new Set(columnasArray)
-      }
-    } catch (e) {
-      console.warn('Error al cargar columnas modificadas desde sessionStorage:', e)
-    }
-  }
+  rolesModificacion,
+  limpiarColumnasModificadasEnStorage: columnasModificadasStorage.limpiar,
+  cargarColumnasModificadasDesdeStorage: columnasModificadasStorage.cargar
 })
 
 // Inicializar composable de redistribución después de pedidoDetalle
@@ -1237,62 +1131,9 @@ async function goToPedidoWrapper() {
   pedidoIdInput.value = ''
 }
 
-// ⭐ FASE 4: Computed para resumen de redistribución
-const resumenRedistribucion = computed(() => {
-  if (redistribucion.productosRedistribucion.value.length === 0) {
-    return {
-      total_solicitado: 0,
-      total_confirmado: 0,
-      total_distribuido: 0,
-      diferencia_pendiente: 0
-    }
-  }
-  
-  const total_solicitado = redistribucion.productosRedistribucion.value.reduce((sum, p) => sum + p.cantidad_solicitada, 0)
-  const total_confirmado = redistribucion.productosRedistribucion.value.reduce((sum, p) => sum + p.cantidad_confirmada, 0)
-  const total_distribuido = redistribucion.productosRedistribucion.value.reduce((sum, p) => sum + p.cantidad_distribuida, 0)
-  const diferencia_pendiente = total_confirmado - total_distribuido
-  
-  return {
-    total_solicitado,
-    total_confirmado,
-    total_distribuido,
-    diferencia_pendiente
-  }
-})
-
-// ⭐ FASE 4: Computed para impacto económico
-const impactoEconomico = computed(() => {
-  let costo_unitario_total = 0
-  let subtotal_original = 0
-  let subtotal_ajustado = 0
-  let diferencia_economica = 0
-  
-  redistribucion.productosRedistribucion.value.forEach(producto => {
-    const costo = producto.costo_unitario || 0
-    costo_unitario_total += costo
-    subtotal_original += producto.cantidad_solicitada * costo
-    subtotal_ajustado += producto.cantidad_distribuida * costo
-  })
-  
-  diferencia_economica = subtotal_ajustado - subtotal_original
-  
-  return {
-    costo_unitario_promedio: redistribucion.productosRedistribucion.value.length > 0 
-      ? costo_unitario_total / redistribucion.productosRedistribucion.value.length 
-      : 0,
-    subtotal_original,
-    subtotal_ajustado,
-    diferencia_economica
-  }
-})
-
-// ⭐ FASE 4: Validar si se puede confirmar
-const puedeConfirmarRedistribucion = computed(() => {
-  return resumenRedistribucion.value.diferencia_pendiente === 0 &&
-         redistribucion.productosRedistribucion.value.every(p => p.diferencia === 0) &&
-         redistribucion.productosRedistribucion.value.every(p => !p.error)
-})
+// ⭐ FASE 4: resumen de redistribución / impacto económico / validación de confirmación,
+// ahora calculados dentro de useRedistribucion (dependen solo de su propio estado interno).
+const { resumenRedistribucion, impactoEconomico, puedeConfirmarRedistribucion } = redistribucion
 
 // Deshabilitar "Confirmar Redistribución" usando el flag del backend (incluye CANCELADO y estados ya confirmados)
 const confirmarRedistribucionDeshabilitadoPorEstado = computed(() =>
@@ -1399,14 +1240,14 @@ const {
 // - todosCodigosTienenCorreccion (computed)
 
 /**
- * Aplica las correcciones seleccionadas y reintenta el flujo de carga
- * ⭐ ACTUALIZADO: Ahora recibe las correcciones como parámetro desde UploadErrorModal
+ * Aplica las correcciones seleccionadas (código y/o pack/pvp, lo que UploadErrorModal reporte
+ * en esta respuesta) y reintenta el flujo de carga en un solo reintento.
  */
-async function aplicarCorreccionesYContinuar(correcciones: Record<string, string>): Promise<void> {
+async function aplicarCorreccionesYContinuar(correcciones: CorreccionesPlantilla): Promise<void> {
   // Obtener archivo original desde el composable
   // El composable lo guarda cuando hay error SAP
   const archivo = archivoOriginalDelComposable.value
-  
+
   if (!archivo) {
     toast.error(
       'Error',
@@ -1414,16 +1255,12 @@ async function aplicarCorreccionesYContinuar(correcciones: Record<string, string
     )
     return
   }
-  
+
   try {
     // Ocultar modal temporalmente mientras se procesa
     showErrorModal.value = false
-    
-    // Llamar a la función de reintento con correcciones
-    await reintentarConCorrecciones(
-      archivo,
-      correcciones
-    )
+
+    await reintentarConCorrecciones(archivo, correcciones)
   } catch (error: any) {
     console.error('❌ Error al aplicar correcciones:', error)
     // Mostrar modal de nuevo con el nuevo error si existe
@@ -1446,17 +1283,29 @@ async function aplicarCorreccionesYContinuar(correcciones: Record<string, string
 // - setLimiteSugerencias
 // - inicializarLimiteSugerencias
 
-const columnManagement = useColumnManagement(pedido, numeroPedido, columnasModificadas)
+const columnManagement = useColumnManagement(pedido, numeroPedido, columnasModificadas, rolesModificacion)
 
 // Extraer funciones del composable para uso directo
-const { editingCell, iniciarEdicion, cancelarEdicion, manejarTeclasEdicion, isColumnaModificada, getColumnaModificadaKey } = columnManagement
+const { editingCell, iniciarEdicion, cancelarEdicion, manejarTeclasEdicion, isColumnaModificada, getColumnaModificadaKey, getRolModificador } = columnManagement
+
+// Color de resaltado de celda modificada en COSTO UNIT./TOTAL/COMENTARIO: púrpura si la
+// última edición (propia o heredada del padre en un pedido hijo) la hizo odcsap.view, ámbar
+// si la hizo produccion-elrayo.view. Depende de quién editó cada celda (persistido en
+// backend), igual que en PedidoDetalleView.vue.
+function claseResaltadoModificado(detalleId: string, columnKey: string): string {
+  if (columnKey === 'numero' || !isColumnaModificada(detalleId, columnKey)) return ''
+  if (getRolModificador(detalleId, columnKey) === 'ODCSAP') {
+    return 'bg-purple-50 dark:bg-purple-900/20 border-l-2 border-purple-500 dark:border-purple-400'
+  }
+  return 'bg-amber-50 dark:bg-amber-900/20 border-l-2 border-amber-500 dark:border-amber-400'
+}
 
 // Wrapper para guardarEdicion que incluye guardar en storage (fallback)
 // ⚠️ NOTA: El backend se actualiza automáticamente en useColumnManagement
 async function guardarEdicion() {
   await columnManagement.guardarEdicion(() => {
     // Guardar en sessionStorage como fallback (migración)
-    guardarColumnasModificadasEnStorage()
+    columnasModificadasStorage.guardar()
   })
 }
 
@@ -1466,94 +1315,37 @@ async function guardarEdicion() {
 // Funciones de gestión del pedido ahora están en el composable usePedidoDetalle
 
 // ⭐ HU-06: Funciones para actualizar cabecera del pedido
-async function handleUpdateFechaPedido(fecha: string | null) {
-  if (!pedido.value?.cabecera?.pedido_id) return
-  
-  try {
-    await mba3ConsultasService.actualizarCabeceraPedido(pedido.value.cabecera.pedido_id, {
-      fecha_pedido: fecha
-    })
-    
-    // Actualizar el valor localmente
-    if (pedido.value.cabecera) {
-      pedido.value.cabecera.fecha_pedido = fecha
-    }
-    
-    toast.success('Fecha actualizada', 'La fecha de pedido se ha actualizado correctamente')
-    
-    // Recargar el pedido para asegurar sincronización
-    await loadPedido()
-  } catch (e: any) {
-    console.error('Error al actualizar fecha de pedido:', e)
-    toast.error('Error al actualizar', e.message || 'No se pudo actualizar la fecha de pedido')
-    // Recargar para restaurar valor original
-    await loadPedido()
-  }
-}
+const { handleUpdateFechaPedido, handleUpdateFechaEntrega, guardandoFechaPedido, guardandoFechaEntrega } =
+  useFechaPedidoHandlers(pedido, toast, loadPedido)
 
-async function handleUpdateFechaEntrega(fecha: string | null) {
-  if (!pedido.value?.cabecera?.pedido_id) return
-  
-  try {
-    await mba3ConsultasService.actualizarCabeceraPedido(pedido.value.cabecera.pedido_id, {
-      fecha_entrega: fecha
-    })
-    
-    // Actualizar el valor localmente
-    if (pedido.value.cabecera) {
-      pedido.value.cabecera.fecha_entrega = fecha
-    }
-    
-    toast.success('Fecha actualizada', 'La fecha de entrega se ha actualizado correctamente')
-    
-    // Recargar el pedido para asegurar sincronización
-    await loadPedido()
-  } catch (e: any) {
-    console.error('Error al actualizar fecha de entrega:', e)
-    toast.error('Error al actualizar', e.message || 'No se pudo actualizar la fecha de entrega')
-    // Recargar para restaurar valor original
-    await loadPedido()
-  }
-}
+// Modal de integración SAP: al hacer clic en un "Número OC SAP" de la cabecera
+// (pedidos con más de una ODC muestran un botón por cada una, ver PedidoCabecera.vue).
+const {
+  showIntegracionSAPModal,
+  integracionSAPDetalle,
+  integracionSAPSolicitudes,
+  integracionSAPEstadoGeneral,
+  handleVerDetalleSap
+} = useVerDetalleSapModal()
 
-async function handleUpdateEstado(estado: string | null) {
-  if (!pedido.value?.cabecera?.pedido_id) return
-  
-  try {
-    await mba3ConsultasService.actualizarCabeceraPedido(pedido.value.cabecera.pedido_id, {
-      estado: estado || undefined
-    })
-    
-    // Actualizar el valor localmente
-    if (pedido.value.cabecera) {
-      pedido.value.cabecera.estado = estado || undefined
-    }
-    
-    toast.success('Estado actualizado', 'El estado del pedido se ha actualizado correctamente')
-    
-    // Recargar el pedido para asegurar sincronización
-    await loadPedido()
-  } catch (e: any) {
-    console.error('Error al actualizar estado:', e)
-    toast.error('Error al actualizar', e.message || 'No se pudo actualizar el estado del pedido')
-    // Recargar para restaurar valor original
-    await loadPedido()
-  }
-}
-
+// Pese al nombre del botón/función, esto NO es una confirmación real del pedido (req.
+// 1.2/1.8): es el paso "Fase 3" de Mabel Trading -- guarda cambios y crea la respuesta del
+// proveedor, y de ahí redirige a Redistribución (Fase 4), que es donde ocurre la
+// confirmación real del flujo de El Rayo. En este punto nadie ha editado "Total" todavía,
+// así que el chequeo de diferencia de producción (ver PedidoDetalleView.vue) no aplica
+// aquí y no se le agregó el modal correspondiente -- confirmado con el usuario 2026-08-17,
+// ver docs/requeriments/PYTD002_ODC-MABEL-RAYO_SEGUIMIENTO.md punto 1.2.
 async function handleConfirmar() {
   // Prevenir múltiples clics
   if (confirmando.value || !pedido.value || !numeroPedido.value) return
-  
+
   // Establecer estado de confirmación
   confirmando.value = true
-  
+
   // Mostrar indicador de carga
   toast.info('Guardando cambios...', 'Guardando los cambios realizados en la tabla')
-  
+
   try {
-    // ⭐ FASE 3: Solo guardar cambios y crear respuesta_proveedor
-    // NO procesar confirmación - eso lo hace MABEL TRADING en Fase 4
     // Usar pedido_id si está disponible (más eficiente), sino usar numero_pedido
     const pedidoId = pedido.value?.cabecera?.pedido_id
     await mba3ConsultasService.crearRespuestaProveedorDesdePedido(numeroPedido.value, pedidoId)
@@ -1591,30 +1383,49 @@ async function handleConfirmar() {
 }
 
 // ⭐ HU-08: Descarga directa del archivo plano MBA (un clic, sin modal)
-async function handleDescargarPlanoMba() {
+// codigoBodega viene del botón correspondiente cuando el pedido tiene más de una ODC
+// (una por bodega/CD, ver PedidoHeaderActions.vue -> ordenesCompraParaTxt).
+async function handleDescargarPlanoMba(codigoBodega?: string) {
   if (!pedido.value || !numeroPedido.value) {
     toast.error('Error', 'No hay pedido seleccionado')
     return
   }
   if (descargandoPlanoMba.value) return
   descargandoPlanoMba.value = true
+  descargandoPlanoMbaBodega.value = codigoBodega
   try {
-    const blob = await mba3ConsultasService.exportarPedidoPlanoMba(numeroPedido.value, 'txt')
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    const nombreArchivo = `pedido_mba_${numeroPedido.value.replace(/[^a-zA-Z0-9.-]/g, '_')}_${new Date().toISOString().split('T')[0]}.txt`
-    a.download = nombreArchivo
-    document.body.appendChild(a)
-    a.click()
-    document.body.removeChild(a)
-    URL.revokeObjectURL(url)
+    const blob = await mba3ConsultasService.exportarPedidoPlanoMba(numeroPedido.value, 'txt', codigoBodega)
+    const sufijoBodega = codigoBodega ? `_${codigoBodega}` : ''
+    const nombreArchivo = `pedido_mba_${numeroPedido.value.replace(/[^a-zA-Z0-9.-]/g, '_')}${sufijoBodega}_${new Date().toISOString().split('T')[0]}.txt`
+    descargarBlobComoArchivo(blob, nombreArchivo)
     toast.success('Descarga completada', 'El archivo se ha descargado correctamente')
   } catch (e: any) {
     console.error('Error al descargar pedido plano:', e)
     toast.error('Error al descargar', e.message || 'No se pudo descargar el archivo')
   } finally {
     descargandoPlanoMba.value = false
+    descargandoPlanoMbaBodega.value = undefined
+  }
+}
+
+// Req. 1.4/1.5: descarga del Análisis de Margen de Rentabilidad (botón en pantalla de carga)
+async function handleDescargarMargenExcel() {
+  if (!pedido.value || !numeroPedido.value) {
+    toast.error('Error', 'No hay pedido seleccionado')
+    return
+  }
+  if (descargandoMargen.value) return
+  descargandoMargen.value = true
+  try {
+    const blob = await mba3ConsultasService.exportarAnalisisMargen(numeroPedido.value)
+    const nombreArchivo = `analisis_margen_${numeroPedido.value.replace(/[^a-zA-Z0-9.-]/g, '_')}_${new Date().toISOString().split('T')[0]}.xlsx`
+    descargarBlobComoArchivo(blob, nombreArchivo)
+    toast.success('Descarga completada', 'El análisis de margen se ha descargado correctamente')
+  } catch (e: any) {
+    console.error('Error al descargar análisis de margen:', e)
+    toast.error('Error al descargar', e.message || 'No se pudo descargar el análisis de margen')
+  } finally {
+    descargandoMargen.value = false
   }
 }
 
@@ -1622,84 +1433,90 @@ async function handleDescargarPlanoMba() {
 
 // ⭐ REMOVIDO: Funciones de redistribución movidas al composable useRedistribucion.ts
 
-// ⭐ FASE 4: Funciones de redistribución - ahora delegadas al composable useRedistribucion
+// ⭐ FASE 4: Funciones de redistribución - delegadas directamente al composable useRedistribucion
+// (mismos nombres que antes: la plantilla las sigue usando como @evento="funcion" sin cambios).
 // Las funciones se pasan al componente RedistribucionTiendas como eventos
-function toggleExpandirProducto(codigoProducto: string) {
-  redistribucion.toggleExpandirProducto(codigoProducto)
-}
-
-function actualizarCantidadTienda(codigoProducto: string, tiendaCodigo: string, event: Event) {
-  redistribucion.actualizarCantidadTienda(codigoProducto, tiendaCodigo, event)
-}
-
-function validarYCorregirCantidad(producto: ProductoRedistribucion, tienda: DistribucionTiendaEditada) {
-  redistribucion.validarYCorregirCantidad(producto, tienda)
-}
-
-function distribuirProporcionalmente(codigoProducto: string) {
-  redistribucion.distribuirProporcionalmente(codigoProducto)
-}
-
-function copiarDistribucionOriginal(codigoProducto: string) {
-  redistribucion.copiarDistribucionOriginal(codigoProducto)
-}
-
-function resetearDistribucion(codigoProducto: string) {
-  redistribucion.resetearDistribucion(codigoProducto)
-}
-
-async function guardarBorradorRedistribucion() {
-  await redistribucion.guardarBorradorRedistribucion()
-}
+const {
+  toggleExpandirProducto,
+  actualizarCantidadTienda,
+  validarYCorregirCantidad,
+  distribuirProporcionalmente,
+  copiarDistribucionOriginal,
+  resetearDistribucion,
+  guardarBorradorRedistribucion
+} = redistribucion
 
 async function confirmarRedistribucion() {
   await redistribucion.confirmarRedistribucion(puedeConfirmarRedistribucion)
 }
 
 /** Aplica el resultado del proceso SAP en esta vista (modal éxito + loadPedido). */
-async function applySAPResponseCargarPlantilla(response: import('@/modules/mba3-consultas/types').ProcesoCompletoSAPResponse) {
-  const innerStatus = (response as any).status === 'success' || (response as any).status === 'partial' || (response as any).status === 'error'
-    ? (response as any).status
-    : (response.envio_sap?.doc_num != null ? 'success' : response.error ? 'partial' : 'error')
+type SAPCargarPlantillaResponse = import('@/modules/mba3-consultas/types').ProcesoCompletoSAPResponse
 
-  if (innerStatus === 'success') {
-    mostrarBannerReintentoConexionSap.value = false
-    const docNum = response.envio_sap?.doc_num
-    sapSuccessMessage.value = docNum
-      ? `ODC enviada exitosamente a SAP. Num ODC: ${docNum}`
-      : (response.message || 'ODC procesada correctamente en SAP')
-    sapSuccessOcId.value = response.envio_sap?.oc_id ?? null
-    sapSuccessSolicitudesTransferencia.value =
-      response.solicitudes_transferencia ?? response.envio_sap?.solicitudes_transferencia ?? null
-    showSAPSuccessModal.value = true
-    if (sapSuccessSolicitudesTransferencia.value?.transferencias_creadas) {
-      const st = sapSuccessSolicitudesTransferencia.value
-      toast.success('Solicitudes de Transferencia', `Se crearon ${st.transferencias_creadas} de ${st.total_tiendas} solicitudes`)
-    }
-    await loadPedido()
-  } else if (innerStatus === 'partial') {
-    const env = response.envio_sap
-    toast.warning(
-      `Error en paso: ${response.paso_fallido ?? 'desconocido'}`,
-      response.error || response.message || 'El proceso no se completó totalmente'
-    )
-    if (response.redistribucion) toast.info('Redistribución confirmada', `Versión: ${response.redistribucion.version_confirmada}`)
-    if (response.odc_generada) toast.info('ODC generada', `ID: ${response.odc_generada.oc_id}`)
-    await loadPedido()
-
-    // Refresh antes de pintar el CTA/botón de reintento (flag backend como única fuente).
-    const puedeReintentar = pedido.value?.puede_reintentar_envio_odc_sap === true
-    mostrarBannerReintentoConexionSap.value =
-      env?.retry_recommended === true && env?.doc_num == null && puedeReintentar
+function resolveInnerStatusCargarPlantilla(response: SAPCargarPlantillaResponse): 'success' | 'partial' | 'error' {
+  if ((response as any).status === 'success' || (response as any).status === 'partial' || (response as any).status === 'error') {
+    return (response as any).status
+  } else if (response.envio_sap?.doc_num != null) {
+    return 'success'
+  } else if (response.error_detalle) {
+    return 'partial'
   } else {
-    mostrarBannerReintentoConexionSap.value = false
-    toast.error('Error', response.message || 'No se pudo completar el proceso')
-    // Refresco adicional para que el flag backend (puede_reintentar_envio_odc_sap) quede sincronizado.
-    try {
-      await loadPedido()
-    } catch (e) {
-      console.warn('[applySAPResponseCargarPlantilla] loadPedido tras error SAP:', e)
-    }
+    return 'error'
+  }
+}
+
+async function handleSAPResponseSuccessCargarPlantilla(response: SAPCargarPlantillaResponse) {
+  mostrarBannerReintentoConexionSap.value = false
+  const docNum = response.envio_sap?.doc_num
+  sapSuccessMessage.value = docNum
+    ? `ODC enviada exitosamente a SAP. Num ODC: ${docNum}`
+    : (response.message || 'ODC procesada correctamente en SAP')
+  sapSuccessOcId.value = response.envio_sap?.oc_id ?? null
+  sapSuccessSolicitudesTransferencia.value =
+    response.solicitudes_transferencia ?? response.envio_sap?.solicitudes_transferencia ?? null
+  showSAPSuccessModal.value = true
+  if (sapSuccessSolicitudesTransferencia.value?.transferencias_creadas) {
+    const st = sapSuccessSolicitudesTransferencia.value
+    toast.success('Solicitudes de Transferencia', `Se crearon ${st.transferencias_creadas} de ${st.total_tiendas} solicitudes`)
+  }
+  await loadPedido()
+}
+
+async function handleSAPResponsePartialCargarPlantilla(response: SAPCargarPlantillaResponse) {
+  const env = response.envio_sap
+  toast.warning(
+    `Error en paso: ${response.paso_fallido ?? 'desconocido'}`,
+    response.error_detalle || response.message || 'El proceso no se completó totalmente'
+  )
+  if (response.redistribucion) toast.info('Redistribución confirmada', `Versión: ${response.redistribucion.version_confirmada}`)
+  if (response.odc_generada) toast.info('ODC generada', `ID: ${response.odc_generada.oc_id}`)
+  await loadPedido()
+
+  // Refresh antes de pintar el CTA/botón de reintento (flag backend como única fuente).
+  const puedeReintentar = pedido.value?.puede_reintentar_envio_odc_sap === true
+  mostrarBannerReintentoConexionSap.value =
+    env?.retry_recommended === true && env?.doc_num == null && puedeReintentar
+}
+
+async function handleSAPResponseErrorCargarPlantilla(response: SAPCargarPlantillaResponse) {
+  mostrarBannerReintentoConexionSap.value = false
+  toast.error('Error', response.message || 'No se pudo completar el proceso')
+  // Refresco adicional para que el flag backend (puede_reintentar_envio_odc_sap) quede sincronizado.
+  try {
+    await loadPedido()
+  } catch (e) {
+    console.warn('[applySAPResponseCargarPlantilla] loadPedido tras error SAP:', e)
+  }
+}
+
+async function applySAPResponseCargarPlantilla(response: SAPCargarPlantillaResponse) {
+  const innerStatus = resolveInnerStatusCargarPlantilla(response)
+  if (innerStatus === 'success') {
+    await handleSAPResponseSuccessCargarPlantilla(response)
+  } else if (innerStatus === 'partial') {
+    await handleSAPResponsePartialCargarPlantilla(response)
+  } else {
+    await handleSAPResponseErrorCargarPlantilla(response)
   }
 }
 
@@ -1754,6 +1571,7 @@ async function handleEnviarOdcSap() {
         odcSapProcesoEnServidor.value = false
       },
       onPollingUpdate: applySapPollingUpdate,
+      onSlowSyncLikely: marcarPosibleEsperaLarga,
     })
     completeSapProgress()
     odcSapProcesoEnServidor.value = false
@@ -1804,10 +1622,8 @@ onMounted(() => {
   
   // Sincronizar códigos a resaltar desde sessionStorage (flujo async: correcciones guardadas antes del redirect)
   syncCodigosResaltadoDesdeStorage()
-  
+
   // ⭐ Las columnas modificadas se cargan automáticamente en loadPedido()
-  // Agregar listener para cerrar dropdown al hacer click fuera
-  document.addEventListener('click', handleClickOutsideColumnSelector)
 })
 
 // ⭐ Si el componente está en un keep-alive, también cargar al activarse
@@ -1858,6 +1674,41 @@ watch(
   { immediate: true }
 )
 
+type NotificacionSSEMetaCargarPlantilla = import('@/composables/useNotificaciones').SSENotification['metadata']
+
+async function handleNotificacionSSEConPedidoCargado(
+  pedidoActual: PedidoCompleto['cabecera'],
+  meta: NotificacionSSEMetaCargarPlantilla
+) {
+  const coincide =
+    (meta.pedido_id && meta.pedido_id === pedidoActual.pedido_id) ||
+    (meta.numero_pedido && meta.numero_pedido === pedidoActual.numero_pedido)
+
+  if (!coincide) return
+
+  if (import.meta.env.DEV) {
+    console.log('🔄 [CargarPlantillaView] Notificación SSE recibida para pedido actual:', meta.accion)
+  }
+
+  // Si el pedido fue descartado/cancelado, redirigir a cargar-plantilla (el pedido ya no existe)
+  if (meta.accion === 'pedido_descartado' || meta.accion === 'pedido_cancelado') {
+    pedido.value = null
+    router.push('/mba3-consultas/cargar-plantilla')
+    return
+  }
+
+  await loadPedido()
+}
+
+async function handleNotificacionSSESinPedidoCargado(meta: NotificacionSSEMetaCargarPlantilla) {
+  // Sin pedido cargado (URL base /cargar-plantilla): recargar último pedido
+  // para mostrar datos actualizados si otro usuario modificó el estado
+  if (import.meta.env.DEV) {
+    console.log('🔄 [CargarPlantillaView] Notificación SSE recibida sin pedido cargado, recargando último pedido...', meta.accion)
+  }
+  await cargarUltimoPedido()
+}
+
 // ⭐ Watch para recargar pedido cuando llega una notificación SSE relevante
 // (ej: otro usuario confirma el pedido que tenemos abierto → recargar para deshabilitar botones)
 watch(lastNotification, async (notification) => {
@@ -1868,205 +1719,19 @@ watch(lastNotification, async (notification) => {
 
   // Si hay un pedido cargado, verificar si la notificación es sobre ese pedido
   if (pedido.value) {
-    const pedidoActual = pedido.value.cabecera
-    const coincide =
-      (meta.pedido_id && meta.pedido_id === pedidoActual.pedido_id) ||
-      (meta.numero_pedido && meta.numero_pedido === pedidoActual.numero_pedido)
-
-    if (coincide) {
-      if (import.meta.env.DEV) {
-        console.log('🔄 [CargarPlantillaView] Notificación SSE recibida para pedido actual:', meta.accion)
-      }
-
-      // Si el pedido fue eliminado, redirigir a cargar-plantilla (el pedido ya no existe)
-      if (meta.accion === 'pedido_eliminado' || meta.accion === 'pedido_descartado' || meta.accion === 'pedido_cancelado') {
-        pedido.value = null
-        router.push('/mba3-consultas/cargar-plantilla')
-        return
-      }
-
-      await loadPedido()
-    }
+    await handleNotificacionSSEConPedidoCargado(pedido.value.cabecera, meta)
   } else {
-    // Sin pedido cargado (URL base /cargar-plantilla): recargar último pedido
-    // para mostrar datos actualizados si otro usuario modificó el estado
-    if (import.meta.env.DEV) {
-      console.log('🔄 [CargarPlantillaView] Notificación SSE recibida sin pedido cargado, recargando último pedido...', meta.accion)
-    }
-    await cargarUltimoPedido()
+    await handleNotificacionSSESinPedidoCargado(meta)
   }
 })
 
-// Cleanup: eliminar listener del dropdown cuando el componente se destruye
-// El composable useFileUpload maneja el cleanup del fileInput
+// Cleanup: el composable useFileUpload maneja el cleanup del fileInput
 onUnmounted(() => {
-  // Remover listener del dropdown
-  document.removeEventListener('click', handleClickOutsideColumnSelector)
-  
   // ⭐ Limpiar intervalo de progreso SAP si existe
   stopSapProgressSimulation()
 })
 
-function handleClickOutsideColumnSelector(event: MouseEvent) {
-  if (!showColumnSelector.value) return
-  
-  const target = event.target as HTMLElement
-  // Si el click es dentro del dropdown o del botón, no hacer nada
-  if (target.closest('.relative')) {
-    return
-  }
-  
-  // Cerrar el dropdown
-  showColumnSelector.value = false
-}
-
-function handleDragStart(event: DragEvent, columnKey: string) {
-  const column = availableColumns.find(col => col.key === columnKey)
-  if (column?.fixed) {
-    return
-  }
-  
-  draggedColumnKey.value = columnKey
-  if (event.dataTransfer) {
-    event.dataTransfer.effectAllowed = 'move'
-    event.dataTransfer.setData('text/plain', columnKey)
-  }
-}
-
-function handleDragOver(event: DragEvent, columnKey: string) {
-  event.preventDefault()
-  if (event.dataTransfer) {
-    event.dataTransfer.dropEffect = 'move'
-  }
-  
-  if (draggedColumnKey.value !== null && draggedColumnKey.value !== columnKey) {
-    dragOverColumnKey.value = columnKey
-  }
-  else {
-    dragOverColumnKey.value = null
-  }
-}
-
-function handleDragLeave() {
-  // No limpiar dragOverColumnKey aquí porque puede causar parpadeo
-  // Se limpiará en handleDrop o handleDragEnd
-}
-
-// ⭐ ACTUALIZAR: handleDrop para usar columnKey en lugar de índices
-function handleDrop(event: DragEvent, targetColumnKey: string) {
-  event.preventDefault()
-  
-  if (!draggedColumnKey.value || draggedColumnKey.value === targetColumnKey) {
-    draggedColumnKey.value = null
-    dragOverColumnKey.value = null
-    return
-  }
-  
-  // No permitir arrastrar columnas fijas
-  const draggedColumn = availableColumns.find(col => col.key === draggedColumnKey.value)
-  if (draggedColumn?.fixed) {
-    draggedColumnKey.value = null
-    dragOverColumnKey.value = null
-    return
-  }
-  
-  // No permitir colocar columnas antes de columnas fijas
-  const targetColumn = availableColumns.find(col => col.key === targetColumnKey)
-  if (targetColumn?.fixed) {
-    draggedColumnKey.value = null
-    dragOverColumnKey.value = null
-    return
-  }
-  
-  // Reordenar usando el composable
-  // Preservar el orden completo (incluyendo columnas no visibles)
-  const fullOrder = [...columnOrder.value]
-  const visibleOrder = [...orderedVisibleColumnKeys.value]
-  
-  const draggedIndex = visibleOrder.indexOf(draggedColumnKey.value)
-  const targetIndex = visibleOrder.indexOf(targetColumnKey)
-  
-  if (draggedIndex === -1 || targetIndex === -1) {
-    draggedColumnKey.value = null
-    dragOverColumnKey.value = null
-    return
-  }
-  
-  // Obtener índices en el orden completo
-  const draggedIndexInFull = fullOrder.indexOf(draggedColumnKey.value)
-  const targetIndexInFull = fullOrder.indexOf(targetColumnKey)
-  
-  if (draggedIndexInFull === -1 || targetIndexInFull === -1) {
-    draggedColumnKey.value = null
-    dragOverColumnKey.value = null
-    return
-  }
-  
-  // Remover columna arrastrada del orden completo
-  fullOrder.splice(draggedIndexInFull, 1)
-  
-  // Insertar en nueva posición en el orden completo
-  // Si el índice objetivo es mayor que el arrastrado, ajustar porque ya removimos un elemento
-  const adjustedTargetIndex = targetIndexInFull > draggedIndexInFull ? targetIndexInFull - 1 : targetIndexInFull
-  fullOrder.splice(adjustedTargetIndex, 0, draggedColumnKey.value)
-  
-  // Asegurar que 'numero' esté al inicio
-  const numeroIndex = fullOrder.indexOf('numero')
-  if (numeroIndex > 0) {
-    fullOrder.splice(numeroIndex, 1)
-    fullOrder.unshift('numero')
-  }
-  
-  // Actualizar el orden usando el composable
-  columnOrder.value = fullOrder
-  
-  // Guardar preferencias
-  savePreferences()
-  
-  // Limpiar estados
-  draggedColumnKey.value = null
-  dragOverColumnKey.value = null
-}
-
-function handleDragEnd() {
-  draggedColumnKey.value = null
-  dragOverColumnKey.value = null
-}
-
-// ⭐ NUEVO: Función para toggle de visibilidad de columnas
-function toggleColumnVisibility(columnKey: string) {
-  // No permitir ocultar columnas fijas
-  const column = availableColumns.find(col => col.key === columnKey)
-  if (column?.fixed) {
-    return
-  }
-  
-  const currentVisible = [...visibleColumns.value]
-  const index = currentVisible.indexOf(columnKey)
-  
-  // Validación: Asegurar que hay al menos una columna visible (excluyendo fijas)
-  const visibleNonFixed = currentVisible.filter(key => {
-    const col = availableColumns.find(c => c.key === key)
-    return !col?.fixed
-  })
-  
-  if (index > -1 && visibleNonFixed.length === 1) {
-    console.warn('⚠️ Debe haber al menos una columna visible. Operación cancelada.')
-    return
-  }
-  
-  if (index > -1) {
-    // Ocultar columna
-    currentVisible.splice(index, 1)
-  } else {
-    // Mostrar columna
-    currentVisible.push(columnKey)
-  }
-  
-  visibleColumns.value = currentVisible
-  savePreferences()
-}
-
+// Funciones de drag & drop de columnas ahora están en el composable useColumnDragAndDrop
 // Funciones de edición ahora están en el composable useColumnManagement
 </script>
 

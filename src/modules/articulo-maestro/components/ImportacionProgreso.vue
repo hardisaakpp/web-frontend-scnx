@@ -26,38 +26,197 @@
                 <Metric label="Grupos pendientes" :value="store.gruposPendientes" tone="warning" />
                 <Metric label="Imágenes con error" :value="store.imagenesConError" tone="error" />
             </div>
-            <p
-                v-if="(job.estado === 'COMPLETADO' || job.estado === 'COMPLETADO_CON_ERRORES') && job.filasCorrectas > 0"
-                class="mt-3 text-xs text-gray-500 dark:text-gray-400"
-            >
-                Los artículos guardados correctamente ya se encolaron y se están sincronizando con SAP en segundo plano.
-                Puedes seguir el avance en
-                <router-link to="/articulo-maestro/migracion" class="underline hover:no-underline">Monitoreo de Sincronización SAP</router-link>.
+        </div>
+
+        <output v-if="procesamientoFinalizado" class="space-y-3 rounded-lg border border-emerald-200 bg-emerald-50 p-4 dark:border-emerald-800 dark:bg-emerald-900/20">
+            <p class="text-sm font-semibold text-emerald-800 dark:text-emerald-300">
+                ✅ Artículos procesados y encolados para sincronización con SAP Business One.
             </p>
+            <button
+                type="button"
+                class="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-60"
+                :disabled="navegando"
+                @click="irAMonitoreoSap"
+            >
+                🔍 Ir a Monitoreo de Sincronización SAP
+            </button>
+            <p v-if="errorNavegacion" role="alert" class="text-xs text-red-700 dark:text-red-300">{{ errorNavegacion }}</p>
+        </output>
+
+        <div v-if="(procesamientoFinalizado && job.filasCorrectas > 0) || job.filasError > 0" class="flex flex-wrap gap-3">
+            <button
+                v-if="procesamientoFinalizado && job.filasCorrectas > 0"
+                type="button"
+                class="rounded-lg bg-emerald-600 px-3 py-2 text-xs font-semibold text-white hover:bg-emerald-700 disabled:opacity-60"
+                :disabled="store.downloading"
+                @click="store.descargarReporteExitos"
+            >
+                {{ store.downloading ? 'Descargando...' : etiquetaReporteExitos }}
+            </button>
+            <button
+                v-if="job.filasError > 0"
+                type="button"
+                class="rounded-lg bg-red-600 px-3 py-2 text-xs font-semibold text-white hover:bg-red-700 disabled:opacity-60"
+                :disabled="store.downloading"
+                @click="store.descargarErroresPlantilla"
+            >
+                {{ store.downloading ? 'Descargando...' : `📥 Descargar Plantilla de Errores (${job.filasError})` }}
+            </button>
+        </div>
+
+        <!-- Resumen gráfico + guía de reintento: lote con errores parciales
+             (algunos artículos sí se crearon y ya se encolaron a SAP, otros
+             se rechazaron por validación). -->
+        <div
+            v-if="job.estado === 'COMPLETADO_CON_ERRORES'"
+            class="space-y-3"
+        >
+            <div class="flex flex-wrap gap-4 text-sm">
+                <span class="inline-flex items-center gap-1.5 font-semibold text-emerald-700 dark:text-emerald-400">
+                    🟢 {{ job.filasCorrectas }} {{ job.tipo === 'CREAR' ? 'creado(s)' : 'actualizado(s)' }} exitosamente (encolado(s) hacia SAP)
+                </span>
+                <span class="inline-flex items-center gap-1.5 font-semibold text-red-700 dark:text-red-400">
+                    🔴 {{ job.filasError }} rechazado(s) por validación
+                </span>
+            </div>
+            <div class="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800 dark:border-amber-800 dark:bg-amber-900/20 dark:text-amber-200">
+                ⚠️ <strong>Atención:</strong> para corregir los artículos rechazados, descargue la plantilla de
+                errores, aplique los ajustes necesarios sobre las celdas señaladas y vuelva a subir ese mismo
+                archivo corregido con el botón <strong>Cargar archivo de correcciones</strong>. No vuelva a subir el
+                archivo completo original: el sistema lo rechazará (error 409) para evitar duplicar el lote.
+            </div>
+        </div>
+
+        <!-- Trazabilidad de identificadores generados: pestañas Creados/
+             Observados solo cuando el lote es MIXTO (algo se creó Y algo
+             quedó observado). Con 100% éxito o 100% fallo se muestra
+             directo, sin la chrome de pestañas. -->
+        <div v-if="mostrarPestanas" class="flex gap-2 border-b border-gray-200 dark:border-gray-700" role="tablist">
+            <button
+                type="button"
+                role="tab"
+                :aria-selected="pestanaActiva === 'exitos'"
+                :class="tabClass('exitos')"
+                @click="pestanaActiva = 'exitos'"
+            >
+                🟢 {{ job.tipo === 'CREAR' ? 'Creados' : 'Actualizados' }} Exitosamente ({{ articulosCreados.length }})
+            </button>
+            <button
+                type="button"
+                role="tab"
+                :aria-selected="pestanaActiva === 'errores'"
+                :class="tabClass('errores')"
+                @click="pestanaActiva = 'errores'"
+            >
+                🔴 Filas con Observación ({{ job.filasError }})
+            </button>
+        </div>
+
+        <div v-if="articulosCreados.length && (!mostrarPestanas || pestanaActiva === 'exitos')" class="space-y-3">
+            <div class="rounded-lg border border-emerald-200 bg-white p-4 dark:border-emerald-800 dark:bg-gray-900/40">
+                <div class="mb-3 flex flex-wrap items-center justify-between gap-3">
+                    <p class="text-sm font-semibold text-gray-900 dark:text-white">
+                        Artículos {{ job.tipo === 'CREAR' ? 'creados' : 'actualizados' }} ({{ articulosCreados.length }})
+                    </p>
+                </div>
+                <div class="max-h-64 overflow-auto rounded-md border border-gray-200 dark:border-gray-700">
+                    <table class="w-full text-xs text-left">
+                        <thead class="sticky top-0 bg-gray-50 text-gray-500 dark:bg-gray-700/40 dark:text-gray-400">
+                            <tr>
+                                <th class="px-3 py-1.5 font-medium">Fila</th>
+                                <th class="px-3 py-1.5 font-medium">Ref. Prov.</th>
+                                <th class="px-3 py-1.5 font-medium">Color</th>
+                                <th class="px-3 py-1.5 font-medium">Talla</th>
+                                <th class="px-3 py-1.5 font-medium">ItemCode Generado</th>
+                                <th class="px-3 py-1.5 font-medium">BarCode</th>
+                                <th class="px-3 py-1.5 font-medium">SAP</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
+                            <tr v-for="articulo in articulosCreados" :key="articulo.itemCode">
+                                <td class="px-3 py-1.5 text-gray-700 dark:text-gray-300">{{ articulo.numeroFila }}</td>
+                                <td class="px-3 py-1.5 text-gray-700 dark:text-gray-300">{{ articulo.codigoProveedor ?? '—' }}</td>
+                                <td class="px-3 py-1.5 text-gray-700 dark:text-gray-300">{{ articulo.color ?? '—' }}</td>
+                                <td class="px-3 py-1.5 text-gray-700 dark:text-gray-300">{{ articulo.talla ?? '—' }}</td>
+                                <td class="px-3 py-1.5 font-mono font-semibold text-gray-900 dark:text-white">{{ articulo.itemCode }}</td>
+                                <td class="px-3 py-1.5 text-gray-700 dark:text-gray-300">{{ articulo.barCode ?? '—' }}</td>
+                                <td class="px-3 py-1.5">
+                                    <span class="rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-semibold text-blue-700 dark:bg-blue-900/40 dark:text-blue-300">
+                                        {{ articulo.estadoSap }}
+                                    </span>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div v-if="!mostrarPestanas || pestanaActiva === 'errores'" class="space-y-4">
+        <!-- H12: restricciones esperables de SAP (campo estructural con
+             movimientos/stock) -- no es un fallo del sistema, así que se
+             muestran como advertencia informativa, separadas de los
+             errores reales. -->
+        <div
+            v-if="store.erroresEstructurales.length"
+            class="rounded-lg border border-amber-200 bg-amber-50 p-4 dark:border-amber-800 dark:bg-amber-900/20"
+        >
+            <div class="flex items-center justify-between gap-3">
+                <div>
+                    <span
+                        class="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800 dark:bg-amber-800/40 dark:text-amber-200"
+                    >
+                        ⚠️ Restricción SAP (Artículo con Stock)
+                    </span>
+                    <p class="mt-1 text-sm font-semibold text-amber-800 dark:text-amber-300">
+                        {{ store.erroresEstructurales.length }} fila(s) con cambios estructurales omitidos
+                    </p>
+                </div>
+            </div>
+            <ul class="mt-3 max-h-36 space-y-2 overflow-y-auto text-xs text-amber-700 dark:text-amber-300">
+                <li
+                    v-for="(error, index) in store.erroresEstructurales.slice(0, 10)"
+                    :key="`${error.tipo}-${error.numeroFila}-${index}`"
+                >
+                    <span class="font-semibold">{{ error.itemCode ?? error.grupoProducto }}</span>
+                    <template v-if="error.campoError"> · Columna(s): {{ error.campoError }}</template>
+                    · {{ error.mensaje }}
+                </li>
+            </ul>
+            <p class="mt-3 rounded-md bg-amber-100/60 p-2 text-xs text-amber-800 dark:bg-amber-900/30 dark:text-amber-200">
+                💡 Consejo: puede volver a subir este archivo removiendo las columnas estructurales
+                (p. ej. manageBatchNumbers) para aplicar precios, descripciones y demás cambios comerciales sin
+                restricciones.
+            </p>
+            <!-- El log complementa la plantilla de errores disponible arriba. -->
+            <div v-if="!store.erroresNoEstructurales.length" class="mt-3 flex flex-wrap gap-3">
+                <button
+                    type="button"
+                    class="text-xs font-semibold text-amber-700 underline disabled:opacity-60 dark:text-amber-300"
+                    :disabled="store.downloading"
+                    @click="store.descargarErrores"
+                >
+                    Descargar log técnico completo
+                </button>
+            </div>
         </div>
 
         <div
-            v-if="store.errores.length"
+            v-if="store.erroresNoEstructurales.length"
             class="rounded-lg border border-red-200 bg-red-50 p-4 dark:border-red-800 dark:bg-red-900/20"
         >
             <div class="flex items-center justify-between gap-3">
                 <div>
                     <p class="text-sm font-semibold text-red-800 dark:text-red-300">
-                        {{ store.errores.length }} error(es) disponibles
+                        {{ store.erroresNoEstructurales.length }} error(es) disponibles
                     </p>
                     <p class="text-xs text-red-600 dark:text-red-400">
-                        Descarga solo las filas con error, corrige los valores marcados y vuelve a cargarlas.
+                        Descarga la plantilla con las filas observadas. Los motivos de error están señalados como
+                        notas en las celdas correspondientes. Corrige los datos en este mismo archivo y súbelo
+                        directamente.
                     </p>
                 </div>
                 <div class="flex shrink-0 flex-col items-end gap-1">
-                    <button
-                        type="button"
-                        class="rounded-lg bg-red-600 px-3 py-2 text-xs font-semibold text-white hover:bg-red-700 disabled:opacity-60"
-                        :disabled="store.downloading"
-                        @click="store.descargarErroresPlantilla"
-                    >
-                        {{ store.downloading ? 'Descargando...' : 'Descargar filas para corregir' }}
-                    </button>
                     <button
                         type="button"
                         class="text-xs font-semibold text-red-700 underline disabled:opacity-60 dark:text-red-300"
@@ -70,30 +229,100 @@
             </div>
             <ul class="mt-3 max-h-36 space-y-2 overflow-y-auto text-xs text-red-700 dark:text-red-300">
                 <li
-                    v-for="(error, index) in store.errores.slice(0, 10)"
+                    v-for="(error, index) in store.erroresNoEstructurales.slice(0, 10)"
                     :key="`${error.tipo}-${error.numeroFila}-${index}`"
                 >
                     Fila {{ error.numeroFila ?? '—' }} · {{ error.grupoProducto }} · {{ error.mensaje }}
                 </li>
             </ul>
-            <button
-                v-if="job.estado === 'ERROR' || job.estado === 'COMPLETADO_CON_ERRORES'"
-                type="button"
-                class="mt-3 text-xs font-semibold text-red-700 underline disabled:opacity-60 dark:text-red-300"
-                :disabled="store.loading"
-                @click="store.reintentar"
-            >
-                Reintentar grupos con error
-            </button>
+        </div>
+
+        <!-- H13: grupos observados individuales -- avance de fotos y
+             reintento SELECTIVO, sin reabrir todo el trabajo. -->
+        <div
+            v-if="store.gruposObservados.length"
+            class="rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-900/40"
+        >
+            <p class="mb-2 text-sm font-semibold text-gray-900 dark:text-white">
+                Grupos observados ({{ store.gruposObservados.length }})
+            </p>
+            <ul class="space-y-2">
+                <li
+                    v-for="grupo in store.gruposObservados"
+                    :key="grupo.id"
+                    class="flex items-center justify-between gap-3 rounded-md border border-gray-200 p-2 text-xs dark:border-gray-700"
+                >
+                    <div>
+                        <p class="font-semibold text-gray-800 dark:text-gray-200">
+                            {{ grupo.grupoProducto }}
+                        </p>
+                        <p v-if="grupo.imagenes.length" class="text-gray-500 dark:text-gray-400">
+                            {{ fotosCompletadas(grupo) }}/{{ grupo.imagenes.length }} fotos subidas
+                        </p>
+                        <p v-if="grupo.mensajeError" class="text-red-600 dark:text-red-400">
+                            {{ grupo.mensajeError }}
+                        </p>
+                    </div>
+                    <button
+                        type="button"
+                        class="shrink-0 rounded-lg bg-gray-700 px-3 py-1.5 font-semibold text-white hover:bg-gray-800 disabled:opacity-60"
+                        :disabled="store.reintentandoGrupoId !== null"
+                        @click="store.reintentarGrupo(grupo.id)"
+                    >
+                        {{ store.reintentandoGrupoId === grupo.id ? 'Reintentando...' : '🔄 Reintentar grupo' }}
+                    </button>
+                </li>
+            </ul>
+        </div>
+
+        <button
+            v-if="store.errores.length && (job.estado === 'ERROR' || job.estado === 'COMPLETADO_CON_ERRORES')"
+            type="button"
+            class="text-xs font-semibold text-gray-700 underline disabled:opacity-60 dark:text-gray-300"
+            :disabled="store.loading"
+            @click="store.reintentar"
+        >
+            Reintentar grupos con error
+        </button>
         </div>
     </div>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { storeToRefs } from 'pinia'
+import { useRouter } from 'vue-router'
 import Metric from './ImportacionProgresoMetric.vue'
 import { useImportacionArticulosStore } from '../stores/importacionArticulosStore'
+import type { ArticuloCreadoResumen, ImportacionGrupo, TipoCargaMasiva } from '../services/articuloService'
+
+const emit = defineEmits<(event: 'close') => void>()
+const router = useRouter()
+const navegando = ref(false)
+const errorNavegacion = ref('')
+
+async function irAMonitoreoSap(): Promise<void> {
+    if (navegando.value) return
+    navegando.value = true
+    errorNavegacion.value = ''
+    const destino = '/articulo-maestro/migracion'
+    try {
+        const fallo = await router.push(destino)
+        if (!fallo || router.currentRoute.value.path === destino) {
+            emit('close')
+        } else {
+            errorNavegacion.value = 'No fue posible abrir el monitoreo de sincronización SAP.'
+        }
+    } catch {
+        errorNavegacion.value = 'No fue posible abrir el monitoreo de sincronización SAP.'
+    } finally {
+        navegando.value = false
+    }
+}
+
+function fotosCompletadas(grupo: ImportacionGrupo): number {
+    return grupo.imagenes.filter(imagen => imagen.estado === 'COMPLETADA').length
+}
 
 const store = useImportacionArticulosStore()
 const { trabajo } = storeToRefs(store)
@@ -103,10 +332,65 @@ const job = computed(() => {
     }
     return trabajo.value
 })
+
+const procesamientoFinalizado = computed(() =>
+    ['COMPLETADO', 'COMPLETADO_CON_ERRORES'].includes(job.value.estado)
+)
+
+const ETIQUETAS_REPORTE: Record<TipoCargaMasiva, string> = {
+    crear: 'Descargar Reporte Completo de Artículos Creados (.xlsx)',
+    actualizar: 'Descargar Reporte de Modificaciones (.xlsx)',
+    actualizar_precios: 'Descargar Reporte de Precios Actualizados (.xlsx)',
+    actualizar_estado: 'Descargar Reporte de Estados Actualizados (.xlsx)'
+}
+const etiquetaReporteExitos = computed(() =>
+    store.tipoOperacion ? ETIQUETAS_REPORTE[store.tipoOperacion] : ''
+)
+
+// Trazabilidad de identificadores generados (ItemCode/BarCode/SKU base):
+// una fila por artículo COMPLETADO, ya enriquecida por el backend.
+const articulosCreados = computed<ArticuloCreadoResumen[]>(
+    () => job.value.articulosCreados ?? []
+)
+
+const hayObservaciones = computed(
+    () =>
+        store.erroresEstructurales.length > 0 ||
+        store.erroresNoEstructurales.length > 0 ||
+        store.gruposObservados.length > 0
+)
+
+// Las pestañas solo tienen sentido en un lote MIXTO (algo se creó Y algo
+// quedó observado). Con 100% éxito o 100% fallo se muestra el contenido
+// directo, sin la chrome de pestañas (ver mockup del enunciado).
+const mostrarPestanas = computed(
+    () =>
+        job.value.estado === 'COMPLETADO_CON_ERRORES' &&
+        articulosCreados.value.length > 0 &&
+        hayObservaciones.value
+)
+
+const pestanaActiva = ref<'exitos' | 'errores'>('exitos')
+
+function tabClass(pestana: 'exitos' | 'errores'): string {
+    const base = '-mb-px border-b-2 px-4 py-2 text-sm font-semibold transition-colors'
+    if (pestanaActiva.value !== pestana) {
+        return `${base} border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200`
+    }
+    return pestana === 'exitos'
+        ? `${base} border-emerald-600 text-emerald-700 dark:text-emerald-400`
+        : `${base} border-red-600 text-red-700 dark:text-red-400`
+}
 const statusLabel = computed(() => {
+    // H09: mientras zipPendiente sea true, el worker todavía está
+    // descomprimiendo/subiendo las imágenes a staging -- antes de tocar el
+    // primer artículo -- así que "Insertando artículos..." sería engañoso.
+    if (job.value.estado === 'PROCESANDO' && job.value.zipPendiente) {
+        return 'Procesando imágenes...'
+    }
     const labels = {
         ESPERANDO: 'En espera',
-        PROCESANDO: 'Procesando',
+        PROCESANDO: 'Insertando artículos...',
         COMPLETADO: 'Completado',
         COMPLETADO_CON_ERRORES: 'Completado con errores',
         ERROR: 'Error'

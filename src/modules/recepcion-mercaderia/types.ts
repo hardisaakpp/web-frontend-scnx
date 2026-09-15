@@ -23,6 +23,18 @@ export interface PendingTransferLine {
   sapDocumentDate: string
 }
 
+/**
+ * GET /pending-transfers/transit item — one row per SAP transfer request routed through a
+ * transit warehouse (bodega transitoria), quantity already summed across its lines server-side.
+ * No wire-name mapping needed: the backend contract already uses these exact field names.
+ */
+export interface TransitPendingTransfer {
+  sapTransferRequestNumber: string
+  transitWarehouseCode: string
+  quantity: number
+  sapDocumentDate: string
+}
+
 export interface ReceptionLine {
   lineId: number
   itemCode: string
@@ -39,6 +51,13 @@ export interface ReceptionTransfer {
   documentNumber: string
   originWarehouseCode: string
   destinationWarehouseCode: string
+  /**
+   * Real backend field (ReceptionTransferResponse.TransitWarehouseCode, nullable) — the "bodega
+   * transitoria" for this transfer, when one exists. The detail subtitle shows transitoria -> real
+   * destination when set, falling back to origen -> real destination otherwise (same fallback
+   * direction as HistoryRow's own transitWarehouseCode, used by the Historial "Movimiento" column).
+   */
+  transitWarehouseCode?: string | null
   status: ReceptionTransferStatus
   glpiTicket?: string | null
   responsibleName?: string | null
@@ -49,19 +68,27 @@ export interface ReceptionTransfer {
   sapStockTransferDocEntry?: number | null
   sapStockTransferDocNum?: number | null
   differencesCount: number
+  /**
+   * Real backend field — set when SAP queued the confirm instead of resolving it inline; a
+   * background job retries every 5 min. Source of truth for a "procesando" UI state that survives
+   * a page reload, independent of any single confirm() response (per backend team: don't rely on
+   * the one-off confirm response for this — re-fetching the transfer is what stays correct).
+   * Null/absent means there is nothing pending.
+   */
+  pendingSapJobQueuedAtUtc?: string | null
 }
 
 /**
- * Real backend shape: ReceptionDifferenceResponse (Id, ReceptionTransferId, Barcode,
- * ProductDescription?, IsRecognized, ScannedAtUtc, ScannedByUserId). This does NOT carry a
- * lineId/reason/quantity the way this module's current differences form assumes — see
- * {@link RecordDifferenceRequest} for the flagged mismatch this type intentionally now reflects
- * (real, not the module's prior invented shape).
+ * Real backend shape: ReceptionDifferenceResponse (Id, ReceptionTransferId, Barcode?, LineId?,
+ * ProductDescription?, IsRecognized, ScannedAtUtc, ScannedByUserId). Barcode is now nullable and
+ * LineId was added: a difference is identified by exactly one of the two — Barcode for the
+ * barcode-scan flow, LineId for the manual-entry flow on lines with no barcode.
  */
 export interface Difference {
   differenceId: number
   transferId: number
-  barcode: string
+  barcode: string | null
+  lineId: number | null
   productDescription: string | null
   isRecognized: boolean
   scannedAtUtc: string
@@ -91,6 +118,23 @@ export interface ConfirmTransferRequest {
 }
 
 /**
+ * Real backend: ConfirmReceptionTransferResult(Success, SapDocEntry, SapDocNum, Message, Reason?).
+ * `reason` is only present when success is false:
+ * - 'Queued' / 'StillPending' — SAP confirmation was queued, not an error. No user action needed;
+ *   a background job retries every 5 min (plus reconciliation on a repeat confirm click).
+ * - 'Rejected' — a real SAP validation/business-rule rejection that needs the user's attention.
+ * Per backend team: use `reason`, not `message` text, to tell these apart — `message` is Spanish
+ * text meant for direct display, not parsing.
+ */
+export interface ConfirmTransferResponse {
+  success: boolean
+  sapDocEntry: number | null
+  sapDocNum: number | null
+  message: string
+  reason?: 'Queued' | 'StillPending' | 'Rejected'
+}
+
+/**
  * Real backend: UpdateGlpiTicketRequest(TicketNumber: string) — wire key is ticketNumber, not
  * glpiTicket. Frontend-facing name kept as glpiTicket; mapped at the recepcionApi.ts boundary.
  */
@@ -99,14 +143,14 @@ export interface GlpiTicketRequest {
 }
 
 /**
- * Real backend: RecordDifferenceRequest(Barcode: string) only — no lineId/reason/quantity. This
- * module's differences form UI still collects lineId+reason+quantity; recepcionApi.ts's
- * recordDifference is left UNCHANGED (not adapted) pending a product decision on whether the extra
- * fields get a real backend home or get dropped from the UI. This type documents the REAL shape
- * for whenever that redesign happens.
+ * Real backend: RecordDifferenceRequest(Barcode?: string, LineId?: long) — exactly one of the two
+ * must be non-null (the backend 400s otherwise). `barcode` is the scan flow (matches a line by
+ * Barcode == barcode); `lineId` is the manual-entry flow for lines with no barcode (matches a line
+ * by Id == lineId).
  */
 export interface RecordDifferenceRequest {
-  barcode: string
+  barcode?: string | null
+  lineId?: number | null
 }
 
 export interface HistoryFilters {

@@ -1,7 +1,7 @@
 <template>
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
     <div class="space-y-4 mb-6">
-      <OdcSapVolverButton
+      <VolverButton
         to="/inventario"
         title="Volver al módulo Inventario"
         class="shrink-0 self-start"
@@ -138,24 +138,30 @@
     </section>
 
     <section class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
-      <div class="px-5 py-4 border-b border-gray-200 dark:border-gray-700">
+      <div class="px-5 py-4 border-b border-gray-200 dark:border-gray-700 flex flex-wrap items-center justify-between gap-3">
         <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Planificaciones activas</h2>
+        <input
+          v-model="search"
+          type="search"
+          placeholder="Buscar nombre, tipo, estado..."
+          class="search-input w-56"
+        />
       </div>
       <div v-if="loading" class="p-6 text-gray-600 dark:text-gray-300">Cargando planificaciones...</div>
       <div v-else class="overflow-x-auto">
         <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
           <thead class="bg-gray-50 dark:bg-gray-900/60">
             <tr>
-              <th class="th">Nombre</th>
-              <th class="th">Tipo</th>
-              <th class="th">Generación</th>
+              <th class="th cursor-pointer select-none" @click="toggleSort('name')">Nombre{{ sortIndicator('name') }}</th>
+              <th class="th cursor-pointer select-none" @click="toggleSort('inventory_type')">Tipo{{ sortIndicator('inventory_type') }}</th>
+              <th class="th cursor-pointer select-none" @click="toggleSort('generation_date')">Generación{{ sortIndicator('generation_date') }}</th>
               <th class="th">Almacenes</th>
-              <th class="th">Estado</th>
+              <th class="th cursor-pointer select-none" @click="toggleSort('status')">Estado{{ sortIndicator('status') }}</th>
               <th class="th text-right">Acciones</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
-            <tr v-for="planning in plannings" :key="planning.id">
+            <tr v-for="planning in sortedPlannings" :key="planning.id">
               <td class="td">
                 <div class="font-medium text-gray-900 dark:text-white">{{ planning.name }}</div>
                 <div class="text-xs text-gray-500 dark:text-gray-400">{{ planning.description || 'Sin descripción' }}</div>
@@ -197,7 +203,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref, watch } from 'vue'
-import OdcSapVolverButton from '@/components/OdcSapVolverButton.vue'
+import VolverButton from '@/components/navegacion/VolverButton.vue'
 import { inventarioService } from '../services/inventarioApi'
 import { useInventarioPermissions } from '../composables/useInventarioPermissions'
 import type { CatalogDataDto, InventoryPlanningSummaryDto, SaveInventoryPlanningRequest } from '../types'
@@ -217,6 +223,46 @@ const saving = ref(false)
 const error = ref<string | null>(null)
 const message = ref<string | null>(null)
 const plannings = ref<InventoryPlanningSummaryDto[]>([])
+
+const search = ref('')
+
+type PlanningSortKey = 'name' | 'inventory_type' | 'generation_date' | 'status'
+const sortKey = ref<PlanningSortKey>('name')
+const sortDir = ref<'asc' | 'desc'>('asc')
+
+function toggleSort(key: PlanningSortKey) {
+  if (sortKey.value === key) {
+    sortDir.value = sortDir.value === 'asc' ? 'desc' : 'asc'
+  } else {
+    sortKey.value = key
+    sortDir.value = 'asc'
+  }
+}
+
+function sortIndicator(key: PlanningSortKey) {
+  if (sortKey.value !== key) return ''
+  return sortDir.value === 'asc' ? ' ▲' : ' ▼'
+}
+
+const filteredPlannings = computed(() => {
+  const q = search.value.trim().toLowerCase()
+  if (!q) return plannings.value
+  return plannings.value.filter(p =>
+    p.name.toLowerCase().includes(q) ||
+    inventoryTypeLabel(p.inventory_type).toLowerCase().includes(q) ||
+    p.status.toLowerCase().includes(q)
+  )
+})
+
+const sortedPlannings = computed(() => {
+  const dir = sortDir.value === 'asc' ? 1 : -1
+  const key = sortKey.value
+  return [...filteredPlannings.value].sort((a, b) => {
+    const av = a[key] ?? ''
+    const bv = b[key] ?? ''
+    return String(av).localeCompare(String(bv)) * dir
+  })
+})
 const catalog = reactive<CatalogDataDto>({ warehouses: [], categories: [], subcategories: [] })
 
 const executeHint =
@@ -417,6 +463,9 @@ onMounted(loadAll)
 }
 .input {
   @apply mt-1 block w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500;
+}
+.search-input {
+  @apply rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 px-3 py-1.5 text-sm text-gray-900 dark:text-white placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500;
 }
 .btn-primary {
   @apply inline-flex items-center rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed;

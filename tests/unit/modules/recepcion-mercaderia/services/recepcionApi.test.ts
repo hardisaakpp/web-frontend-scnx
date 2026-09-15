@@ -34,6 +34,7 @@ function wireTransfer(overrides: Record<string, unknown> = {}) {
     createdByUserName: 'user',
     lines: [{ id: 1, sapItemCode: 'A1', description: 'Item A', barcode: null, requestedQuantity: 10, scannedQuantity: 3 }],
     differencesCount: 0,
+    pendingSapJobQueuedAtUtc: null,
     ...overrides,
   }
 }
@@ -98,6 +99,57 @@ describe('recepcionApi', () => {
     })
   })
 
+  it('getTransitTransfers sends pageNumber/pageSize/search and unwraps the PagedResponse envelope (separate endpoint from getPendingTransfers)', async () => {
+    const line = {
+      sapTransferRequestNumber: 'SAP-900',
+      transitWarehouseCode: 'TRL-QSN',
+      quantity: 12,
+      sapDocumentDate: '2026-08-01',
+    }
+    vi.mocked(api.get).mockResolvedValue({
+      data: { items: [line], totalCount: 1, pageNumber: 1, pageSize: 20 },
+    })
+
+    const result = await recepcionApi.getTransitTransfers({ pageNumber: 1, pageSize: 20, search: 'SAP-900' })
+
+    expect(api.get).toHaveBeenCalledWith('recepcion-api/reception/pending-transfers/transit', {
+      params: { pageNumber: 1, pageSize: 20, search: 'SAP-900' },
+    })
+    expect(result).toEqual({ items: [line], totalCount: 1, pageNumber: 1, pageSize: 20 })
+  })
+
+  it('getTransitTransfers omits the search param when not provided (no empty ?search= on the wire)', async () => {
+    vi.mocked(api.get).mockResolvedValue({ data: { items: [], totalCount: 0, pageNumber: 1, pageSize: 20 } })
+
+    await recepcionApi.getTransitTransfers({ pageNumber: 1, pageSize: 20 })
+
+    expect(api.get).toHaveBeenCalledWith('recepcion-api/reception/pending-transfers/transit', {
+      params: { pageNumber: 1, pageSize: 20, search: undefined },
+    })
+  })
+
+  it('getTransitTransfers defaults to pageNumber=1/pageSize=20 when called with no params', async () => {
+    vi.mocked(api.get).mockResolvedValue({ data: { items: [], totalCount: 0, pageNumber: 1, pageSize: 20 } })
+
+    await recepcionApi.getTransitTransfers()
+
+    expect(api.get).toHaveBeenCalledWith('recepcion-api/reception/pending-transfers/transit', {
+      params: { pageNumber: 1, pageSize: 20 },
+    })
+  })
+
+  it('downloadTransitReport requests a blob response for GET .../pending-transfers/transit/report (unpaginated)', async () => {
+    const blob = new Blob(['xlsx'])
+    vi.mocked(api.get).mockResolvedValue({ data: blob })
+
+    const result = await recepcionApi.downloadTransitReport()
+
+    expect(api.get).toHaveBeenCalledWith('recepcion-api/reception/pending-transfers/transit/report', {
+      responseType: 'blob',
+    })
+    expect(result).toBe(blob)
+  })
+
   it('materializePendingTransfer POSTs { sapTransferRequestNumber, warehouseCode } (no transferId exists pre-materialization)', async () => {
     vi.mocked(api.post).mockResolvedValue({ data: { id: 42 } })
 
@@ -149,6 +201,36 @@ describe('recepcionApi', () => {
     expect(result.differences).toEqual([])
   })
 
+  it('getTransfer maps pendingSapJobQueuedAtUtc onto the transfer (survives a reload while a SAP confirm job is queued)', async () => {
+    vi.mocked(api.get).mockResolvedValue({
+      data: { transfer: wireTransfer({ pendingSapJobQueuedAtUtc: '2026-08-31T12:00:00Z' }), differences: [] },
+    })
+
+    const result = await recepcionApi.getTransfer(7)
+
+    expect(result.transfer.pendingSapJobQueuedAtUtc).toBe('2026-08-31T12:00:00Z')
+  })
+
+  it('getTransfer maps transitWarehouseCode onto the transfer (used by the detail subtitle: transitoria -> destino real)', async () => {
+    vi.mocked(api.get).mockResolvedValue({
+      data: { transfer: wireTransfer({ transitWarehouseCode: 'TRL-QSS2' }), differences: [] },
+    })
+
+    const result = await recepcionApi.getTransfer(7)
+
+    expect(result.transfer.transitWarehouseCode).toBe('TRL-QSS2')
+  })
+
+  it('getTransfer maps a null transitWarehouseCode as null (most transfers have no transit stop)', async () => {
+    vi.mocked(api.get).mockResolvedValue({
+      data: { transfer: wireTransfer({ transitWarehouseCode: null }), differences: [] },
+    })
+
+    const result = await recepcionApi.getTransfer(7)
+
+    expect(result.transfer.transitWarehouseCode).toBeNull()
+  })
+
   it('getTransfer maps the real differences array (id/receptionTransferId -> differenceId/transferId), not just the transfer', async () => {
     vi.mocked(api.get).mockResolvedValue({
       data: {
@@ -158,6 +240,7 @@ describe('recepcionApi', () => {
             id: 9,
             receptionTransferId: 7,
             barcode: '7861230028713',
+            lineId: null,
             productDescription: 'DNFK1017.4 FALDA DENIM',
             isRecognized: true,
             scannedAtUtc: '2026-07-24T19:31:53Z',
@@ -174,6 +257,7 @@ describe('recepcionApi', () => {
         differenceId: 9,
         transferId: 7,
         barcode: '7861230028713',
+        lineId: null,
         productDescription: 'DNFK1017.4 FALDA DENIM',
         isRecognized: true,
         scannedAtUtc: '2026-07-24T19:31:53Z',
@@ -211,11 +295,12 @@ describe('recepcionApi', () => {
     })
   })
 
-  it('confirm sends { allowPartial: false } by default and does not attempt to map the response (real shape on success is ConfirmReceptionTransferResult { success, sapDocEntry, sapDocNum, message }, not a transfer — verified with backend)', async () => {
+  it('confirm sends { allowPartial: false } by default and passes the response through unmapped (real shape is ConfirmReceptionTransferResult { success, sapDocEntry, sapDocNum, message }, not a transfer — verified with backend)', async () => {
     vi.mocked(api.post).mockResolvedValue({ data: { success: true, sapDocEntry: 123, sapDocNum: 456, message: null } })
 
-    await expect(recepcionApi.confirm(7)).resolves.toBeUndefined()
+    const result = await recepcionApi.confirm(7)
 
+    expect(result).toEqual({ success: true, sapDocEntry: 123, sapDocNum: 456, message: null })
     expect(api.post).toHaveBeenCalledWith('recepcion-api/reception/transfers/7/confirm', { allowPartial: false })
   })
 
@@ -225,6 +310,17 @@ describe('recepcionApi', () => {
     await recepcionApi.confirm(7, { allowPartial: true })
 
     expect(api.post).toHaveBeenCalledWith('recepcion-api/reception/transfers/7/confirm', { allowPartial: true })
+  })
+
+  it('confirm passes through the queued-job reason ("Queued"/"StillPending") when SAP confirmation was not resolved inline', async () => {
+    vi.mocked(api.post).mockResolvedValue({
+      data: { success: false, sapDocEntry: null, sapDocNum: null, message: 'La confirmación quedó en proceso.', reason: 'Queued' },
+    })
+
+    const result = await recepcionApi.confirm(7)
+
+    expect(result.reason).toBe('Queued')
+    expect(result.success).toBe(false)
   })
 
   it('updateGlpiTicket PUTs { ticketNumber } (real wire key, not glpiTicket) and re-fetches the transfer', async () => {
@@ -237,17 +333,29 @@ describe('recepcionApi', () => {
     expect(result.glpiTicket).toBe('GLPI-1')
   })
 
-  it('recordDifference POSTs only { barcode } (real shape has no lineId/reason/quantity) and does not fabricate a response', async () => {
+  it('recordDifference POSTs both barcode and lineId (lineId null) for a barcode-identified difference, and does not fabricate a response', async () => {
     vi.mocked(api.post).mockResolvedValue({ data: { id: 9 } })
 
     const result = await recepcionApi.recordDifference(7, { barcode: '7791234567890' })
 
     expect(api.post).toHaveBeenCalledWith('recepcion-api/reception/transfers/7/differences', {
       barcode: '7791234567890',
+      lineId: null,
     })
     // Real endpoint only returns { id } — no product description/recognition/timestamp to
     // fabricate here; the caller (pickingStore) re-fetches the transfer for the real record.
     expect(result).toBeUndefined()
+  })
+
+  it('recordDifference POSTs both barcode (null) and lineId for a manual line-identified difference', async () => {
+    vi.mocked(api.post).mockResolvedValue({ data: { id: 10 } })
+
+    await recepcionApi.recordDifference(7, { lineId: 42 })
+
+    expect(api.post).toHaveBeenCalledWith('recepcion-api/reception/transfers/7/differences', {
+      barcode: null,
+      lineId: 42,
+    })
   })
 
   it('deleteDifference calls DELETE .../differences/{differenceId}', async () => {
@@ -353,6 +461,19 @@ describe('recepcionApi', () => {
 
     expect(api.get).toHaveBeenCalledWith('recepcion-api/reception/history/all/export', {
       params: { dateFrom: '2026-01-01', dateTo: '2026-01-31', transferNumber: undefined },
+      responseType: 'blob',
+    })
+    expect(result).toBe(blob)
+  })
+
+  it('exportHistoryCsv requests a blob response for GET .../history/export (own-scope, separate endpoint — no viewall required)', async () => {
+    const blob = new Blob(['csv'])
+    vi.mocked(api.get).mockResolvedValue({ data: blob })
+
+    const result = await recepcionApi.exportHistoryCsv({ transferNumber: '100' })
+
+    expect(api.get).toHaveBeenCalledWith('recepcion-api/reception/history/export', {
+      params: { dateFrom: undefined, dateTo: undefined, transferNumber: '100' },
       responseType: 'blob',
     })
     expect(result).toBe(blob)

@@ -19,6 +19,7 @@ function normalizeObject(obj: any): any {
         uGen: ['U_GEN', 'u_gen', 'u_Gen'],
         uCodColor: ['U_COD_COLOR', 'u_cod_color'],
         uCodColSecu: ['U_COD_COL_SECU', 'u_cod_col_secu'],
+        uColorSecu: ['U_COLOR_SECU', 'u_color_secu'],
         uIxxColores: ['U_IXX_COLORES', 'u_ixx_colores'],
         uIxxMaterial: ['U_IXX_MATERIAL', 'u_ixx_material'],
         uIxxComposicion: ['U_IXX_COMPOSICION', 'u_ixx_composicion'],
@@ -104,7 +105,24 @@ apiMaestro.interceptors.response.use((response) => {
     return response
 })
 
-export type TipoCargaMasiva = 'crear' | 'actualizar'
+// Al pedir un archivo con responseType: 'blob', si el backend responde con un
+// error HTTP (404/422/500), axios entrega error.response.data como Blob en
+// lugar de JSON — el `detail` de negocio queda oculto detrás del Blob y nunca
+// llega a mostrarse. Esta función lo relee como texto para recuperarlo.
+export async function parsearErrorBlob(error: any): Promise<string> {
+    if (error?.response?.data instanceof Blob) {
+        try {
+            const text = await error.response.data.text()
+            const json = JSON.parse(text)
+            return json.detail || json.message || 'Error al procesar el archivo.'
+        } catch {
+            return 'No se pudo interpretar la respuesta del servidor.'
+        }
+    }
+    return error?.response?.data?.detail || error?.message || 'Error de conexión.'
+}
+
+export type TipoCargaMasiva = 'crear' | 'actualizar' | 'actualizar_precios' | 'actualizar_estado'
 export type EstadoImportacion =
     | 'ESPERANDO'
     | 'PROCESANDO'
@@ -134,6 +152,23 @@ export interface ImportacionGrupo {
     imagenes: ImagenArticuloReferencia[]
 }
 
+// Trazabilidad de identificadores autogenerados: una entrada por cada fila
+// COMPLETADO, con los códigos que el backend generó (ItemCode/BarCode/SKU
+// base) y los atributos de la variante creada -- ver ArticuloCreadoResumen
+// en app/schemas/importacion.py.
+export interface ArticuloCreadoResumen {
+    numeroFila: number
+    itemCode: string
+    barCode?: string | null
+    itemName?: string | null
+    codigoBase?: string | null
+    codigoProveedor?: string | null
+    talla?: string | null
+    color?: string | null
+    precio?: number | null
+    estadoSap: string
+}
+
 export interface ImportacionAceptada {
     jobId: number
     estado: EstadoImportacion
@@ -141,11 +176,20 @@ export interface ImportacionAceptada {
     totalGrupos: number
 }
 
+// H13: respuesta del reintento SELECTIVO de un grupo observado (a
+// diferencia de ImportacionAceptada, que es la respuesta de reintentar
+// TODO el trabajo).
+export interface ImportacionGrupoAceptado {
+    grupoId: number
+    trabajoId: number
+    estado: ImportacionGrupo['estado']
+}
+
 export interface ImportacionTrabajo {
     id: number
     nombreArchivo: string
     hashArchivo: string
-    tipo: 'CREAR' | 'ACTUALIZAR'
+    tipo: Uppercase<TipoCargaMasiva>
     usuario: string
     estado: EstadoImportacion
     totalGrupos: number
@@ -153,9 +197,29 @@ export interface ImportacionTrabajo {
     totalFilas: number
     filasCorrectas: number
     filasError: number
+    // H09: true mientras el worker todavía no terminó de descomprimir y
+    // subir a staging las imágenes del ZIP -- distingue "Procesando
+    // imágenes..." de "Insertando artículos..." aunque ambos ocurran con
+    // estado === 'PROCESANDO'.
+    zipPendiente: boolean
     fechaInicio?: string | null
     fechaFin?: string | null
     grupos: ImportacionGrupo[]
+    // Solo viene poblado en el detalle (getImportacion); el listado paginado
+    // no lo incluye (ver ImportacionTrabajoResumen en el backend).
+    articulosCreados?: ArticuloCreadoResumen[]
+}
+
+// Resumen de un trabajo de importación (GET /articulos/importaciones, listado
+// paginado): mismos campos que ImportacionTrabajo pero sin `grupos` -- el
+// backend no los incluye en la respuesta de listado (ver
+// ImportacionTrabajoResumen en app/schemas/importacion.py), solo en el
+// detalle por id (getImportacion).
+export type ImportacionTrabajoResumen = Omit<ImportacionTrabajo, 'grupos'>
+
+export interface ImportacionTrabajoPagina {
+    total: number
+    items: ImportacionTrabajoResumen[]
 }
 
 export interface ImportacionError {
@@ -169,6 +233,20 @@ export interface ImportacionError {
     valorRecibido?: string | null
     codigoError?: string | null
     mensaje: string
+}
+
+// Resultado del pre-vuelo (simulación) de una importación masiva: nada se
+// persiste en el backend para producir esta respuesta, así que no trae
+// jobId. Reutiliza ImportacionError (misma forma que el backend expone en
+// DryRunSummary.errores) en vez de un tipo de error paralelo.
+export interface DryRunSummary {
+    totalFilas: number
+    filasValidas: number
+    filasConError: number
+    esLoteValido: boolean
+    errores: ImportacionError[]
+    resumenMarcas: Record<string, number>
+    resumenNiveles: Record<string, number>
 }
 
 // RF-002: respuesta de POST /articulos/{item_code}/promover-alterno.
@@ -324,7 +402,7 @@ export const articuloService = {
     ): Promise<ImportacionAceptada> => {
         const formData = new FormData()
         formData.append('file', file)
-        if (zipImagenes) {
+        if (tipo === 'crear' && zipImagenes) {
             formData.append('zip_imagenes', zipImagenes)
         }
         const response = await apiMaestro.post<ImportacionAceptada>(
@@ -332,15 +410,75 @@ export const articuloService = {
             formData,
             {
                 params: { tipo },
-                headers: { 'Content-Type': 'multipart/form-data' }
+                headers: { 'Content-Type': 'multipart/form-data' },
+                // H09: el backend guarda los archivos crudos y responde 202
+                // en menos de 1s (ya no descomprime el ZIP ni sube imágenes
+                // en este request) -- este timeout más amplio que el
+                // default del cliente (30s) es solo una red de seguridad
+                // para la transferencia de bytes crudos en redes lentas,
+                // no para esperar el procesamiento de imágenes.
+                timeout: 120_000
             }
         )
         return response.data
     },
 
-    getImportacion: async (jobId: number): Promise<ImportacionTrabajo> => {
+    // Pre-vuelo: valida el Excel (y el ZIP de fotos, si viene) sin persistir
+    // nada en el backend. Misma forma de parámetros que crearImportacion
+    // para que el store pueda llamar a ambas de la misma manera.
+    verificarImportacion: async (
+        file: File,
+        tipo: TipoCargaMasiva,
+        zipImagenes?: File | null
+    ): Promise<DryRunSummary> => {
+        const formData = new FormData()
+        formData.append('file', file)
+        if (tipo === 'crear' && zipImagenes) {
+            formData.append('zip_imagenes', zipImagenes)
+        }
+        const response = await apiMaestro.post<DryRunSummary>(
+            '/api/v1/articulos/importaciones/verificar',
+            formData,
+            {
+                params: { tipo },
+                headers: { 'Content-Type': 'multipart/form-data' },
+                // A diferencia de crearImportacion (H09: guarda el ZIP crudo
+                // y responde en <1s), el pre-vuelo SÍ es síncrono en el
+                // backend -- indexa el ZIP completo en memoria y valida cada
+                // fila contra él antes de responder. Mismo timeout ampliado
+                // que crearImportacion para no cortar en lotes grandes.
+                timeout: 120_000
+            }
+        )
+        return response.data
+    },
+
+    getImportacion: async (jobId: number, signal?: AbortSignal): Promise<ImportacionTrabajo> => {
         const response = await apiMaestro.get<ImportacionTrabajo>(
-            `/api/v1/articulos/importaciones/${jobId}`
+            `/api/v1/articulos/importaciones/${jobId}`,
+            { signal }
+        )
+        return response.data
+    },
+
+    // Listado paginado de trabajos de importación (más recientes primero,
+    // el backend ordena por id DESC) -- usado por el Monitoreo de SAP para
+    // mostrar una tarjeta consolidada por lote en vez de una fila por cada
+    // grupo/artículo. `estado` es un filtro de UN solo valor (el backend no
+    // soporta lista): se omite para traer los más recientes sin importar
+    // estado, igual que ya hace sapService.getTasks() con sus tareas.
+    listarImportaciones: async (
+        params: { limit?: number; skip?: number; estado?: EstadoImportacion } = {}
+    ): Promise<ImportacionTrabajoPagina> => {
+        const response = await apiMaestro.get<ImportacionTrabajoPagina>(
+            '/api/v1/articulos/importaciones',
+            {
+                params: {
+                    skip: params.skip ?? 0,
+                    limit: params.limit ?? 8,
+                    ...(params.estado ? { estado: params.estado } : {})
+                }
+            }
         )
         return response.data
     },
@@ -363,6 +501,17 @@ export const articuloService = {
         return response.data
     },
 
+    // H13: reintento SELECTIVO de un único grupo observado (ej. una fila
+    // cuya Foto 3 falló por un corte de red), sin reabrir todo el trabajo.
+    reintentarGrupoImportacion: async (
+        grupoId: number
+    ): Promise<ImportacionGrupoAceptado> => {
+        const response = await apiMaestro.post<ImportacionGrupoAceptado>(
+            `/api/v1/articulos/importaciones/grupos/${grupoId}/reintentar`
+        )
+        return response.data
+    },
+
     descargarErroresImportacion: async (jobId: number): Promise<void> => {
         const response = await apiMaestro.get(
             `/api/v1/articulos/importaciones/${jobId}/errores.xlsx`,
@@ -379,6 +528,35 @@ export const articuloService = {
         link.click()
         link.remove()
         globalThis.URL.revokeObjectURL(url)
+    },
+
+    // El trabajo identifica la operación en el endpoint existente; el tipo
+    // determina el nombre del archivo en el cliente.
+    descargarReporteExitos: async (
+        trabajoId: number,
+        tipoOperacion: TipoCargaMasiva = 'crear'
+    ): Promise<Blob> => {
+        const response = await apiMaestro.get<Blob>(
+            `/api/v1/articulos/importaciones/${trabajoId}/reporte-exitos.xlsx`,
+            { responseType: 'blob' }
+        )
+        const blob = response.data
+        if (!blob.size || /json|^text\//i.test(blob.type)) {
+            throw new Error('El servidor no devolvió un reporte Excel válido.')
+        }
+        const url = window.URL.createObjectURL(blob)
+        const link = document.createElement('a')
+        try {
+            link.href = url
+            link.download = `articulos_procesados_${tipoOperacion}_${trabajoId}.xlsx`
+            document.body.appendChild(link)
+            link.click()
+        } finally {
+            link.remove()
+            // Permite al navegador iniciar la descarga antes de liberar el Blob.
+            window.setTimeout(() => window.URL.revokeObjectURL(url), 1000)
+        }
+        return blob
     },
 
     // Copia corregible: mismas columnas de la plantilla original + columna
@@ -590,6 +768,19 @@ export interface SapNovedad {
     motivo: string
 }
 
+export interface SapSyncDetalle {
+    item_code: string
+    // No es un enum estricto: el backend además de 'Error' devuelve el
+    // resultado de negocio ('Creado', 'Actualizado', 'Sincronizado',
+    // 'Eliminado', 'Omitido', etc. — ver sap_sync.py/sap.py).
+    status: string
+    message: string
+    // Presente solo en errores de persistencia (IntegrityError/SQLAlchemyError)
+    // de pull-from-sap: el rastro crudo de pymssql/SQL Server, reservado para
+    // el acordeón de "detalles técnicos" — ver resumirDetalleSap más abajo.
+    detalle_tecnico?: string
+}
+
 export interface SapSyncResponse {
     success: boolean
     message: string
@@ -600,11 +791,150 @@ export interface SapSyncResponse {
     success_count?: number
     error_count?: number
     error?: number
-    details?: Array<{
-        item_code: string
-        status: 'Success' | 'Error'
-        message: string
-    }>
+    details?: SapSyncDetalle[]
+}
+
+// ─── Presentación amigable de resultados SAP ────────────────────────────────
+// Marcadores de trazas técnicas de base de datos (pymssql/SQL Server/ODBC)
+// que jamás deben mostrarse crudos en la UI, aun si llegaran a colarse en
+// `message` (por ejemplo desde una respuesta antigua sin `detalle_tecnico`).
+const _MARCADORES_TRAZA_TECNICA = [
+    'pymssql',
+    'sql server',
+    'odbc',
+    'db-lib',
+    'integrityerror',
+    'sqlalchemyerror',
+    'cannot insert the value null',
+    "b'",
+    'b"',
+]
+
+export function esTrazaTecnicaDb(texto: string): boolean {
+    const t = texto.toLowerCase()
+    return _MARCADORES_TRAZA_TECNICA.some(marca => t.includes(marca))
+}
+
+// Deriva (resumen, detalleTecnico) de un SapSyncDetalle para la tarjeta de
+// resultado: si el backend ya distinguió el error con `detalle_tecnico`, o si
+// `message` en sí es una traza técnica de BD, el usuario ve el mensaje de
+// negocio limpio y el rastro crudo queda reservado al acordeón colapsable.
+// Los mensajes de validación de negocio (el `detail` normal del backend)
+// pasan tal cual, sin filtrar.
+export function resumirDetalleSap(detalle: SapSyncDetalle): { resumen: string; detalleTecnico: string | null } {
+    if (detalle.detalle_tecnico) {
+        return { resumen: detalle.message, detalleTecnico: detalle.detalle_tecnico }
+    }
+    if (esTrazaTecnicaDb(detalle.message)) {
+        return {
+            resumen: `No se pudieron guardar los datos del artículo ${detalle.item_code}: Conflicto de integridad en la sincronización con SAP.`,
+            detalleTecnico: detalle.message,
+        }
+    }
+    return { resumen: detalle.message, detalleTecnico: null }
+}
+
+// ─── Diagnóstico de sincronización por artículo (panel de Monitoreo SAP) ───
+// A diferencia de resumirDetalleSap (resultado puntual de una acción masiva),
+// esto traduce el estado persistido en controlSap de un artículo individual
+// —tal como quedó tras el último intento del worker— a un mensaje de negocio
+// y, si está en ERROR, a una sugerencia de acción.
+//
+// La traducción real (por código de SAP, ver app.core.sap_error_catalog)
+// vive en el BACKEND — controlSap.mensaje_sap_amigable/accion_sugerida ya
+// vienen calculados en la respuesta de GET /articulos. El usuario de
+// negocio no tiene acceso a SAP: mostrarle el texto crudo de mensaje_sap
+// (a veces en inglés, ej. "Property 'X' of 'Item' is invalid") no le dice
+// qué hacer, y un heurístico de palabras clave en español en el FRONTEND
+// nunca lo hubiera reconocido — por eso la heurística de abajo
+// (accionSugeridaError) queda solo como red de seguridad para el caso
+// (esperablemente raro) de que el backend aún no calcule esos campos
+// (versión anterior desplegada, skew durante un rollout).
+export type DiagnosticoTipo = 'success' | 'info' | 'warning' | 'error' | 'neutral'
+
+export interface DiagnosticoSap {
+    tipo: DiagnosticoTipo
+    mensaje: string
+    accion?: string
+    detalleTecnico?: string | null
+}
+
+const _PATRONES_ACCION_ERROR_SAP: Array<{ test: (m: string) => boolean; accion: string }> = [
+    {
+        // Ver _MSG_VINCULACION_CON_HISTORIAL en app/services/sap_sync.py
+        test: m => m.includes('ya existe') && /historial|movimiento|orden|entrada|solicitud/.test(m),
+        accion: 'Verifique en SAP si el artículo debe vincularse manualmente, o ajuste el ItemCode y los campos estructurales en SCNexus para que coincidan con el artículo ya existente en SAP.'
+    },
+    {
+        test: m => m.includes('ya existe') || m.includes('ya se encuentra registrado') || m.includes('duplicad'),
+        accion: 'Edite el artículo, asigne un valor distinto en el campo señalado por SAP (por ejemplo, el código de barras) y presione "Reintentar Fallidos".'
+    },
+    {
+        test: m => /no v[aá]lido|no es v[aá]lido|no reconocido/.test(m),
+        accion: 'Corrija el valor señalado según las opciones permitidas del catálogo, guarde el artículo y presione "Reintentar Fallidos".'
+    },
+    {
+        test: m => /conexi[oó]n|tiempo de espera|no disponible/.test(m),
+        accion: 'Es un problema temporal de comunicación con SAP. Espere unos minutos y presione "Reintentar Fallidos".'
+    },
+]
+const _ACCION_ERROR_GENERICA = 'Revise el mensaje de SAP, corrija el dato indicado en el artículo y presione "Reintentar Fallidos".'
+
+export function accionSugeridaError(mensaje: string): string {
+    const m = mensaje.toLowerCase()
+    return _PATRONES_ACCION_ERROR_SAP.find(p => p.test(m))?.accion ?? _ACCION_ERROR_GENERICA
+}
+
+const _MENSAJE_POR_ESTADO_SIN_ERROR: Record<string, string> = {
+    BORRADOR: 'Aún no se ha enviado a SAP.',
+    PENDIENTE: 'Guardado localmente; en espera de encolarse para SAP.',
+    EN_COLA: 'Enviándose a SAP en este momento...',
+    SINCRONIZADO: 'Sincronizado correctamente.',
+}
+
+const _TIPO_POR_ESTADO_SIN_ERROR: Record<string, DiagnosticoTipo> = {
+    BORRADOR: 'neutral',
+    PENDIENTE: 'warning',
+    EN_COLA: 'info',
+    SINCRONIZADO: 'success',
+}
+
+export function diagnosticoDeArticulo(articulo: Articulo): DiagnosticoSap {
+    const estado = articulo.controlSap?.estado ?? 'BORRADOR'
+
+    if (estado !== 'ERROR') {
+        return {
+            tipo: _TIPO_POR_ESTADO_SIN_ERROR[estado] ?? 'neutral',
+            mensaje: _MENSAJE_POR_ESTADO_SIN_ERROR[estado] ?? 'Sin información adicional.',
+        }
+    }
+
+    const mensajeCrudo = articulo.controlSap?.mensaje_sap ?? null
+    // El backend ya tradujo mensaje_sap (por código de SAP, ver
+    // app.core.sap_error_catalog) — se usa tal cual. Solo si faltara
+    // (backend desactualizado) se cae al heurístico local + al mensaje
+    // crudo, en vez de mostrar un espacio vacío.
+    const mensajeAmigable =
+        articulo.controlSap?.mensaje_sap_amigable
+        || mensajeCrudo
+        || 'SAP rechazó la sincronización de este artículo.'
+    const accion = articulo.controlSap?.accion_sugerida || accionSugeridaError(mensajeAmigable)
+
+    return {
+        // Un timeout de SAP (todavía no confirmó, no lo rechazó) no es el
+        // mismo tipo de problema que un rechazo real de negocio: se marca
+        // como 'warning' (ámbar) en vez de 'error' (rojo) para que un
+        // vistazo a la tabla no lo confunda con "hay un dato mal puesto".
+        // El estado local sigue siendo ERROR (eso no cambia) — solo el
+        // tono del diagnóstico es distinto.
+        tipo: articulo.controlSap?.es_timeout_sap ? 'warning' : 'error',
+        mensaje: mensajeAmigable,
+        accion,
+        // El mensaje crudo (con el código de SAP entre corchetes) queda
+        // como "información técnica" solo cuando aporta algo distinto del
+        // mensaje ya traducido — evita un acordeón vacío o redundante.
+        detalleTecnico: mensajeCrudo && mensajeCrudo !== mensajeAmigable ? mensajeCrudo : null,
+    }
 }
 
 export interface SapTask {

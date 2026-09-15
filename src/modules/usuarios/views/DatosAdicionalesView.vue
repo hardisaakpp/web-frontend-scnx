@@ -160,7 +160,7 @@ import { computed, onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { APP_LOCALE } from '@/plugins/locale'
 import api from '@/services/api'
-import VolverButton from '@/components/VolverButton.vue'
+import VolverButton from '@/components/navegacion/VolverButton.vue'
 
 interface AsignacionRecord {
   id: string

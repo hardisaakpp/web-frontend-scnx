@@ -39,10 +39,14 @@ const mockGetReporteDiferencias = vi.fn()
 const mockCrearOrdenCompraDesdePedido = vi.fn()
 vi.mock('@/modules/mba3-consultas/services/mba3ConsultasApi', () => ({
   mba3ConsultasService: {
-    getPedido: (...args: any[]) => mockGetPedido(...args),
     obtenerModificacionesColumnas: (...args: any[]) => mockObtenerModificacionesColumnas(...args),
     getReporteDiferencias: (...args: any[]) => mockGetReporteDiferencias(...args),
     crearOrdenCompraDesdePedido: (...args: any[]) => mockCrearOrdenCompraDesdePedido(...args)
+  }
+}))
+vi.mock('@/modules/mba3-consultas/services/domains/pedidos', () => ({
+  pedidosService: {
+    getPedido: (...args: any[]) => mockGetPedido(...args)
   }
 }))
 

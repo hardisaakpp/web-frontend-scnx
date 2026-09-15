@@ -1,11 +1,12 @@
 import { defineStore } from 'pinia'
 import { ruletaService } from '../services/ruletaApi'
+import { extraerMensajeError } from '../services/utils/errorHandler'
 import type {
-  Campana, CrearCampanaDTO, GrupoProbabilidad, PremioAdmin,
+  Campana, CrearCampanaDTO, DuplicarCampanaDTO, GrupoProbabilidad, PremioAdmin,
   TiendaInventario, InventarioPremio, Tienda,
   MetricasGlobal, EfectividadTienda, SegmentacionGrupo, ConversionSemanal,
   MetricasCampana, EnroladorMetrica, StockPremio, HistorialGiroItem, GiroFilters,
-  RedencionResponse, PreviewImpactoStockItem, ImpactoStock, ProbabilidadGrupo
+  RedencionResponse, PreviewImpactoStockItem, ImpactoStock, ProbabilidadGrupo, DistribucionTiendaItem
 } from '../types'
 
 interface AdminState {
@@ -126,22 +127,49 @@ export const useAdminStore = defineStore('admin', {
       return item?.por_tienda[tiendaId] ?? 0
     },
 
-    // Total asignado por premio (con ediciones pendientes)
+    // Total asignado por premio (con ediciones pendientes). Debe iterar sobre la UNIÓN de las
+    // tiendas que ya tenían fila de inventario y las que se están editando ahora mismo: si solo
+    // se recorren las primeras, una celda recién editada en una tienda que nunca tuvo stock para
+    // este premio queda fuera de la suma y el total mostrado (y el guard de "excede el stock")
+    // puede quedar por debajo del real, dejando pasar un guardado que sí excede el límite.
     totalAsignadoConEdits: (state) => (premioId: string): number => {
       const item = state.inventario.find(i => i.premio_id === premioId)
       if (!item) return 0
+
+      const tiendaIds = new Set(Object.keys(item.por_tienda).map(Number))
+      for (const key of Object.keys(state.inventarioEditado)) {
+        const underscoreIdx = key.lastIndexOf('_')
+        if (key.slice(0, underscoreIdx) === premioId) {
+          tiendaIds.add(Number(key.slice(underscoreIdx + 1)))
+        }
+      }
+
       let total = 0
-      for (const tiendaId of Object.keys(item.por_tienda)) {
+      for (const tiendaId of tiendaIds) {
         const key = `${premioId}_${tiendaId}`
         total += key in state.inventarioEditado
           ? state.inventarioEditado[key]
-          : item.por_tienda[Number(tiendaId)]
+          : (item.por_tienda[tiendaId] ?? 0)
       }
       return total
     },
 
     hayEdicionesPendientes: (state): boolean =>
-      Object.keys(state.inventarioEditado).length > 0
+      Object.keys(state.inventarioEditado).length > 0,
+
+    // ── Conveniencia sobre el estado de una campaña (máquina de estados Fase 1) ─────────────
+    // Finalizada es un candado permanente: solo lectura, nunca regresa a Activa/Pausada/Borrador.
+    esCampanaInmutable: () => (campana: Campana | null | undefined): boolean =>
+      campana?.estado === 'finalizada',
+
+    esCampanaActiva: () => (campana: Campana | null | undefined): boolean =>
+      campana?.estado === 'activa',
+
+    esCampanaPausada: () => (campana: Campana | null | undefined): boolean =>
+      campana?.estado === 'pausada',
+
+    esCampanaBorrador: () => (campana: Campana | null | undefined): boolean =>
+      campana?.estado === 'borrador'
   },
 
   actions: {
@@ -160,6 +188,7 @@ export const useAdminStore = defineStore('admin', {
     },
 
     async crearCampana(dto: CrearCampanaDTO) {
+      if (this.guardando) return
       this.guardando = true
       try {
         const nueva = await ruletaService.crearCampana(dto)
@@ -183,6 +212,7 @@ export const useAdminStore = defineStore('admin', {
     },
 
     async actualizarCampana(id: string, dto: CrearCampanaDTO) {
+      if (this.guardando) return
       this.guardando = true
       try {
         const actualizada = await ruletaService.actualizarCampana(id, dto)
@@ -197,14 +227,40 @@ export const useAdminStore = defineStore('admin', {
     },
 
     async cambiarEstado(id: string, estado: Campana['estado']) {
-      const actualizada = await ruletaService.cambiarEstadoCampana(id, estado)
-      const index = this.campanas.findIndex(c => c.id === id)
-      if (index !== -1) this.campanas[index] = actualizada
+      if (this.guardando) return
+      this.guardando = true
+      try {
+        const actualizada = await ruletaService.cambiarEstadoCampana(id, estado)
+        const index = this.campanas.findIndex(c => c.id === id)
+        if (index !== -1) this.campanas[index] = actualizada
+      } finally {
+        this.guardando = false
+      }
     },
 
     async eliminarCampana(id: string) {
-      await ruletaService.eliminarCampana(id)
-      this.campanas = this.campanas.filter(c => c.id !== id)
+      if (this.guardando) return
+      this.guardando = true
+      try {
+        await ruletaService.eliminarCampana(id)
+        this.campanas = this.campanas.filter(c => c.id !== id)
+      } finally {
+        this.guardando = false
+      }
+    },
+
+    // Duplicación limpia (deep clone): la nueva campaña llega en Borrador, con todo el catálogo
+    // de premios/tiendas copiado y el stock en 0 — se antepone a la lista igual que crearCampana.
+    async duplicarCampana(id: string, payload: DuplicarCampanaDTO) {
+      if (this.guardando) return
+      this.guardando = true
+      try {
+        const nueva = await ruletaService.duplicarCampana(id, payload)
+        this.campanas.unshift(nueva)
+        return nueva
+      } finally {
+        this.guardando = false
+      }
     },
 
     // ── Tiendas (para stock por tienda) ───────────────────────────────────────
@@ -241,6 +297,7 @@ export const useAdminStore = defineStore('admin', {
     },
 
     async actualizarPremio(grupoIndex: number, premioId: string, data: Partial<PremioAdmin>, confirmarReduccionStock = false) {
+      if (this.guardando) return
       const grupo = this.grupos[grupoIndex]
       if (!grupo || !this.campanaActivaId) return
       this.guardando = true
@@ -257,6 +314,7 @@ export const useAdminStore = defineStore('admin', {
     },
 
     async agregarPremio(grupoIndex: number, data: Omit<PremioAdmin, 'id'>) {
+      if (this.guardando) return
       const grupo = this.grupos[grupoIndex]
       if (!grupo || !this.campanaActivaId) return
       this.guardando = true
@@ -271,6 +329,7 @@ export const useAdminStore = defineStore('admin', {
     },
 
     async eliminarPremio(grupoIndex: number, premioId: string) {
+      if (this.guardando) return
       const grupo = this.grupos[grupoIndex]
       if (!grupo || !this.campanaActivaId) return
       this.guardando = true
@@ -298,6 +357,7 @@ export const useAdminStore = defineStore('admin', {
     },
 
     async asignarStockTienda(premioId: string, tiendaCodigo: string, stockTotal: number) {
+      if (this.guardando) return
       if (!this.campanaActivaId) return
       this.guardando = true
       try {
@@ -308,7 +368,17 @@ export const useAdminStore = defineStore('admin', {
     },
 
     async subirImagen(archivo: File): Promise<string> {
-      return await ruletaService.subirImagenPremio(archivo)
+      // Guarda de re-entrancia: el resultado se asigna de forma síncrona a `data.imagen_url`
+      // (string, no admite undefined) en el llamador, así que aquí no se puede usar un
+      // `return` sin valor como en las demás acciones — se rechaza la llamada duplicada en
+      // vez de dejarla pasar en silencio.
+      if (this.guardando) throw new Error('Ya hay una operación en curso. Espera a que termine.')
+      this.guardando = true
+      try {
+        return await ruletaService.subirImagenPremio(archivo)
+      } finally {
+        this.guardando = false
+      }
     },
 
     recalcularEstadoGrupo(grupoIndex: number) {
@@ -376,7 +446,7 @@ export const useAdminStore = defineStore('admin', {
     // de inmediato (campaña Activa). Si la lista vuelve vacía, no hay nada que advertir
     // y el llamador puede guardar directo.
     async previsualizarImpactoDistribucion(): Promise<ImpactoStock[]> {
-      if (!this.campanaInventarioId) return []
+      if (!this.campanaInventarioId || this.verificandoImpactoStock) return []
       this.verificandoImpactoStock = true
       try {
         const items = this.construirItemsImpactoStock()
@@ -391,38 +461,65 @@ export const useAdminStore = defineStore('admin', {
       }
     },
 
+    // Agrupa las celdas editadas por premio y guarda cada premio con UNA sola llamada atómica
+    // (todo-o-nada) en vez de una petición HTTP por celda. El diseño anterior disparaba N
+    // peticiones en paralelo por premio editado; cada una validaba "suma de las otras tiendas +
+    // esta" contra una lectura fresca por request, así que varias podían pasar la validación
+    // cada una contra una foto pre-edición de las demás y comitear todas, sumando por encima del
+    // stock total. Además, tras el guardado se hace SIEMPRE un refetch real desde el backend en
+    // vez de un merge óptimista local — la UI nunca debe mostrar como "guardado" algo que no se
+    // pudo confirmar en la base de datos (si el guardado falla, el refetch trae la verdad de la
+    // BD y solo se reponen en pantalla las celdas del/los premio(s) que fallaron, para que el
+    // usuario no pierda lo que estaba corrigiendo).
     async guardarDistribucion() {
+      if (this.guardando) return
       if (!this.campanaInventarioId) return
       this.guardando = true
       this.errorInventario = null
       const campanaId = this.campanaInventarioId
-      try {
-        const calls = Object.entries(this.inventarioEditado).map(([key, stockTotal]) => {
+
+      const porPremio = new Map<string, DistribucionTiendaItem[]>()
+      for (const [key, stockTotal] of Object.entries(this.inventarioEditado)) {
+        const underscoreIdx = key.lastIndexOf('_')
+        const premioId = key.slice(0, underscoreIdx)
+        const tiendaId = Number(key.slice(underscoreIdx + 1))
+        const tienda = this.tiendasInventario.find(t => t.id === tiendaId)
+        if (!tienda) continue
+        const items = porPremio.get(premioId) ?? []
+        items.push({ tiendaCodigo: tienda.codigo, stockTotal })
+        porPremio.set(premioId, items)
+      }
+
+      const premioIds = Array.from(porPremio.keys())
+      const resultados = await Promise.allSettled(
+        premioIds.map(premioId => {
+          const rowVersion = this.inventario.find(i => i.premio_id === premioId)?.row_version
+          return ruletaService.setDistribucionTienda(campanaId, premioId, porPremio.get(premioId)!, rowVersion)
+        })
+      )
+
+      const premiosConError = new Map<string, unknown>()
+      resultados.forEach((r, i) => {
+        if (r.status === 'rejected') premiosConError.set(premioIds[i], r.reason)
+      })
+
+      const edicionesPendientes = { ...this.inventarioEditado }
+      await this.cargarInventario(campanaId)
+
+      if (premiosConError.size > 0) {
+        for (const [key, valor] of Object.entries(edicionesPendientes)) {
           const underscoreIdx = key.lastIndexOf('_')
           const premioId = key.slice(0, underscoreIdx)
-          const tiendaId = Number(key.slice(underscoreIdx + 1))
-          const tienda = this.tiendasInventario.find(t => t.id === tiendaId)
-          if (!tienda) return Promise.resolve()
-          return ruletaService.asignarStockTienda(campanaId, premioId, tienda.codigo, stockTotal)
-        })
-        await Promise.all(calls)
-        // Confirmar los edits como persistidos
-        for (const item of this.inventario) {
-          for (const tienda of this.tiendasInventario) {
-            const key = `${item.premio_id}_${tienda.id}`
-            if (key in this.inventarioEditado) {
-              item.por_tienda[tienda.id] = this.inventarioEditado[key]
-            }
-          }
-          item.total_asignado = Object.values(item.por_tienda).reduce((a, b) => a + b, 0)
-          item.restante_bodega = item.stock_total - item.total_asignado
+          if (premiosConError.has(premioId)) this.inventarioEditado[key] = valor
         }
-        this.inventarioEditado = {}
-      } catch (e: any) {
-        this.errorInventario = e?.response?.data?.error ?? e?.message ?? 'Error al guardar la distribución de inventario.'
-      } finally {
-        this.guardando = false
+        const [primerError] = premiosConError.values()
+        this.errorInventario = extraerMensajeError(
+          primerError,
+          `No se pudo guardar la distribución de ${premiosConError.size} premio(s). Revisa los valores e intenta de nuevo.`
+        )
       }
+
+      this.guardando = false
     },
 
     // ── Métricas por campaña (real) ───────────────────────────────────────────
@@ -491,7 +588,11 @@ export const useAdminStore = defineStore('admin', {
     },
 
     // ── Redención de premios ──────────────────────────────────────────────────
-    async redimirPremio(codigo: string, notas?: string): Promise<RedencionResponse> {
+    // Sin llamadores todavía en este módulo (la redención se dispara desde otra pantalla/futuro
+    // flujo) — se ensancha el tipo de retorno a `| undefined` para el caso guardado, en vez de
+    // lanzar, ya que no hay ningún consumidor existente que dependa de un valor no-undefined.
+    async redimirPremio(codigo: string, notas?: string): Promise<RedencionResponse | undefined> {
+      if (this.redimiendo) return
       this.redimiendo = true
       try {
         const redencion = await ruletaService.redimirPremio(codigo, notas)

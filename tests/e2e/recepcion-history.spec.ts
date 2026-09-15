@@ -3,10 +3,10 @@ import { test, expect } from '@playwright/test'
 import { installRecepcionAuth, installHistoryMocks, type MockHistoryRow } from './helpers/recepcionMocks'
 
 /**
- * E2E del historial de Recepción de Mercadería: filtro por rango de fechas
- * (MaterializedAtUtc) + número de transferencia, ambos client-side (sin nuevo GET),
- * y export CSV admin (GET history/all/export) vía descarga axios-blob.
- * api-recepcion-mercaderia mockeado vía page.route — determinístico, sin backend en vivo.
+ * E2E del historial de Recepción de Mercadería: filtro por rango de fechas (MaterializedAtUtc),
+ * server-side real (cada cambio dispara un nuevo GET history — ver historyStore.ts), y export
+ * CSV admin (GET history/all/export) vía descarga axios-blob. api-recepcion-mercaderia mockeado
+ * vía page.route — determinístico, sin backend en vivo.
  */
 
 const rows: MockHistoryRow[] = [
@@ -15,25 +15,35 @@ const rows: MockHistoryRow[] = [
   { transferId: 3, documentNumber: 'DOC-300', warehouseCode: 'D001', materializedAtUtc: '2026-07-20T09:00:00Z', differencesCount: 1 },
 ]
 
-test.describe('Recepción — historial de almacén (filtros client-side)', () => {
+test.describe('Recepción — historial de almacén (filtro por rango, server-side)', () => {
   test.beforeEach(async ({ page }) => {
     await installRecepcionAuth(page, { permissions: ['recepcion.history.view'] })
   })
 
-  test('filtra por rango de fechas y por número de transferencia sin disparar un nuevo GET history', async ({ page }) => {
+  test('filtra por rango de fechas; cada cambio dispara un nuevo GET history', async ({ page }) => {
     const mocks = await installHistoryMocks(page, { rows })
 
     await page.goto('/recepcion-mercaderia/historial')
     await expect(page.getByRole('heading', { name: /historial de recepciones/i })).toBeVisible()
+
+    // La vista abre filtrando por "hoy" por defecto (ver HistoryView.vue) — hay que ampliar el
+    // rango para ver las 3 filas del fixture (fechas de julio 2026) en vez de asumir que carga
+    // sin ningún filtro aplicado.
+    await page.getByTestId('date-from-input').fill('2026-01-01')
+    await page.getByTestId('date-from-input').dispatchEvent('change')
+    await page.getByTestId('date-to-input').fill('2026-12-31')
+    await page.getByTestId('date-to-input').dispatchEvent('change')
+
     await expect(page.getByText('DOC-100')).toBeVisible()
     await expect(page.getByText('DOC-200')).toBeVisible()
     await expect(page.getByText('DOC-300')).toBeVisible()
 
     // differencesCount viene directo de la respuesta de GET history, no se recalcula.
+    // Columnas: Id(0), Transferencia(1), Nueva Transferencia(2), Cant.(3), Escaneados(4), Diferencia(5), Sobrantes(6).
     const docRow200 = page.locator('tbody tr').filter({ hasText: 'DOC-200' })
-    await expect(docRow200.locator('td').nth(3)).toHaveText('3')
+    await expect(docRow200.locator('td').nth(6)).toHaveText('3')
 
-    expect(mocks.getHistoryCalls()).toBe(1)
+    const callsBeforeNarrowing = mocks.getHistoryCalls()
 
     // Rango que sólo cubre DOC-200 (2026-07-10) — DOC-100 (07-01) y DOC-300 (07-20) quedan fuera.
     await page.getByTestId('date-from-input').fill('2026-07-05')
@@ -45,27 +55,13 @@ test.describe('Recepción — historial de almacén (filtros client-side)', () =
     await expect(page.getByText('DOC-100')).not.toBeVisible()
     await expect(page.getByText('DOC-300')).not.toBeVisible()
 
-    // El filtro de fecha fue 100% client-side: sigue habiendo un único GET history.
-    expect(mocks.getHistoryCalls()).toBe(1)
-
-    // Limpiar rango y filtrar ahora por número de transferencia.
-    await page.getByTestId('date-from-input').fill('')
-    await page.getByTestId('date-from-input').dispatchEvent('change')
-    await page.getByTestId('date-to-input').fill('')
-    await page.getByTestId('date-to-input').dispatchEvent('change')
-    await expect(page.getByText('DOC-100')).toBeVisible()
-
-    await page.getByTestId('transfer-number-input').fill('300')
-
-    await expect(page.getByText('DOC-300')).toBeVisible()
-    await expect(page.getByText('DOC-100')).not.toBeVisible()
-    await expect(page.getByText('DOC-200')).not.toBeVisible()
-
-    expect(mocks.getHistoryCalls()).toBe(1)
+    // El filtro de fecha es server-side real (HistoryController's dateFrom/dateTo): cada cambio
+    // de rango dispara un GET history nuevo, no se recalcula en el cliente.
+    expect(mocks.getHistoryCalls()).toBeGreaterThan(callsBeforeNarrowing)
   })
 })
 
-test.describe('Recepción — historial global admin (CSV export, vía toggle "Todas las tiendas")', () => {
+test.describe('Recepción — historial global admin (CSV export, vista fija por permiso viewall)', () => {
   test.beforeEach(async ({ page }) => {
     await installRecepcionAuth(page, { permissions: ['recepcion.history.viewall'] })
   })
@@ -75,12 +71,18 @@ test.describe('Recepción — historial global admin (CSV export, vía toggle "T
     const mocks = await installHistoryMocks(page, { rows: [], allRows: rows, exportBody })
 
     await page.goto('/recepcion-mercaderia/historial')
-    await expect(page.getByRole('heading', { name: /historial de recepciones/i })).toBeVisible()
-    await expect(page.getByTestId('export-csv-btn')).toHaveCount(0)
+    // Con el permiso viewall, la vista consolidada se muestra directamente — no hay toggle ni
+    // estado intermedio (fixed per session, ver HistoryView.vue).
+    await expect(page.getByRole('main').getByRole('heading', { name: /historial de recepciones/i })).toBeVisible()
+    await expect(page.getByTestId('export-csv-btn')).toBeVisible()
 
-    await page.getByTestId('mode-toggle-all').click()
+    // Ampliar el rango para cubrir las fechas del fixture (julio 2026) — la vista también abre
+    // filtrando por "hoy" en el modo consolidado.
+    await page.getByTestId('date-from-input').fill('2026-01-01')
+    await page.getByTestId('date-from-input').dispatchEvent('change')
+    await page.getByTestId('date-to-input').fill('2026-12-31')
+    await page.getByTestId('date-to-input').dispatchEvent('change')
 
-    await expect(page.getByRole('heading', { name: /historial global de recepciones/i })).toBeVisible()
     await expect(page.getByText('DOC-100')).toBeVisible()
     await expect(page.getByText('DOC-200')).toBeVisible()
 
@@ -103,7 +105,11 @@ test.describe('Recepción — historial global admin (CSV export, vía toggle "T
     await installHistoryMocks(page, { rows: [], allRows: rows, exportBehavior: 'error' })
 
     await page.goto('/recepcion-mercaderia/historial')
-    await page.getByTestId('mode-toggle-all').click()
+
+    await page.getByTestId('date-from-input').fill('2026-01-01')
+    await page.getByTestId('date-from-input').dispatchEvent('change')
+    await page.getByTestId('date-to-input').fill('2026-12-31')
+    await page.getByTestId('date-to-input').dispatchEvent('change')
     await expect(page.getByText('DOC-100')).toBeVisible()
 
     await page.getByTestId('export-csv-btn').click()

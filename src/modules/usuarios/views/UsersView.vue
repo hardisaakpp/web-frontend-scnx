@@ -215,7 +215,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
 import api from '@/services/api'
-import VolverButton from '@/components/VolverButton.vue'
+import VolverButton from '@/components/navegacion/VolverButton.vue'
 
 type UserRecord = Record<string, unknown>
 

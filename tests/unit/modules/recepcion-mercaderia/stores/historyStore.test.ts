@@ -10,6 +10,7 @@ vi.mock('@/modules/recepcion-mercaderia/services/recepcionApi', () => ({
     getHistory: vi.fn(),
     getAllHistory: vi.fn(),
     exportAllHistoryCsv: vi.fn(),
+    exportHistoryCsv: vi.fn(),
     updateGlpiTicket: vi.fn(),
     downloadDifferencesReport: vi.fn(),
   },
@@ -480,6 +481,32 @@ describe('useHistoryStore', () => {
 
       expect(result).toBeNull()
       expect(store.allError).toBe('No se pudo exportar el archivo Excel.')
+    })
+  })
+
+  describe('exportHistoryCsv (own scope — no recepcion.history.viewall required)', () => {
+    it('returns the CSV Blob on success, sent with the current own-scope filters', async () => {
+      const blob = new Blob(['csv'])
+      vi.mocked(recepcionApi.exportHistoryCsv).mockResolvedValue(blob)
+      const store = useHistoryStore()
+      store.setTransferNumberQuery('100')
+
+      const result = await store.exportHistoryCsv()
+
+      expect(recepcionApi.exportHistoryCsv).toHaveBeenCalledWith({ transferNumber: '100' })
+      expect(recepcionApi.exportAllHistoryCsv).not.toHaveBeenCalled()
+      expect(result).toBe(blob)
+    })
+
+    it('returns null and surfaces an error on the own-scope status, without touching allError', async () => {
+      vi.mocked(recepcionApi.exportHistoryCsv).mockRejectedValue(new Error('export failed'))
+      const store = useHistoryStore()
+
+      const result = await store.exportHistoryCsv()
+
+      expect(result).toBeNull()
+      expect(store.error).toBe('No se pudo exportar el archivo Excel.')
+      expect(store.allError).toBeNull()
     })
   })
 

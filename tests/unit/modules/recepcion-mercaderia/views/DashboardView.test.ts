@@ -29,7 +29,17 @@ describe('DashboardView (recepcion-mercaderia)', () => {
 
     expect(wrapper.text()).not.toContain('Transferencias Pendientes')
     expect(wrapper.text()).not.toContain('En Curso / Picking')
+    expect(wrapper.text()).not.toContain('Transferencias en Tránsito')
     expect(wrapper.text()).toContain('Historial')
+  })
+
+  it('shows the Tránsito card only for a user with recepcion.reception.transit.view', () => {
+    mockAuth({ permissions: ['recepcion.reception.transit.view'] })
+
+    const wrapper = mount(DashboardView)
+
+    expect(wrapper.text()).toContain('Transferencias en Tránsito')
+    expect(wrapper.findAll('router-link').map((link) => link.attributes('to'))).toEqual(['/recepcion-mercaderia/transitorias'])
   })
 
   it('shows the single merged Historial card for a user with only recepcion.history.viewall', () => {
@@ -48,6 +58,7 @@ describe('DashboardView (recepcion-mercaderia)', () => {
 
     expect(wrapper.text()).toContain('Transferencias Pendientes')
     expect(wrapper.text()).toContain('En Curso / Picking')
+    expect(wrapper.text()).toContain('Transferencias en Tránsito')
     expect(wrapper.text()).toContain('Historial')
   })
 
@@ -59,8 +70,9 @@ describe('DashboardView (recepcion-mercaderia)', () => {
 
     expect(targets).toContain('/recepcion-mercaderia/pendientes')
     expect(targets).toContain('/recepcion-mercaderia/en-curso')
+    expect(targets).toContain('/recepcion-mercaderia/transitorias')
     expect(targets).toContain('/recepcion-mercaderia/historial')
     expect(targets).not.toContain('/recepcion-mercaderia/historial/admin')
-    expect(targets).toHaveLength(3)
+    expect(targets).toHaveLength(4)
   })
 })

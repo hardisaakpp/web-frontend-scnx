@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
-import VolverButton from '@/components/VolverButton.vue'
+import VolverButton from '@/components/navegacion/VolverButton.vue'
 import { APP_LOCALE } from '@/plugins/locale'
 import { ruletaService } from '../../services/ruletaApi'
 import { useAdminStore } from '../../stores/adminStore'

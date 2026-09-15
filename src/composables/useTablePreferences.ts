@@ -140,19 +140,36 @@ export function useTablePreferences(options: UseTablePreferencesOptions) {
   }
 
   /**
+   * Agrega a columnOrder cualquier columna de defaultColumnOrder que no esté presente.
+   * Necesario porque columnOrder puede venir de preferencias guardadas ANTES de que esa
+   * columna existiera (servidor o localStorage): sin esto, esa columna no aparece en
+   * columnOrder y el drag & drop no puede ubicar su índice para reordenarla (queda
+   * visible solo por el fallback de "missingColumns" en orderedVisibleColumns, pero
+   * atascada al final).
+   */
+  function reconcileColumnOrder() {
+    const missing = defaultColumnOrder.filter((key: string) => !columnOrder.value.includes(key))
+    if (missing.length > 0) {
+      columnOrder.value = [...columnOrder.value, ...missing]
+    }
+  }
+
+  /**
    * Cargar preferencias: primero del servidor, luego localStorage como fallback
    */
   async function loadPreferences() {
     isInitializing.value = true
-    
+
     try {
       // Intentar cargar del servidor primero
       const serverLoaded = await loadFromServer()
-      
+
       // Si no se cargaron del servidor, usar localStorage
       if (!serverLoaded) {
         loadFromLocalStorage()
       }
+
+      reconcileColumnOrder()
     } finally {
       // Marcar como inicializado después de un pequeño delay para asegurar que los watchers no se activen
       setTimeout(() => {

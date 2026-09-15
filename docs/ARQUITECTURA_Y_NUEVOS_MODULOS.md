@@ -695,6 +695,28 @@ src/modules/mi-modulo/
     └── miModuloStore.ts        # Estado global del módulo
 ```
 
+### Antes de crear componentes en `components/`: revisar `src/components/`
+
+`src/components/` (raíz, fuera de `src/modules/`) ya tiene un catálogo estandarizado de
+componentes genéricos organizados por categoría — botones de navegación, paginación,
+spinners/skeletons, modales de confirmación/error/éxito, tabs y gráficos (ver
+[`docs/FUNCIONALIDADES_ESTANDARIZADAS.md` §8.6](FUNCIONALIDADES_ESTANDARIZADAS.md#86-ubicación-y-organización-de-srccomponents)
+para el listado completo y el contrato de props/eventos).
+
+Antes de crear un componente nuevo en `src/modules/mi-modulo/components/`:
+
+1. Revisar si lo que necesitás (botón "volver", paginación, spinner, skeleton, modal de
+   confirmación/error/éxito, tabs, gráfico de barras/dona) ya existe en `src/components/` —
+   si es así, importalo desde ahí en vez de reimplementarlo.
+2. Si tu módulo termina necesitando algo genérico que no depende de tu lógica de negocio,
+   considerá aportarlo a `src/components/` (en la subcarpeta que corresponda) en vez de
+   dejarlo local, para que otros módulos lo reutilicen después.
+3. Si mientras trabajás en un módulo existente encontrás un componente propio que ya es
+   copia (o casi copia) de uno de `src/components/`, migrarlo es responsabilidad de quien
+   toca ese código — no hace falta esperar a que otro lo haga. El backlog de duplicados ya
+   identificados (con nivel de riesgo por caso) está en
+   [§8.7 del mismo documento](FUNCIONALIDADES_ESTANDARIZADAS.md#87-backlog-de-deduplicación-conocido-no-resuelto-en-esta-pasada).
+
 ### Convención: respuesta de mutaciones y estado local
 
 Tras un **PATCH/PUT/POST** exitoso, el backend debe devolver el registro actualizado (p. ej. campos de auditoría como última modificación y usuario). En el frontend, **fusiona esa respuesta en el estado** (fila de tabla, store o formulario) en lugar de depender solo de un segundo GET.

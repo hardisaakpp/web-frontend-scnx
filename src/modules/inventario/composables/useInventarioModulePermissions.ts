@@ -27,6 +27,7 @@ export function useInventarioModulePermissions() {
   const canIntegrarSap = computed(() => has('inventario.integracion_sap'))
 
   return {
+    isAdmin,
     canPlanificar,
     canGenerar,
     canTomar,

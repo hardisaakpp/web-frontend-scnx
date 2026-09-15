@@ -30,7 +30,7 @@
       </div>
 
       <!-- Buscador -->
-      <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700 transition-colors duration-300 bg-white dark:bg-gray-800 rounded-lg shadow-md border border-gray-200 dark:border-gray-700">
+      <div class="px-6 py-4 transition-colors duration-300 bg-white dark:bg-gray-800 rounded-lg shadow-md border border-gray-200 dark:border-gray-700">
         <input
           id="search-procesamiento-sap"
           v-model.trim="searchTerm"
@@ -122,7 +122,7 @@ import { ref, computed } from '@vue/reactivity'
 import { onMounted } from '@vue/runtime-core'
 import { useRouter } from 'vue-router'
 import { mba3ConsultasService } from '../services/mba3ConsultasApi'
-import QuickTablePagination from '@/components/QuickTablePagination.vue'
+import QuickTablePagination from '@/components/paginacion/QuickTablePagination.vue'
 import LoadingSpinner from '../components/LoadingSpinner.vue'
 import type { PedidoCompleto } from '../types'
 import { formatDate } from '../utils/formatters'

@@ -264,6 +264,15 @@ npm run docker:up          # levanta contenedor con active.env
 - Punto y coma opcional
 - Usar Composition API con `<script setup>`
 
+### Reutilización de componentes
+
+`src/components/` es el catálogo de componentes compartidos entre módulos, organizado por
+categoría (`navegacion/`, `paginacion/`, `feedback/`, `modales/`, `datos/`). Antes de crear
+un componente de UI en tu módulo, revisá si ya existe algo genérico equivalente ahí — y si
+tu módulo tiene uno que ya es copia de uno compartido, migrarlo es tu responsabilidad al
+tocar ese código. Detalle, contrato para componentes nuevos y backlog de duplicados ya
+identificados: [`docs/FUNCIONALIDADES_ESTANDARIZADAS.md` §8.6-8.7](docs/FUNCIONALIDADES_ESTANDARIZADAS.md#86-ubicación-y-organización-de-srccomponents).
+
 ## 📞 Soporte
 
 Para dudas sobre desarrollo o arquitectura, consulta:

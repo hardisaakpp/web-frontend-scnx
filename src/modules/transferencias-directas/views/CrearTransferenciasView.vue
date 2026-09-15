@@ -16,6 +16,7 @@ import ResumenTransferencia from '../components/ResumenTransferencia.vue'
 import transferenciasService from '../services/transferenciasService.js'
 import CargandoSpinner from '../components/CargandoSpinner.vue'
 import ModalConfirmacion from '../components/ModalConfirmacion.vue'
+import ModalGuiaLaar from '../components/ModalGuiaLaar.vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -33,14 +34,6 @@ const inputClass =
 
 const selectClass = inputClass
 const textareaClass = `${inputClass} resize-none`
-
-// Guía Laar: solo alfanuméricos en mayúsculas (el largo exacto se valida al enviar)
-const onGuiaInput = (e: Event) => {
-  const target = e.target as HTMLInputElement
-  const limpio = target.value.toUpperCase().replace(/[^A-Z0-9]/g, '')
-  form.guiaEnvio = limpio
-  target.value = limpio // refleja el filtrado en el input
-}
 
 const onResponsableInput = (e: Event) => {
   const target = e.target as HTMLInputElement
@@ -223,7 +216,8 @@ const construirPayload = (enviarAAprobacion: boolean): CrearSolicitudRequest => 
   tiendaDestinoCodigo: form.tiendaDestinoCodigo,
   tiendaDestinoNombre: form.tiendaDestinoNombre,
   justificacion: form.justificacion.trim() || '',
-  guiaEnvio: form.guiaEnvio.trim().toUpperCase() || '',
+  // Sin guía (Guardar Borrador) el campo se omite: solo viaja al enviar a aprobación.
+  guiaEnvio: form.guiaEnvio.trim().toUpperCase() || undefined,
   enviarAAprobacion,
   idempotencyKey: idempotencyKey.value,
   detalles: productos.value.map((p) => ({
@@ -245,12 +239,8 @@ const validar = (): boolean => {
     if (!form.usuarioSolicitante.trim()) errores.usuarioSolicitante = 'Ingresa el responsable del envío.'
   }
 
-  // La guía es editable en ambos modos: debe ser exactamente 10 alfanuméricos.
-  const guia = form.guiaEnvio.trim()
-  if (!guia) errores.guiaEnvio = 'Ingrese la Guía Courier'
-  else if (!/^[A-Z0-9]{10}$/.test(guia)) {
-    errores.guiaEnvio = 'La guía debe tener exactamente 10 caracteres alfanuméricos.'
-  }
+  // La guía LAAR no se valida aquí: se pide en ModalGuiaLaar al enviar a
+  // aprobación, que es cuando el usuario ya despachó y tiene el número real.
 
   if (productos.value.length === 0) errores.productos = 'Agrega al menos un producto.'
   const primerError = Object.keys(errores)[0]
@@ -282,7 +272,26 @@ const enviar = async (enviarAAprobacion: boolean) => {
 }
 
 const guardarBorrador = () => enviar(false)
-const enviarAprobacion = () => enviar(true)
+
+// Enviar a aprobación pide primero la guía LAAR: el borrador puede guardarse sin
+// ella, pero nada llega a aprobación sin guía.
+const guiaAbierto = ref(false)
+const abrirModalGuia = () => {
+  if (!validar()) return // no pedir la guía si el formulario aún tiene errores
+  errorSubmit.value = ''
+  faltantesSubmit.value = []
+  guiaAbierto.value = true
+}
+const cerrarModalGuia = () => {
+  if (guardando.value) return
+  guiaAbierto.value = false
+}
+const confirmarGuiaYEnviar = async (guia: string) => {
+  form.guiaEnvio = guia
+  await enviar(true)
+  // Si falló, el modal queda abierto mostrando el error (faltantes de stock,
+  // validaciones del back). Si tuvo éxito, la vista se desmonta al navegar.
+}
 
 const manejarErrorSubmit = (e: any) => {
   const { faltantes } = parsearErrorSolicitud(e)
@@ -334,7 +343,9 @@ const guardarEdicion = async () => {
   try {
     await transferenciasService.actualizar(idEdicion.value!, {
       justificacion: form.justificacion.trim() || undefined,
-      guiaEnvio: form.guiaEnvio.trim().toUpperCase() || undefined,
+      // La guía ya no se edita aquí (se pide al enviar a aprobación): se reenvía
+      // la guardada para que el PUT no la borre.
+      guiaEnvio: detalle.value?.guiaEnvio?.trim().toUpperCase() || undefined,
       detalles: productos.value.map((p) => ({
         itemCode: p.itemCode,
         codeBars: p.codeBars,
@@ -412,12 +423,6 @@ const guardarEdicion = async () => {
             </select>
           </FormField>
 
-          <FormField label="Guía Courier" required :error="errores.guiaEnvio"
-            help="Exactamente 10 caracteres alfanuméricos" v-slot="{ id }">
-            <input :id="id" v-model="form.guiaEnvio" @input="onGuiaInput" type="text" maxlength="10"
-              placeholder="AB12CD34EF" :class="[inputClass, 'uppercase tracking-wider']" />
-          </FormField>
-
           <FormField label="Responsable del Envío" required :error="errores.usuarioSolicitante" v-slot="{ id }">
             <input :id="id" :value="form.usuarioSolicitante" @input="onResponsableInput" type="text"
               placeholder="Nombre del responsable" :class="[inputClass, 'uppercase']" maxlength="139"
@@ -481,7 +486,7 @@ const guardarEdicion = async () => {
               {{ guardando ? 'Guardando…' : 'Guardar Borrador' }}
             </button>
             <!-- Enviar a Aprobación: solo en Crear -->
-            <button v-if="!modoEdicion" type="button" @click="enviarAprobacion" :disabled="guardando"
+            <button v-if="!modoEdicion" type="button" @click="abrirModalGuia" :disabled="guardando"
               class="px-6 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white text-xs font-medium transition-colors shadow-sm">
               {{ guardando ? 'Enviando…' : 'Enviar a Aprobación' }}
             </button>
@@ -495,9 +500,14 @@ const guardarEdicion = async () => {
       texto-confirmar="Cambiar" variante="peligro" @confirmar="aceptarCambioOrigen"
       @cancelar="cancelarCambioOrigen" />
 
+    <!-- Guía LAAR: se pide al enviar a aprobación, no en el formulario. -->
+    <ModalGuiaLaar :abierto="guiaAbierto" :cargando="guardando" :error="errorSubmit" :faltantes="faltantesSubmit"
+      @confirmar="confirmarGuiaYEnviar" @cancelar="cerrarModalGuia" />
+
     <!-- Bloquea toda la pantalla mientras se guarda: la validación con SAP tarda y
-         sin esto el usuario puede seguir editando el detalle que ya se envió. -->
-    <div v-if="guardando" class="fixed inset-0 z-50 flex items-center justify-center p-4">
+         sin esto el usuario puede seguir editando el detalle que ya se envió.
+         Con el modal de guía abierto no se muestra: ese modal ya indica el progreso. -->
+    <div v-if="guardando && !guiaAbierto" class="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div class="absolute inset-0 bg-black/40 backdrop-blur-sm"></div>
       <div
         class="relative w-full max-w-sm rounded-2xl bg-white dark:bg-gray-800 p-6 text-center shadow-2xl border border-gray-200 dark:border-gray-700">

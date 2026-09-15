@@ -2,11 +2,10 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { setActivePinia, createPinia } from 'pinia'
 import { usePickingStore } from '@/modules/recepcion-mercaderia/stores/pickingStore'
 import recepcionApi from '@/modules/recepcion-mercaderia/services/recepcionApi'
-import type { ReceptionTransfer, Difference, PagedResponse } from '@/modules/recepcion-mercaderia/types'
+import type { ReceptionTransfer, Difference, ConfirmTransferResponse } from '@/modules/recepcion-mercaderia/types'
 
 vi.mock('@/modules/recepcion-mercaderia/services/recepcionApi', () => ({
   default: {
-    getInProgressTransfers: vi.fn(),
     getTransfer: vi.fn(),
     scan: vi.fn(),
     confirm: vi.fn(),
@@ -40,16 +39,13 @@ function buildDifference(overrides: Partial<Difference> = {}): Difference {
     differenceId: 1,
     transferId: 7,
     barcode: '7791234',
+    lineId: null,
     productDescription: null,
     isRecognized: false,
     scannedAtUtc: '2026-01-02T00:00:00Z',
     scannedByUserId: 'user-1',
     ...overrides,
   }
-}
-
-function pagedTransfers(items: ReceptionTransfer[], overrides: Partial<PagedResponse<ReceptionTransfer>> = {}): PagedResponse<ReceptionTransfer> {
-  return { items, totalCount: items.length, pageNumber: 1, pageSize: 20, ...overrides }
 }
 
 // GET /transfers/{id} really returns { transfer, differences } (recepcionApi.getTransfer's real
@@ -59,82 +55,14 @@ function mockGetTransfer(transfer: ReceptionTransfer, differences: Difference[] 
   return { transfer, differences }
 }
 
+function buildConfirmResponse(overrides: Partial<ConfirmTransferResponse> = {}): ConfirmTransferResponse {
+  return { success: true, sapDocEntry: 123, sapDocNum: 456, message: 'ok', ...overrides }
+}
+
 describe('usePickingStore', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
     vi.clearAllMocks()
-  })
-
-  describe('fetchInProgress', () => {
-    it('fetches a page and populates transfers + totalCount', async () => {
-      const mockTransfers = [buildTransfer(), buildTransfer({ transferId: 8, documentNumber: 'DOC-8' })]
-      vi.mocked(recepcionApi.getInProgressTransfers).mockResolvedValue(pagedTransfers(mockTransfers, { totalCount: 45 }))
-      const store = usePickingStore()
-
-      await store.fetchInProgress()
-
-      expect(recepcionApi.getInProgressTransfers).toHaveBeenCalledWith({ pageNumber: 1, pageSize: 20 })
-      expect(store.transfers).toEqual(mockTransfers)
-      expect(store.totalCount).toBe(45)
-      expect(store.status).toBe('ready')
-    })
-
-    it('sets status "error" when the API call fails', async () => {
-      vi.mocked(recepcionApi.getInProgressTransfers).mockRejectedValue(new Error('down'))
-      const store = usePickingStore()
-
-      await store.fetchInProgress()
-
-      expect(store.status).toBe('error')
-      expect(store.transfers).toEqual([])
-    })
-
-    it('surfaces the backend\'s own error message when the API responds with one', async () => {
-      vi.mocked(recepcionApi.getInProgressTransfers).mockRejectedValue({
-        response: { status: 403, data: { error: "User 'u1' does not have access to warehouse 'T01'." } },
-      })
-      const store = usePickingStore()
-
-      await store.fetchInProgress()
-
-      expect(store.fetchError).toBe("User 'u1' does not have access to warehouse 'T01'.")
-    })
-
-    it('setPage re-fetches with the new page number', async () => {
-      vi.mocked(recepcionApi.getInProgressTransfers).mockResolvedValue(pagedTransfers([buildTransfer()], { totalCount: 45, pageNumber: 2 }))
-      const store = usePickingStore()
-
-      store.setPage(2)
-      await vi.waitFor(() => expect(recepcionApi.getInProgressTransfers).toHaveBeenCalledWith({ pageNumber: 2, pageSize: 20 }))
-
-      expect(store.page).toBe(2)
-    })
-
-    it('setPageSize resets to page 1 and re-fetches with the new size', async () => {
-      vi.mocked(recepcionApi.getInProgressTransfers).mockResolvedValue(pagedTransfers([buildTransfer()], { totalCount: 45 }))
-      const store = usePickingStore()
-      store.setPage(3)
-      vi.clearAllMocks()
-      vi.mocked(recepcionApi.getInProgressTransfers).mockResolvedValue(pagedTransfers([buildTransfer()]))
-
-      store.setPageSize(50)
-      await vi.waitFor(() => expect(recepcionApi.getInProgressTransfers).toHaveBeenCalledWith({ pageNumber: 1, pageSize: 50 }))
-
-      expect(store.page).toBe(1)
-      expect(store.pageSize).toBe(50)
-    })
-
-    it('resetInProgressAndFetch clears a leftover page from a previous visit before refetching', async () => {
-      vi.mocked(recepcionApi.getInProgressTransfers).mockResolvedValue(pagedTransfers([buildTransfer()], { totalCount: 45 }))
-      const store = usePickingStore()
-      // Simulate state left behind by a prior visit to InProgressView: page 6.
-      store.page = 6
-
-      store.resetInProgressAndFetch()
-      await vi.waitFor(() => expect(recepcionApi.getInProgressTransfers).toHaveBeenCalledWith({ pageNumber: 1, pageSize: 20 }))
-
-      expect(store.page).toBe(1)
-    })
   })
 
   describe('fetchTransfer (detail)', () => {
@@ -264,7 +192,7 @@ describe('usePickingStore', () => {
       const store = usePickingStore()
       await store.fetchTransfer(7)
 
-      let resolveConfirm!: (v: void) => void
+      let resolveConfirm!: (v: ConfirmTransferResponse) => void
       vi.mocked(recepcionApi.confirm).mockReturnValue(
         new Promise((resolve) => {
           resolveConfirm = resolve
@@ -276,7 +204,7 @@ describe('usePickingStore', () => {
       vi.mocked(recepcionApi.getTransfer).mockResolvedValueOnce(mockGetTransfer(transferB))
       await store.fetchTransfer(8)
 
-      resolveConfirm(undefined)
+      resolveConfirm(buildConfirmResponse())
       await confirmPromise
 
       expect(store.currentTransfer).toEqual(transferB)
@@ -635,7 +563,7 @@ describe('usePickingStore', () => {
       const store = usePickingStore()
       await store.fetchTransfer(7)
 
-      vi.mocked(recepcionApi.confirm).mockResolvedValue(undefined)
+      vi.mocked(recepcionApi.confirm).mockResolvedValue(buildConfirmResponse())
       vi.mocked(recepcionApi.getTransfer).mockResolvedValueOnce(mockGetTransfer({ ...transfer, status: 'confirmed' }))
 
       await store.confirm()
@@ -651,12 +579,33 @@ describe('usePickingStore', () => {
       const store = usePickingStore()
       await store.fetchTransfer(7)
 
-      vi.mocked(recepcionApi.confirm).mockResolvedValue(undefined)
+      vi.mocked(recepcionApi.confirm).mockResolvedValue(buildConfirmResponse())
       vi.mocked(recepcionApi.getTransfer).mockResolvedValueOnce(mockGetTransfer({ ...transfer, status: 'confirmed' }))
 
       await store.confirm({ allowPartial: true })
 
       expect(recepcionApi.confirm).toHaveBeenCalledWith(7, { allowPartial: true })
+    })
+
+    it('shows no error and picks up pendingSapJobQueuedAtUtc from the refetch when confirm responds success:false with reason "Queued" (SAP job queued, not a failure)', async () => {
+      const transfer = buildTransfer()
+      vi.mocked(recepcionApi.getTransfer).mockResolvedValueOnce(mockGetTransfer(transfer))
+      const store = usePickingStore()
+      await store.fetchTransfer(7)
+
+      vi.mocked(recepcionApi.confirm).mockResolvedValue(
+        buildConfirmResponse({ success: false, sapDocEntry: null, sapDocNum: null, message: 'La confirmación quedó en proceso.', reason: 'Queued' })
+      )
+      vi.mocked(recepcionApi.getTransfer).mockResolvedValueOnce(
+        mockGetTransfer({ ...transfer, pendingSapJobQueuedAtUtc: '2026-08-31T12:00:00Z' })
+      )
+
+      await store.confirm()
+
+      expect(store.actionError).toBeNull()
+      expect(store.sapErrorMessage).toBeNull()
+      expect(store.status).toBe('ready')
+      expect(store.currentTransfer?.pendingSapJobQueuedAtUtc).toBe('2026-08-31T12:00:00Z')
     })
 
     it('sets status "error" + sapErrorMessage on a SAP 500 failure, keeping the transfer retryable', async () => {
@@ -671,7 +620,7 @@ describe('usePickingStore', () => {
 
       expect(store.status).toBe('error')
       expect(store.sapErrorMessage).toBe(
-        'No se pudo integrar la transferencia a SAP. Los escaneos se guardaron; reintentá cuando el servicio esté disponible.'
+        'No se pudo integrar la transferencia a SAP. Los escaneos se guardaron; vuelva a intentarlo cuando el servicio esté disponible.'
       )
       expect(store.currentTransfer?.status).toBe('in-progress')
     })
@@ -768,7 +717,7 @@ describe('usePickingStore', () => {
       const store = usePickingStore()
       await store.fetchTransfer(7)
 
-      let resolveConfirm!: (v: void) => void
+      let resolveConfirm!: (v: ConfirmTransferResponse) => void
       vi.mocked(recepcionApi.confirm).mockReturnValue(
         new Promise((resolve) => {
           resolveConfirm = resolve
@@ -778,7 +727,7 @@ describe('usePickingStore', () => {
       const confirmPromise = store.confirm()
       expect(store.isSubmitting).toBe(true)
 
-      resolveConfirm(undefined)
+      resolveConfirm(buildConfirmResponse())
       await confirmPromise
 
       expect(store.isSubmitting).toBe(false)
@@ -1196,6 +1145,121 @@ describe('usePickingStore', () => {
       expect(recepcionApi.scan).not.toHaveBeenCalled()
       expect(recepcionApi.recordDifference).toHaveBeenCalledTimes(2)
       expect(result).toEqual({ matchedLine: transfer.lines[0], fillAmount: 0, excess: 2 })
+    })
+  })
+
+  // Manual-entry counterpart to scanBarcode, for lines with no barcode. Unlike scanBarcode's
+  // enteredQty (an incremental "just scanned this many more"), the manual quantity input already
+  // holds an ABSOLUTE total, so fillAmount = min(enteredQuantity, line.quantity) directly (not
+  // line.scanned + fillAmount) and the new absolute value submitted is simply fillAmount.
+  describe('scanManual', () => {
+    it('batches a normal scan() call with no recordDifference calls when the entry is within the line quantity', async () => {
+      const transfer = buildTransfer({
+        lines: [{ lineId: 1, itemCode: 'A1', itemName: 'Item A1', quantity: 10, scanned: 4, barcode: null }],
+      })
+      vi.mocked(recepcionApi.getTransfer).mockResolvedValueOnce(mockGetTransfer(transfer))
+      const store = usePickingStore()
+      await store.fetchTransfer(7)
+
+      vi.mocked(recepcionApi.scan).mockResolvedValue(undefined)
+      vi.mocked(recepcionApi.getTransfer).mockResolvedValue(
+        mockGetTransfer(buildTransfer({ lines: [{ ...transfer.lines[0], scanned: 7 }] }))
+      )
+
+      await store.scanManual([{ lineId: 1, enteredQuantity: 7 }])
+
+      expect(recepcionApi.scan).toHaveBeenCalledWith(7, {
+        scans: [{ lineId: 1, scannedQuantity: 7 }],
+        responsibleName: null,
+        courierWaybillNumber: null,
+      })
+      expect(recepcionApi.recordDifference).not.toHaveBeenCalled()
+    })
+
+    it("caps the scan() call's scannedQuantity at the line's quantity and records one difference per excess unit, keyed by lineId", async () => {
+      const transfer = buildTransfer({
+        lines: [{ lineId: 1, itemCode: 'A1', itemName: 'Item A1', quantity: 10, scanned: 4, barcode: null }],
+      })
+      vi.mocked(recepcionApi.getTransfer).mockResolvedValueOnce(mockGetTransfer(transfer))
+      const store = usePickingStore()
+      await store.fetchTransfer(7)
+
+      vi.mocked(recepcionApi.scan).mockResolvedValue(undefined)
+      vi.mocked(recepcionApi.recordDifference).mockResolvedValue(undefined)
+      vi.mocked(recepcionApi.getTransfer).mockResolvedValue(
+        mockGetTransfer(buildTransfer({ lines: [{ ...transfer.lines[0], scanned: 10 }] }))
+      )
+
+      // entered = 13, line.quantity = 10 -> fillAmount = 10, excess = 3
+      await store.scanManual([{ lineId: 1, enteredQuantity: 13 }])
+
+      expect(recepcionApi.scan).toHaveBeenCalledWith(7, {
+        scans: [{ lineId: 1, scannedQuantity: 10 }],
+        responsibleName: null,
+        courierWaybillNumber: null,
+      })
+      expect(recepcionApi.recordDifference).toHaveBeenCalledTimes(3)
+      expect(recepcionApi.recordDifference).toHaveBeenCalledWith(7, { lineId: 1 })
+    })
+
+    it('batches multiple changed lines into a single scan() POST with one ScanLineRequest per line', async () => {
+      const transfer = buildTransfer({
+        lines: [
+          { lineId: 1, itemCode: 'A1', itemName: 'Item A1', quantity: 10, scanned: 4, barcode: null },
+          { lineId: 2, itemCode: 'A2', itemName: 'Item A2', quantity: 5, scanned: 1, barcode: null },
+        ],
+      })
+      vi.mocked(recepcionApi.getTransfer).mockResolvedValueOnce(mockGetTransfer(transfer))
+      const store = usePickingStore()
+      await store.fetchTransfer(7)
+
+      vi.mocked(recepcionApi.scan).mockResolvedValue(undefined)
+      vi.mocked(recepcionApi.getTransfer).mockResolvedValue(mockGetTransfer(transfer))
+
+      await store.scanManual([
+        { lineId: 1, enteredQuantity: 6 },
+        { lineId: 2, enteredQuantity: 3 },
+      ])
+
+      expect(recepcionApi.scan).toHaveBeenCalledTimes(1)
+      expect(recepcionApi.scan).toHaveBeenCalledWith(7, {
+        scans: [
+          { lineId: 1, scannedQuantity: 6 },
+          { lineId: 2, scannedQuantity: 3 },
+        ],
+        responsibleName: null,
+        courierWaybillNumber: null,
+      })
+      expect(recepcionApi.recordDifference).not.toHaveBeenCalled()
+    })
+
+    it('skips a line whose entered quantity equals its current scanned value, but still redirects any excess', async () => {
+      const transfer = buildTransfer({
+        lines: [{ lineId: 1, itemCode: 'A1', itemName: 'Item A1', quantity: 10, scanned: 10, barcode: null }],
+      })
+      vi.mocked(recepcionApi.getTransfer).mockResolvedValueOnce(mockGetTransfer(transfer))
+      const store = usePickingStore()
+      await store.fetchTransfer(7)
+
+      vi.mocked(recepcionApi.recordDifference).mockResolvedValue(undefined)
+      vi.mocked(recepcionApi.getTransfer).mockResolvedValue(mockGetTransfer(transfer))
+
+      // entered = 12, line.quantity = 10 -> fillAmount = 10 (equal to current scanned, so no scan()
+      // call), excess = 2 still redirected.
+      await store.scanManual([{ lineId: 1, enteredQuantity: 12 }])
+
+      expect(recepcionApi.scan).not.toHaveBeenCalled()
+      expect(recepcionApi.recordDifference).toHaveBeenCalledTimes(2)
+      expect(recepcionApi.recordDifference).toHaveBeenCalledWith(7, { lineId: 1 })
+    })
+
+    it('returns/no-ops when there is no current transfer loaded', async () => {
+      const store = usePickingStore()
+
+      await store.scanManual([{ lineId: 1, enteredQuantity: 5 }])
+
+      expect(recepcionApi.scan).not.toHaveBeenCalled()
+      expect(recepcionApi.recordDifference).not.toHaveBeenCalled()
     })
   })
 })

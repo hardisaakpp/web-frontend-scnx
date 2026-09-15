@@ -6,6 +6,15 @@ server {
     listen 3001;
     server_name scnexus.mabelgroup.com.ec;
 
+    # Soporte para encabezados y cookies grandes (JWT con múltiples claims/roles/permisos)
+    client_header_buffer_size 8k;
+    large_client_header_buffers 4 64k;
+
+    # Búferes para proxy inverso hacia los microservicios
+    proxy_buffer_size 128k;
+    proxy_buffers 4 256k;
+    proxy_busy_buffers_size 256k;
+
     root /storage/scnexus/dist;
     index index.html;
 
@@ -147,6 +156,27 @@ server {
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
         proxy_set_header Authorization $http_authorization;
+    }
+
+    # =========================
+    # mIAApi — asistente SCNEXUS AI (/mia-api/* -> servicio mIA sin prefijo)
+    # Example:
+    #   /mia-api/v1/preguntar -> http://172.30.152.246:8896/v1/preguntar
+    # Timeout largo: el LLM tarda 2-25 s por respuesta.
+    # =========================
+    location /mia-api/ {
+        rewrite ^/mia-api(.*)$ $1 break;
+        proxy_pass http://172.30.152.246:8896;
+        proxy_http_version 1.1;
+
+        proxy_connect_timeout 30s;
+        proxy_send_timeout 180s;
+        proxy_read_timeout 180s;
+
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
     }
 
     # =========================

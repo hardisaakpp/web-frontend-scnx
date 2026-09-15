@@ -64,6 +64,7 @@ function buildDifference(overrides: Partial<Difference> = {}): Difference {
     differenceId: 1,
     transferId: 7,
     barcode: '999888777',
+    lineId: null,
     productDescription: null,
     isRecognized: false,
     scannedAtUtc: '2026-01-02T00:00:00Z',
@@ -108,6 +109,55 @@ describe('TransferDetailView', () => {
     expect(wrapper.text()).toContain('6')
   })
 
+  it('shows a "Procesando en SAP" badge when the transfer has a queued SAP confirm job pending', async () => {
+    mockAuth(['recepcion.reception.view'])
+    vi.mocked(recepcionApi.getTransfer).mockResolvedValue(
+      mockGetTransfer(buildTransfer({ pendingSapJobQueuedAtUtc: '2026-08-31T12:00:00Z' }))
+    )
+
+    const wrapper = mount(TransferDetailView, { global: { stubs: { RouterLink: true } } })
+    await flushPromises()
+
+    expect(wrapper.find('[data-testid="pending-sap-job-badge"]').exists()).toBe(true)
+  })
+
+  it('does not show the "Procesando en SAP" badge when there is no pending SAP job', async () => {
+    mockAuth(['recepcion.reception.view'])
+    vi.mocked(recepcionApi.getTransfer).mockResolvedValue(
+      mockGetTransfer(buildTransfer({ pendingSapJobQueuedAtUtc: null }))
+    )
+
+    const wrapper = mount(TransferDetailView, { global: { stubs: { RouterLink: true } } })
+    await flushPromises()
+
+    expect(wrapper.find('[data-testid="pending-sap-job-badge"]').exists()).toBe(false)
+  })
+
+  it('shows transitoria -> destino real in the subtitle when the transfer has a transit warehouse', async () => {
+    mockAuth(['recepcion.picking.scan'])
+    vi.mocked(recepcionApi.getTransfer).mockResolvedValue(
+      mockGetTransfer(buildTransfer({ transitWarehouseCode: 'TRL-QSS2', destinationWarehouseCode: 'RL-QSS2' }))
+    )
+
+    const wrapper = mount(TransferDetailView, { global: { stubs: { RouterLink: true } } })
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('TRL-QSS2 a RL-QSS2')
+    expect(wrapper.text()).not.toContain('CD01 a RL-QSS2')
+  })
+
+  it('falls back to origen -> destino real in the subtitle when the transfer has no transit warehouse', async () => {
+    mockAuth(['recepcion.picking.scan'])
+    vi.mocked(recepcionApi.getTransfer).mockResolvedValue(
+      mockGetTransfer(buildTransfer({ transitWarehouseCode: null, originWarehouseCode: 'CD01', destinationWarehouseCode: 'T01' }))
+    )
+
+    const wrapper = mount(TransferDetailView, { global: { stubs: { RouterLink: true } } })
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('CD01 a T01')
+  })
+
   it('shows each line\'s barcode next to the item, with a placeholder when the backend has not populated it', async () => {
     mockAuth(['recepcion.picking.scan'])
     vi.mocked(recepcionApi.getTransfer).mockResolvedValue(
@@ -127,6 +177,28 @@ describe('TransferDetailView', () => {
     const cells = wrapper.findAll('[data-testid="barcode-cell"]')
     expect(cells[0].text()).toBe('7861226206064')
     expect(cells[1].text()).toBe('Sin código de barras')
+  })
+
+  it('shows the manual scanned-quantity input for a barcode-less line whether the backend sends null or an empty string', async () => {
+    mockAuth(['recepcion.picking.scan'])
+    vi.mocked(recepcionApi.getTransfer).mockResolvedValue(
+      mockGetTransfer(
+        buildTransfer({
+          lines: [
+            buildLine({ lineId: 1, itemCode: 'A1', barcode: null }),
+            buildLine({ lineId: 2, itemCode: 'A2', barcode: '' }),
+            buildLine({ lineId: 3, itemCode: 'A3', barcode: '7861226206064' }),
+          ],
+        })
+      )
+    )
+
+    const wrapper = mount(TransferDetailView, { global: { stubs: { RouterLink: true } } })
+    await flushPromises()
+
+    expect(wrapper.find('[data-testid="scan-quantity-input-1"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="scan-quantity-input-2"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="scan-quantity-input-3"]').exists()).toBe(false)
   })
 
   it('re-fetches the transfer when the route id changes while the component instance is reused', async () => {
@@ -245,7 +317,7 @@ describe('TransferDetailView', () => {
     const body = new DOMWrapper(document.body)
     expect(body.find('[data-testid="error-dialog"]').exists()).toBe(true)
     expect(body.text()).toContain(
-      'No se pudo integrar la transferencia a SAP. Los escaneos se guardaron; reintentá cuando el servicio esté disponible.'
+      'No se pudo integrar la transferencia a SAP. Los escaneos se guardaron; vuelva a intentarlo cuando el servicio esté disponible.'
     )
 
     // Still on the detail view (no crash, no navigation away) and retryable.
@@ -278,7 +350,7 @@ describe('TransferDetailView', () => {
     expect(recepcionApi.confirm).toHaveBeenCalledWith(7, { allowPartial: true })
   })
 
-  it('blocks the first partial-confirm attempt on an incomplete transfer, resets the incomplete line inputs to 0, and shows a recount warning', async () => {
+  it('blocks the first partial-confirm attempt on an incomplete transfer, resets the incomplete line inputs to 0, and opens the recount dialog', async () => {
     mockAuth(['recepcion.picking.scan', 'recepcion.reception.confirm.partial'])
     // Default buildLine() is incomplete: scanned(4) < quantity(10).
     vi.mocked(recepcionApi.getTransfer).mockResolvedValue(mockGetTransfer(buildTransfer()))
@@ -290,8 +362,12 @@ describe('TransferDetailView', () => {
     await flushPromises()
 
     expect(recepcionApi.confirm).not.toHaveBeenCalled()
-    expect(wrapper.find('[data-testid="recount-warning"]').exists()).toBe(true)
+    const dialog = new DOMWrapper(document.body).find('[data-testid="confirm-dialog"]')
+    expect(dialog.exists()).toBe(true)
+    expect(dialog.text()).not.toMatch(/volvé|confirmá/i)
     expect((wrapper.find('[data-testid="scan-quantity-input-1"]').element as HTMLInputElement).value).toBe('0')
+
+    wrapper.unmount()
   })
 
   it('allows the second partial-confirm attempt through, matching legacy behavior of trusting the recount flag rather than re-verifying the scan', async () => {
@@ -310,6 +386,48 @@ describe('TransferDetailView', () => {
     await flushPromises()
 
     expect(recepcionApi.confirm).toHaveBeenCalledWith(7, { allowPartial: true })
+  })
+
+  it('confirms the partial reception directly from the recount dialog without needing a second click on the outer button', async () => {
+    mockAuth(['recepcion.picking.scan', 'recepcion.reception.confirm.partial'])
+    vi.mocked(recepcionApi.getTransfer).mockResolvedValue(mockGetTransfer(buildTransfer()))
+    vi.mocked(recepcionApi.confirm).mockResolvedValue(undefined)
+
+    const wrapper = mount(TransferDetailView, { global: { stubs: { RouterLink: true } } })
+    await flushPromises()
+
+    await wrapper.find('[data-testid="confirm-partial-btn"]').trigger('click')
+    await flushPromises()
+    expect(recepcionApi.confirm).not.toHaveBeenCalled()
+
+    const body = new DOMWrapper(document.body)
+    await body.find('[data-testid="confirm-dialog-confirm-btn"]').trigger('click')
+    await flushPromises()
+
+    expect(recepcionApi.confirm).toHaveBeenCalledWith(7, { allowPartial: true })
+    expect(body.find('[data-testid="confirm-dialog"]').exists()).toBe(false)
+
+    wrapper.unmount()
+  })
+
+  it('closes the recount dialog without confirming when cancelled', async () => {
+    mockAuth(['recepcion.picking.scan', 'recepcion.reception.confirm.partial'])
+    vi.mocked(recepcionApi.getTransfer).mockResolvedValue(mockGetTransfer(buildTransfer()))
+
+    const wrapper = mount(TransferDetailView, { global: { stubs: { RouterLink: true } } })
+    await flushPromises()
+
+    await wrapper.find('[data-testid="confirm-partial-btn"]').trigger('click')
+    await flushPromises()
+
+    const body = new DOMWrapper(document.body)
+    await body.find('[data-testid="confirm-dialog-cancel-btn"]').trigger('click')
+    await flushPromises()
+
+    expect(recepcionApi.confirm).not.toHaveBeenCalled()
+    expect(body.find('[data-testid="confirm-dialog"]').exists()).toBe(false)
+
+    wrapper.unmount()
   })
 
   it('does not gate the partial confirm when there are no incomplete lines', async () => {
@@ -703,6 +821,36 @@ describe('TransferDetailView', () => {
     expect(recepcionApi.recordDifference).not.toHaveBeenCalled()
   })
 
+  it('caps a manual entry above the line quantity at line.quantity and redirects the overflow to differences (lineId-identified)', async () => {
+    mockAuth(['recepcion.picking.scan'])
+    const line = buildLine({ lineId: 1, quantity: 10, scanned: 4, barcode: null })
+    vi.mocked(recepcionApi.getTransfer)
+      .mockResolvedValueOnce(mockGetTransfer(buildTransfer({ lines: [line] })))
+      .mockResolvedValue(mockGetTransfer(buildTransfer({ lines: [{ ...line, scanned: 10 }] })))
+    vi.mocked(recepcionApi.scan).mockResolvedValue(undefined)
+    vi.mocked(recepcionApi.recordDifference).mockResolvedValue(undefined)
+
+    const wrapper = mount(TransferDetailView, { global: { stubs: { RouterLink: true } } })
+    await flushPromises()
+
+    // Manual input has no :max — typing above line.quantity must still submit the form.
+    await wrapper.find('[data-testid="scan-quantity-input-1"]').setValue('13')
+    await wrapper.find('[data-testid="scan-form"]').trigger('submit.prevent')
+    await flushPromises()
+
+    // entered = 13, line.quantity = 10 -> fillAmount = 10 (capped), excess = 3
+    expect(recepcionApi.scan).toHaveBeenCalledWith(7, {
+      scans: [{ lineId: 1, scannedQuantity: 10 }],
+      responsibleName: null,
+      courierWaybillNumber: null,
+    })
+    expect(recepcionApi.recordDifference).toHaveBeenCalledTimes(3)
+    expect(recepcionApi.recordDifference).toHaveBeenCalledWith(7, { lineId: 1 })
+
+    // Input reseeds from the capped line.scanned after the store's post-save re-fetch.
+    expect((wrapper.find('[data-testid="scan-quantity-input-1"]').element as HTMLInputElement).value).toBe('10')
+  })
+
   it('scans a recognized barcode with room, capping the fill with no leftover when it fits exactly', async () => {
     mockAuth(['recepcion.picking.scan'])
     const line = buildLine({ lineId: 1, itemCode: 'A1', quantity: 10, scanned: 8, barcode: '7791234' })
@@ -725,6 +873,79 @@ describe('TransferDetailView', () => {
       courierWaybillNumber: null,
     })
     expect(recepcionApi.recordDifference).not.toHaveBeenCalled()
+  })
+
+  it('fills the next pending line on the second scan when the barcode is duplicated', async () => {
+    mockAuth(['recepcion.picking.scan'])
+    const firstLine = buildLine({ lineId: 1827, itemCode: 'A1', quantity: 1, scanned: 0, barcode: '7861228343378' })
+    const secondLine = buildLine({ lineId: 1851, itemCode: 'A1', quantity: 1, scanned: 0, barcode: '7861228343378' })
+    vi.mocked(recepcionApi.getTransfer)
+      .mockResolvedValueOnce(mockGetTransfer(buildTransfer({ lines: [firstLine, secondLine] })))
+      .mockResolvedValueOnce(
+        mockGetTransfer(buildTransfer({ lines: [{ ...firstLine, scanned: 1 }, secondLine] }))
+      )
+      .mockResolvedValue(
+        mockGetTransfer(buildTransfer({ lines: [{ ...firstLine, scanned: 1 }, { ...secondLine, scanned: 1 }] }))
+      )
+    vi.mocked(recepcionApi.scan).mockResolvedValue(undefined)
+
+    const wrapper = mount(TransferDetailView, { global: { stubs: { RouterLink: true } } })
+    await flushPromises()
+
+    await wrapper.find('[data-testid="barcode-scan-input"]').setValue('7861228343378')
+    await wrapper.find('[data-testid="barcode-scan-add-btn"]').trigger('click')
+    await flushPromises()
+    await wrapper.find('[data-testid="barcode-scan-input"]').setValue('7861228343378')
+    await wrapper.find('[data-testid="barcode-scan-add-btn"]').trigger('click')
+    await flushPromises()
+
+    expect(recepcionApi.scan).toHaveBeenCalledTimes(2)
+    expect(recepcionApi.scan).toHaveBeenNthCalledWith(1, 7, {
+      scans: [{ lineId: 1827, scannedQuantity: 1 }],
+      responsibleName: null,
+      courierWaybillNumber: null,
+    })
+    expect(recepcionApi.scan).toHaveBeenNthCalledWith(2, 7, {
+      scans: [{ lineId: 1851, scannedQuantity: 1 }],
+      responsibleName: null,
+      courierWaybillNumber: null,
+    })
+    expect(recepcionApi.recordDifference).not.toHaveBeenCalled()
+  })
+
+  it('records a difference only after every line with the duplicated barcode is complete', async () => {
+    mockAuth(['recepcion.picking.scan'])
+    const firstLine = buildLine({ lineId: 1827, itemCode: 'A1', quantity: 1, scanned: 1, barcode: '7861228343378' })
+    const secondLine = buildLine({ lineId: 1851, itemCode: 'A1', quantity: 1, scanned: 0, barcode: '7861228343378' })
+    vi.mocked(recepcionApi.getTransfer)
+      .mockResolvedValueOnce(mockGetTransfer(buildTransfer({ lines: [firstLine, secondLine] })))
+      .mockResolvedValue(
+        mockGetTransfer(buildTransfer({ lines: [firstLine, { ...secondLine, scanned: 1 }] }))
+      )
+    vi.mocked(recepcionApi.scan).mockResolvedValue(undefined)
+    vi.mocked(recepcionApi.recordDifference).mockResolvedValue(undefined)
+
+    const wrapper = mount(TransferDetailView, { global: { stubs: { RouterLink: true } } })
+    await flushPromises()
+
+    await wrapper.find('[data-testid="barcode-scan-input"]').setValue('7861228343378')
+    await wrapper.find('[data-testid="barcode-scan-add-btn"]').trigger('click')
+    await flushPromises()
+
+    expect(recepcionApi.scan).toHaveBeenCalledWith(7, {
+      scans: [{ lineId: 1851, scannedQuantity: 1 }],
+      responsibleName: null,
+      courierWaybillNumber: null,
+    })
+    expect(recepcionApi.recordDifference).not.toHaveBeenCalled()
+
+    await wrapper.find('[data-testid="barcode-scan-input"]').setValue('7861228343378')
+    await wrapper.find('[data-testid="barcode-scan-add-btn"]').trigger('click')
+    await flushPromises()
+
+    expect(recepcionApi.scan).toHaveBeenCalledTimes(1)
+    expect(recepcionApi.recordDifference).toHaveBeenCalledTimes(1)
+    expect(recepcionApi.recordDifference).toHaveBeenCalledWith(7, { barcode: '7861228343378' })
   })
 
   it("caps the fill at the line's remaining quantity and redirects each excess unit to its own difference record, fixing legacy's silent-drop bug", async () => {

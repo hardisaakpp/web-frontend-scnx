@@ -29,14 +29,28 @@
                                 <input type="radio" v-model="tipoCarga" value="actualizar" @change="handleTipoCargaChange" class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500" />
                                 <span class="text-sm text-gray-700 dark:text-gray-300">Modificar productos</span>
                             </label>
+                            <label class="flex items-center gap-2 cursor-pointer">
+                                <input type="radio" v-model="tipoCarga" value="actualizar_precios" @change="handleTipoCargaChange" class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500" />
+                                <span class="text-sm text-gray-700 dark:text-gray-300">Actualizar listas de precios</span>
+                            </label>
+                            <label class="flex items-center gap-2 cursor-pointer p-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition">
+                                <input type="radio" v-model="tipoCarga" value="actualizar_estado" @change="handleTipoCargaChange" class="w-4 h-4 text-purple-600 focus:ring-purple-500" />
+                                <span class="text-sm font-medium text-gray-700 dark:text-gray-300">Actualizar Estado de Producto (Activo / Inactivo)</span>
+                            </label>
                         </div>
                     </div>
 
                     <!-- Paso 2: Descargar Plantilla -->
                     <div class="flex items-center gap-4 p-4 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800">
                         <div class="flex-1">
-                            <p class="text-sm font-medium text-blue-900 dark:text-blue-200">2. Descarga la plantilla de {{ tipoCarga === 'crear' ? 'creación' : 'modificación' }}</p>
+                            <p class="text-sm font-medium text-blue-900 dark:text-blue-200">2. Descarga la plantilla de {{ ETIQUETA_TIPO_CARGA[tipoCarga] }}</p>
                             <p class="text-xs text-blue-700 dark:text-blue-400 mt-0.5">Utiliza esta plantilla para garantizar la versión y los campos correctos.</p>
+                            <p v-if="tipoCarga === 'actualizar_precios'" class="text-xs text-blue-700 dark:text-blue-400 mt-1">
+                                Permite actualizar Minorista (1), Internacional (4), Tecnología (5) u otras listas de SAP por ItemCode.
+                            </p>
+                            <p v-if="tipoCarga === 'actualizar_estado'" class="text-xs text-blue-700 dark:text-blue-400 mt-1">
+                                Descargue la plantilla para cambiar masivamente el estado comercial (Activo/Inactivo) de sus productos en SCNexus y congelar/descongelar en SAP Business One.
+                            </p>
                         </div>
                         <button
                             @click="handleDownloadTemplate"
@@ -80,6 +94,9 @@
                         <p class="text-xs text-gray-500 dark:text-gray-400 mb-2">
                             Si las columnas foto1/foto2/foto3 de la plantilla llevan nombres de archivo, adjunta aquí el .zip que los contiene.
                         </p>
+                        <p class="text-xs text-gray-500 dark:text-gray-400 mb-2">
+                            También puedes nombrar tus imágenes en el ZIP con el Código de Proveedor (ej: <code class="font-mono">4656.png</code>, <code class="font-mono">4656_1.png</code>, <code class="font-mono">4656_2.png</code>) y dejar las columnas foto1, foto2, foto3 vacías en el Excel. El sistema las vinculará automáticamente.
+                        </p>
                         <div
                             class="border-2 border-dashed rounded-lg p-6 text-center transition-colors"
                             :class="dragOverZip ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20' : 'border-gray-300 dark:border-gray-600 hover:border-gray-400'"
@@ -100,7 +117,66 @@
                         </div>
                     </div>
 
-                    <ImportacionProgreso v-if="importStore.trabajo" />
+                    <!-- Panel de Diagnóstico (pre-vuelo) -->
+                    <div v-if="!importStore.trabajo && importStore.estadoSimulacion !== 'IDLE'">
+                        <div
+                            v-if="importStore.estadoSimulacion === 'SIMULANDO'"
+                            class="flex items-center gap-3 rounded-lg bg-gray-50 dark:bg-gray-700/40 border border-gray-200 dark:border-gray-700 px-4 py-3 text-sm text-gray-600 dark:text-gray-300"
+                        >
+                            <svg class="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                            </svg>
+                            Verificando archivo...
+                        </div>
+
+                        <div
+                            v-else-if="importStore.estadoSimulacion === 'VALIDO'"
+                            class="rounded-lg bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 px-4 py-3 text-sm text-emerald-800 dark:text-emerald-300"
+                        >
+                            Lote listo: {{ importStore.resumenSimulacion?.totalFilas }} artículos verificados sin errores.
+                        </div>
+
+                        <div v-else-if="importStore.estadoSimulacion === 'CON_ERRORES'" class="space-y-2">
+                            <div class="rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 px-4 py-3 text-sm text-red-700 dark:text-red-400 flex items-center justify-between gap-3">
+                                <span>
+                                    {{ importStore.resumenSimulacion?.filasConError }} de
+                                    {{ importStore.resumenSimulacion?.totalFilas }} filas contienen errores que impiden la carga.
+                                </span>
+                                <button
+                                    type="button"
+                                    @click="handleDescargarReportePreliminar"
+                                    class="text-xs font-medium text-red-700 dark:text-red-400 underline whitespace-nowrap"
+                                >
+                                    Descargar reporte
+                                </button>
+                            </div>
+                            <div class="max-h-40 overflow-y-auto rounded-lg border border-gray-200 dark:border-gray-700">
+                                <table class="w-full text-xs text-left">
+                                    <thead class="bg-gray-50 dark:bg-gray-700/40 text-gray-500 dark:text-gray-400 sticky top-0">
+                                        <tr>
+                                            <th class="px-3 py-1.5 font-medium">Fila</th>
+                                            <th class="px-3 py-1.5 font-medium">Campo</th>
+                                            <th class="px-3 py-1.5 font-medium">Motivo</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
+                                        <tr v-for="(err, index) in importStore.resumenSimulacion?.errores ?? []" :key="index">
+                                            <td class="px-3 py-1.5 text-gray-700 dark:text-gray-300">{{ err.numeroFila ?? '—' }}</td>
+                                            <td class="px-3 py-1.5 text-gray-700 dark:text-gray-300">{{ err.campoError ?? '—' }}</td>
+                                            <td class="px-3 py-1.5 text-gray-700 dark:text-gray-300">{{ err.mensaje }}</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <ImportacionProgreso v-if="importStore.trabajo" @close="handleClose" />
+                    <output v-else-if="importStore.jobId" class="rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 px-4 py-3 text-sm text-blue-700 dark:text-blue-300">
+                        Carga #{{ importStore.jobId }} recibida. Consultando el progreso…
+                        <p v-if="importStore.error" class="mt-1">{{ importStore.error }} Se volverá a consultar automáticamente.</p>
+                    </output>
 
                     <!-- Error general (red, servidor, etc.) -->
                     <div v-if="cargaError" class="rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 px-4 py-3 text-sm text-red-700 dark:text-red-400">
@@ -115,25 +191,41 @@
                         @click="prepararOtraCarga"
                         class="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors mr-auto"
                     >
-                        Cargar otro archivo
+                        {{
+                            importStore.trabajo?.estado === 'COMPLETADO_CON_ERRORES'
+                                ? 'Cargar archivo de correcciones'
+                                : 'Cargar otro archivo'
+                        }}
                     </button>
                     <button
                         @click="handleClose"
                         class="px-4 py-2 rounded-lg border border-gray-200 dark:border-gray-700 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
                     >
-                        {{ importStore.trabajo ? 'Cerrar' : 'Cancelar' }}
+                        {{ importStore.jobId ? 'Cerrar' : 'Cancelar' }}
                     </button>
                     <button
-                        v-if="!importStore.trabajo"
+                        v-if="!importStore.jobId && !importStore.archivoVerificado"
+                        @click="handleVerificar"
+                        :disabled="!selectedFile || importStore.estadoSimulacion === 'SIMULANDO'"
+                        class="px-5 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-60 transition-colors flex items-center gap-2"
+                    >
+                        <svg v-if="importStore.estadoSimulacion === 'SIMULANDO'" class="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                        </svg>
+                        {{ importStore.estadoSimulacion === 'SIMULANDO' ? 'Verificando...' : 'Verificar Archivo' }}
+                    </button>
+                    <button
+                        v-if="!importStore.jobId && importStore.archivoVerificado"
                         @click="handleUpload"
-                        :disabled="!selectedFile || uploading"
+                        :disabled="uploading"
                         class="px-5 py-2 bg-emerald-600 text-white text-sm font-medium rounded-lg hover:bg-emerald-700 disabled:opacity-60 transition-colors flex items-center gap-2"
                     >
                         <svg v-if="uploading" class="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
                             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                             <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
                         </svg>
-                        {{ uploading ? 'Procesando...' : 'Subir y Procesar' }}
+                        {{ uploading ? 'Procesando...' : `Importar Definitivo (${importStore.resumenSimulacion?.totalFilas ?? 0} Artículos)` }}
                     </button>
                 </div>
             </div>
@@ -153,6 +245,13 @@ import ImportacionProgreso from './ImportacionProgreso.vue'
 const emit = defineEmits<(event: 'close') => void>()
 
 const importStore = useImportacionArticulosStore()
+
+const ETIQUETA_TIPO_CARGA: Record<TipoCargaMasiva, string> = {
+    crear: 'creación',
+    actualizar: 'modificación comercial',
+    actualizar_precios: 'actualización de precios',
+    actualizar_estado: 'actualización de estado'
+}
 
 const tipoCarga = ref<TipoCargaMasiva>('crear')
 const selectedFile = ref<File | null>(null)
@@ -181,12 +280,15 @@ function resetCarga(): void {
 
 function resetZip(): void {
     selectedZip.value = null
+    dragOverZip.value = false
     if (zipInputRef.value) {
         zipInputRef.value.value = ''
     }
+    importStore.resetVerificacion()
 }
 
 function selectZipFile(file: File): void {
+    if (tipoCarga.value !== 'crear') return
     if (!file.name.toLowerCase().endsWith('.zip')) {
         selectedZip.value = null
         cargaError.value = 'El archivo de imágenes debe ser formato .zip'
@@ -194,6 +296,7 @@ function selectZipFile(file: File): void {
     }
     selectedZip.value = file
     cargaError.value = ''
+    importStore.resetVerificacion()
 }
 
 function onZipSelect(event: Event): void {
@@ -226,6 +329,7 @@ function selectExcelFile(file: File): void {
 
     selectedFile.value = file
     cargaError.value = ''
+    importStore.resetVerificacion()
 }
 
 function onFileSelect(event: Event): void {
@@ -255,6 +359,53 @@ async function handleDownloadTemplate(): Promise<void> {
     }
 }
 
+async function handleVerificar(): Promise<void> {
+    if (!selectedFile.value) return
+    cargaError.value = ''
+    try {
+        await importStore.verificar(
+            selectedFile.value,
+            tipoCarga.value,
+            tipoCarga.value === 'crear' ? selectedZip.value : null
+        )
+    } catch (err: unknown) {
+        cargaError.value = mensajeDeErrorDeCarga(err, 'No se pudo verificar el archivo. Verifica el formato e inténtalo de nuevo.')
+    }
+}
+
+// No existe un jobId en el pre-vuelo (nada se persistió en el backend), así
+// que a diferencia de descargarErroresImportacion/descargarErroresPlantilla
+// (que piden el reporte a un job real) este CSV se arma en el propio
+// navegador a partir de resumenSimulacion.errores.
+function handleDescargarReportePreliminar(): void {
+    // Mismo vocabulario de columnas que la hoja Detalle_Errores del backend
+    // (ver reporte_errores_importacion.py) por consistencia entre ambas
+    // superficies de error. A diferencia de esa hoja, este CSV sigue siendo
+    // solo un log: el pre-vuelo no recibe los datos originales de cada fila,
+    // así que no hay un archivo "Articulos" reimportable que generar aquí.
+    const errores = importStore.resumenSimulacion?.errores ?? []
+    const encabezado = ['Fila', 'Campo', 'Valor Recibido', 'Motivo del Error']
+    const filas = errores.map(err => [
+        err.numeroFila ?? '',
+        err.campoError ?? '',
+        err.valorRecibido ?? '',
+        err.mensaje
+    ])
+    const csv = [encabezado, ...filas]
+        .map(fila => fila.map(valor => `"${String(valor).replace(/"/g, '""')}"`).join(','))
+        .join('\n')
+
+    const blob = new Blob([`﻿${csv}`], { type: 'text/csv;charset=utf-8;' })
+    const url = globalThis.URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = 'reporte_preliminar_importacion.csv'
+    document.body.appendChild(link)
+    link.click()
+    link.remove()
+    globalThis.URL.revokeObjectURL(url)
+}
+
 async function handleUpload(): Promise<void> {
     if (!selectedFile.value) return
     uploading.value = true
@@ -270,10 +421,37 @@ async function handleUpload(): Promise<void> {
         resetZip()
     } catch (err: unknown) {
         // Solo llega aquí si fue un error de red/servidor (no de validación)
-        const axiosErr = err as { response?: { data?: { detail?: string } } }
-        cargaError.value = axiosErr?.response?.data?.detail || 'Error al procesar el archivo. Verifica el formato e inténtalo de nuevo.'
+        cargaError.value = mensajeDeErrorDeCarga(err)
     } finally {
         uploading.value = false
     }
+}
+
+// El backend rechaza con 409 la re-subida del MISMO archivo ya registrado
+// (hash idéntico, ver ImportacionAsyncService.encolar) para evitar duplicar
+// un trabajo -- típicamente porque el usuario, tras un lote con errores
+// parciales, volvió a seleccionar por error el archivo original completo en
+// vez del corregido. El `detail` en ese caso es un objeto estructurado
+// ({mensaje, jobId, estado}), no un string plano como el resto de errores.
+function mensajeDeErrorDeCarga(
+    err: unknown,
+    mensajePorDefecto = 'Error al procesar el archivo. Verifica el formato e inténtalo de nuevo.'
+): string {
+    const axiosErr = err as {
+        response?: {
+            status?: number
+            data?: { detail?: string | { mensaje?: string; jobId?: number | null } }
+        }
+    }
+    const detail = axiosErr?.response?.data?.detail
+    if (axiosErr?.response?.status === 409) {
+        const jobId = typeof detail === 'object' ? detail?.jobId : null
+        return jobId
+            ? `Este archivo ya fue procesado anteriormente (Trabajo #${jobId}). Utilice la opción de reintento con el archivo de correcciones descargado.`
+            : 'Este archivo ya fue procesado anteriormente. Utilice la opción de reintento con el archivo de correcciones descargado.'
+    }
+    if (typeof detail === 'string' && detail) return detail
+    if (typeof detail === 'object' && detail?.mensaje) return detail.mensaje
+    return mensajePorDefecto
 }
 </script>

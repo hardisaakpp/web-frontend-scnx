@@ -39,6 +39,7 @@ import type {
   ObtenerModificacionesColumnasResponse,
   PedidosListadoResponse,
   PedidosListadoFiltros,
+  TipoFechaFiltro,
   TienePedidosResponse,
   CrearOCDesdePedidoResponse,
   DistribucionPedidoResponse,
@@ -50,7 +51,13 @@ import type {
   ProcesoCompletoSAPResponse,
   ProcesoCompletoSAPAsyncResponse,
   ProcesoCompletoSAPResultadoPolling,
-  EstadosPedidoResponse
+  EstadosPedidoResponse,
+  UsuariosPedidoResponse,
+  SapInfoProductosResponse,
+  DiferenciaProduccionResponse,
+  ConfirmarConDiferenciaResponse,
+  HijoDiferenciaPayload,
+  TiendaCatalogoItem
 } from '../../types'
 
 export const pedidosService = {
@@ -247,6 +254,27 @@ export const pedidosService = {
   },
 
   /**
+   * Consulta información de SAP (pack, pvp, código de barras, etc.) para uno o más códigos,
+   * sin subir archivo. GET /api/plantillas/sap-info-productos?codigos=COD1,COD2,...
+   * Siempre responde 200; `motivo` indica por qué un código no se encontró ('no_existe' | 'inactivo').
+   * Se usa para comparar Pack/PVP contra el Excel apenas el usuario elige una sugerencia de código
+   * en UploadErrorModal, sin esperar a un nuevo reintento (RN-02).
+   *
+   * @param codigos Lista de códigos SAP a consultar (máx. 100)
+   */
+  async getSapInfoProductos(codigos: string[]): Promise<SapInfoProductosResponse> {
+    try {
+      const response = await mba3Api.get<SapInfoProductosResponse>('/api/plantillas/sap-info-productos', {
+        params: { codigos: codigos.join(',') }
+      })
+      return response.data
+    } catch (error: any) {
+      console.error('❌ [getSapInfoProductos] Error:', error)
+      throw createEnrichedError(error, 'Error al consultar información de SAP para los códigos')
+    }
+  },
+
+  /**
    * Obtiene el estado/resultado del procesamiento async de una plantilla (polling).
    * Usar el process_id devuelto por uploadPlantillaAsync.
    * GET /api/plantillas/resultado/{process_id}:
@@ -402,19 +430,24 @@ export const pedidosService = {
    * 
    * A diferencia de getPedidosListado (que usa GET /api/pedidos):
    * - INCLUYE pedidos en estado BORRADOR
-   * - Filtra automáticamente por el usuario actual
+   * - No filtra por usuario: visibles para todos con permiso mba3-consultas.facturas.view
    * - Diseñado específicamente para la interfaz de "Cargar Plantilla"
-   * 
+   *
    * GET /api/plantillas/pedidos
-   * 
+   *
    * Requiere permiso: mba3-consultas.facturas.view
-   * 
-   * @param filtros Filtros opcionales (estado, numero_pedido, limit, offset)
+   *
+   * @param filtros Filtros opcionales (estado, numero_pedido, creado_por, limit, offset)
    * @returns Lista de pedidos con metadata de paginación
    */
   async getPlantillasPedidos(filtros?: {
     estado?: string
     numero_pedido?: string
+    creado_por?: string
+    modificado_por?: string
+    fecha_desde?: string
+    fecha_hasta?: string
+    tipo_fecha?: TipoFechaFiltro
     limit?: number
     offset?: number
     solo_pendientes_accion?: boolean
@@ -458,12 +491,16 @@ export const pedidosService = {
    * 
    * @param numeroPedido Número de pedido
    * @param formato 'csv' o 'txt'
+   * @param codigoBodega Código de bodega (ej. "RL-CD", "RG-CD") cuando el pedido tiene
+   *   más de una ODC (una por bodega) -- limita la exportación a esa ODC. Omitir en
+   *   pedidos con una sola ODC.
    * @returns Blob del archivo plano
    */
-  async exportarPedidoPlanoMba(numeroPedido: string, formato: 'csv' | 'txt' = 'csv'): Promise<Blob> {
+  async exportarPedidoPlanoMba(numeroPedido: string, formato: 'csv' | 'txt' = 'csv', codigoBodega?: string): Promise<Blob> {
     try {
+      const bodegaParam = codigoBodega ? `&codigo_bodega=${encodeURIComponent(codigoBodega)}` : ''
       const response = await mba3Api.get<Blob>(
-        `/api/pedidos/${encodeURIComponent(numeroPedido)}/exportar-plano-mba?formato=${formato}`,
+        `/api/pedidos/${encodeURIComponent(numeroPedido)}/exportar-plano-mba?formato=${formato}${bodegaParam}`,
         { responseType: 'blob' }
       )
       return response.data
@@ -654,8 +691,8 @@ export const pedidosService = {
   /**
    * Cancela un pedido desde la interfaz Detalle del Pedido (botón "Cancelar Pedido").
    * POST /api/pedidos/{pedido_id}/cancelar-por-el-rayo
-   * Solo válido en estado GESTIONAR PEDIDO (3). Cambia estado a CANCELADO POR EL RAYO (20).
-   * No elimina el pedido de la base de datos.
+   * Solo válido en estado CONFIRMADO POR PRODUCCION (23), y solo para odcsap.view.
+   * Cambia estado a CANCELADO POR EL RAYO (20). No elimina el pedido de la base de datos.
    *
    * @param pedidoId ID del pedido (UUID)
    */
@@ -666,6 +703,64 @@ export const pedidosService = {
     } catch (error: any) {
       console.error('❌ [cancelarPedidoPorElRayo] Error:', error)
       throw createEnrichedError(error, 'Error al cancelar pedido')
+    }
+  },
+
+  /**
+   * Confirma el pedido desde Producción El Rayo (req. 1.8, botón "Confirmar Producción").
+   * Exclusivo de produccion-elrayo.view; solo válido en estado Gestionar Pedido.
+   * Transiciona a Confirmado por Producción y notifica por correo a Administración El Rayo.
+   */
+  async confirmarProduccion(pedidoId: string): Promise<any> {
+    try {
+      const response = await mba3Api.post(`/api/pedidos/${encodeURIComponent(pedidoId)}/confirmar-produccion`)
+      return response.data
+    } catch (error: any) {
+      console.error('❌ [confirmarProduccion] Error:', error)
+      throw createEnrichedError(error, 'Error al confirmar producción del pedido')
+    }
+  },
+
+  /**
+   * Req. 1.2 (pedidos parciales): consulta si algún producto del pedido tiene un Total
+   * actual por debajo de la cantidad solicitada originalmente en la plantilla Excel.
+   * Se llama justo al hacer clic en "Confirmar", antes de decidir si mostrar el modal
+   * de diferencia de producción.
+   *
+   * @param numeroPedido Número o UUID de pedido
+   */
+  async obtenerDiferenciaProduccion(numeroPedido: string): Promise<DiferenciaProduccionResponse> {
+    try {
+      const response = await mba3Api.get<DiferenciaProduccionResponse>(
+        `/api/pedidos/${encodeURIComponent(numeroPedido)}/diferencia-produccion`
+      )
+      return response.data
+    } catch (error: any) {
+      console.error('❌ [obtenerDiferenciaProduccion] Error:', error)
+      throw createEnrichedError(error, 'Error desconocido al consultar diferencia de producción')
+    }
+  },
+
+  /**
+   * Req. 1.2 (pedidos parciales, + N hijos): opción "Confirmar pedido, generar nuevo(s)
+   * pedido(s) con la diferencia" del modal de diferencia de producción. Confirma el
+   * pedido padre una sola vez (mismo flujo que crearRespuestaProveedorDesdePedido) y
+   * crea un pedido hijo por cada elemento de `hijos`, cada uno con su propia fecha de
+   * entrega y la porción de la diferencia asignada, en estado PRODUCCION POSPUESTA.
+   *
+   * @param numeroPedido Número o UUID de pedido
+   * @param hijos Pedidos hijo a generar (fecha de entrega + cantidades asignadas por línea)
+   */
+  async confirmarConDiferencia(numeroPedido: string, hijos: HijoDiferenciaPayload[]): Promise<ConfirmarConDiferenciaResponse> {
+    try {
+      const response = await mba3Api.post<ConfirmarConDiferenciaResponse>(
+        `/api/pedidos/${encodeURIComponent(numeroPedido)}/confirmar-con-diferencia`,
+        { hijos }
+      )
+      return response.data
+    } catch (error: any) {
+      console.error('❌ [confirmarConDiferencia] Error:', error)
+      throw createEnrichedError(error, 'Error desconocido al confirmar pedido con diferencia')
     }
   },
 
@@ -738,26 +833,46 @@ export const pedidosService = {
   },
 
   /**
-   * Descarga la distribución por tiendas en formato Excel
-   * GET /api/pedidos/{pedido_id}/distribucion/descargar-excel
-   * Genera archivo Excel con distribución confirmada (3 hojas).
-   * Respuestas: 200 con archivo Excel; 404 con detail.message.
+   * Exporta las Solicitudes de Traslado del pedido en formato Excel
+   * GET /api/pedidos/{pedido_id}/traslados/exportar-excel
+   * Respuestas: 200 con archivo Excel; 404 si no hay distribución confirmada
+   * (el cuerpo del error llega como Blob por responseType: 'blob').
    *
    * @param pedidoId ID del pedido (UUID)
    * @param version Versión específica (opcional, por defecto última)
    * @returns Blob del archivo Excel
    */
-  async descargarDistribucionExcel(pedidoId: string, version?: number): Promise<Blob> {
+  async exportarTrasladosExcel(pedidoId: string, version?: number): Promise<Blob> {
     try {
       const params = version != null ? `?version=${version}` : ''
       const response = await mba3Api.get<Blob>(
-        `/api/pedidos/${encodeURIComponent(pedidoId)}/distribucion/descargar-excel${params}`,
+        `/api/pedidos/${encodeURIComponent(pedidoId)}/traslados/exportar-excel${params}`,
         { responseType: 'blob' }
       )
       return response.data
     } catch (error: any) {
-      console.error('❌ [descargarDistribucionExcel] Error:', error)
-      throw createEnrichedError(error, 'Error al descargar distribución Excel')
+      console.error('❌ [exportarTrasladosExcel] Error:', error)
+      throw createEnrichedError(error, 'Error al exportar traslados a Excel')
+    }
+  },
+
+  /**
+   * Exporta el Análisis de Margen de Rentabilidad por producto (req. 1.4/1.5)
+   * GET /api/pedidos/{numeroPedido}/margen/exportar-excel
+   *
+   * @param numeroPedido Número o UUID del pedido
+   * @returns Blob del archivo Excel
+   */
+  async exportarAnalisisMargen(numeroPedido: string): Promise<Blob> {
+    try {
+      const response = await mba3Api.get<Blob>(
+        `/api/pedidos/${encodeURIComponent(numeroPedido)}/margen/exportar-excel`,
+        { responseType: 'blob' }
+      )
+      return response.data
+    } catch (error: any) {
+      console.error('❌ [exportarAnalisisMargen] Error:', error)
+      throw createEnrichedError(error, 'Error al exportar el análisis de margen')
     }
   },
 
@@ -778,6 +893,27 @@ export const pedidosService = {
     } catch (error: any) {
       console.error('❌ [cancelarPedido] Error:', error)
       throw createEnrichedError(error, 'Error al cancelar pedido')
+    }
+  },
+
+  /**
+   * Botón "Aceptar" sobre un pedido "hijo" en PRODUCCION POSPUESTA (estado_id = 22):
+   * acepta la diferencia pospuesta y la envía directo a la cola de redistribución,
+   * cambiando su estado a LISTO PARA REDISTRIBUCION (estado_id = 25).
+   * POST /api/pedidos/{pedido_id}/aceptar-produccion-pospuesta
+   *
+   * @param pedidoId ID del pedido (UUID)
+   * @returns El pedido actualizado con estado LISTO PARA REDISTRIBUCION
+   */
+  async aceptarProduccionPospuesta(pedidoId: string): Promise<PedidoCompleto> {
+    try {
+      const response = await mba3Api.post<PedidoCompleto>(
+        `/api/pedidos/${encodeURIComponent(pedidoId)}/aceptar-produccion-pospuesta`
+      )
+      return response.data
+    } catch (error: any) {
+      console.error('❌ [aceptarProduccionPospuesta] Error:', error)
+      throw createEnrichedError(error, 'Error al aceptar el pedido')
     }
   },
 
@@ -1155,6 +1291,29 @@ export const pedidosService = {
   },
 
   /**
+   * Busca tiendas activas del catálogo maestro por nombre o código (búsqueda parcial).
+   * GET /api/pedidos/tiendas/buscar. Usado por el buscador de "agregar tienda" en la
+   * redistribución de pedidos hijo.
+   *
+   * @param query Texto a buscar en código o nombre
+   * @param limit Máximo de resultados (por defecto 20)
+   */
+  async buscarTiendas(query: string, limit = 20): Promise<TiendaCatalogoItem[]> {
+    try {
+      const params = new URLSearchParams()
+      if (query) params.set('q', query)
+      params.set('limit', String(limit))
+      const response = await mba3Api.get<TiendaCatalogoItem[]>(
+        `/api/pedidos/tiendas/buscar?${params.toString()}`
+      )
+      return response.data
+    } catch (error: any) {
+      console.error('❌ [buscarTiendas] Error:', error)
+      throw createEnrichedError(error, 'Error al buscar tiendas')
+    }
+  },
+
+  /**
    * Ajusta automáticamente las bodegas
    * 
    * Mantiene el total confirmado constante cuando cambian tiendas
@@ -1285,9 +1444,11 @@ export const pedidosService = {
     estado?: string
     fecha_desde?: string
     fecha_hasta?: string
+    tipo_fecha?: TipoFechaFiltro
     proveedor_nombre?: string
     numero_pedido?: string
     creado_por?: string
+    modificado_por?: string
   }): Promise<{
     data: PedidoCompleto[]
     total: number
@@ -1438,19 +1599,29 @@ export const pedidosService = {
   },
 
   /**
-   * Obtiene el listado de archivos Excel originales almacenados en MinIO/S3
-   * 
+   * Obtiene el listado paginado de archivos Excel originales almacenados en MinIO/S3
+   *
    * GET /api/plantillas/archivos
-   * 
-   * @param limit Límite de resultados (opcional, default 100)
-   * @param soloActivos Si solo devuelve archivos activos (opcional, default true)
-   * @returns Lista de archivos originales
+   *
+   * @param opciones.limit Límite de resultados por página (opcional, default 50 en backend)
+   * @param opciones.offset Registros a saltar, para paginación (opcional, default 0)
+   * @param opciones.soloActivos Si solo devuelve archivos activos (opcional, default true)
+   * @param opciones.busqueda Filtra por número de pedido o nombre de archivo, aplicado en el
+   *   backend sobre TODOS los archivos (no solo la página actual)
+   * @returns Página de archivos originales + metadata.total (total real, no solo esta página)
    */
-  async getListadoArchivosOriginales(limit?: number, soloActivos?: boolean): Promise<ListadoArchivosOriginalesResponse> {
+  async getListadoArchivosOriginales(opciones?: {
+    limit?: number
+    offset?: number
+    soloActivos?: boolean
+    busqueda?: string
+  }): Promise<ListadoArchivosOriginalesResponse> {
     try {
       const params: Record<string, any> = {}
-      if (limit != null) params.limit = limit
-      if (soloActivos != null) params.solo_activos = soloActivos
+      if (opciones?.limit != null) params.limit = opciones.limit
+      if (opciones?.offset != null) params.offset = opciones.offset
+      if (opciones?.soloActivos != null) params.solo_activos = opciones.soloActivos
+      if (opciones?.busqueda) params.busqueda = opciones.busqueda
 
       const url = buildUrlWithParams('/api/plantillas/archivos', params)
       const response = await mba3Api.get<ListadoArchivosOriginalesResponse>(url)
@@ -1500,10 +1671,11 @@ export const pedidosService = {
    *   - 'pedidos': Excluye BORRADOR (para listado general de pedidos)
    *   - 'redistribucion': Solo estados del flujo de redistribución (estado_id 4-14)
    *   - 'cargar-plantilla': Todos los estados incluyendo BORRADOR
+   *   - 'produccion': Solo NUEVO_PEDIDO/GESTIONAR_PEDIDO (pantalla Producción El Rayo, req. 1.8)
    *   - undefined: Todos los estados activos
    * @returns Lista de estados con id, nombre y orden
    */
-  async getEstadosPedido(contexto?: 'pedidos' | 'redistribucion' | 'cargar-plantilla'): Promise<EstadosPedidoResponse> {
+  async getEstadosPedido(contexto?: 'pedidos' | 'redistribucion' | 'cargar-plantilla' | 'produccion'): Promise<EstadosPedidoResponse> {
     try {
       const params = contexto ? `?contexto=${contexto}` : ''
       const response = await mba3Api.get<EstadosPedidoResponse>(`/api/pedidos/estados${params}`)
@@ -1511,6 +1683,38 @@ export const pedidosService = {
     } catch (error: any) {
       console.error('❌ [getEstadosPedido] Error al obtener estados:', error)
       throw createEnrichedError(error, 'Error al obtener los estados de pedido')
+    }
+  },
+
+  /**
+   * Obtiene la lista de usuarios que han creado al menos un pedido, para el
+   * <select> "Creado Por" del contenedor "Filtros de Búsqueda".
+   *
+   * GET /api/pedidos/creadores
+   */
+  async getCreadoresPedido(): Promise<UsuariosPedidoResponse> {
+    try {
+      const response = await mba3Api.get<UsuariosPedidoResponse>('/api/pedidos/creadores')
+      return response.data
+    } catch (error: any) {
+      console.error('❌ [getCreadoresPedido] Error al obtener creadores:', error)
+      throw createEnrichedError(error, 'Error al obtener los creadores de pedido')
+    }
+  },
+
+  /**
+   * Obtiene la lista de usuarios que han modificado al menos un pedido, para
+   * el <select> "Modificado Por" del contenedor "Filtros de Búsqueda".
+   *
+   * GET /api/pedidos/modificadores
+   */
+  async getModificadoresPedido(): Promise<UsuariosPedidoResponse> {
+    try {
+      const response = await mba3Api.get<UsuariosPedidoResponse>('/api/pedidos/modificadores')
+      return response.data
+    } catch (error: any) {
+      console.error('❌ [getModificadoresPedido] Error al obtener modificadores:', error)
+      throw createEnrichedError(error, 'Error al obtener los modificadores de pedido')
     }
   },
 }

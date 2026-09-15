@@ -10,5 +10,6 @@ window.CONFIG = {
     VITE_SCNEXUS_INVENTORY_API_URL: '/inventario-api',
     VITE_PROMOCION_SOBRES_API_URL: '/promocion-sobres-api',
     VITE_PREFERENCES_API_URL: '',
-    VITE_SLAYER_API_URL: '/slayer-api'
+    VITE_SLAYER_API_URL: '/slayer-api',
+    VITE_MIA_API_URL: '/mia-api'
 };

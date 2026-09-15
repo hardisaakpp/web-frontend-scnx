@@ -55,7 +55,7 @@
                         <button
                             v-for="pos in ([1, 2, 3] as const)"
                             :key="pos"
-                            @click="posicionActiva = pos as 1 | 2 | 3"
+                            @click="posicionActiva = pos as PosicionFoto"
                             class="relative w-16 h-16 rounded-lg overflow-hidden border-2 transition-all"
                             :class="posicionActiva === pos ? 'border-blue-500 shadow-md ring-2 ring-blue-500/30' : 'border-transparent hover:border-blue-300 opacity-60 hover:opacity-100'"
                             :title="nombrePosicion(pos)"
@@ -111,15 +111,6 @@
                             </h4>
                             
                             <div class="space-y-2">
-                                <button
-                                    @click="copiarLink"
-                                    :disabled="!imagenActivaObj?.urlFinal"
-                                    class="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed group"
-                                >
-                                    <svg class="w-4 h-4 text-gray-400 group-hover:text-blue-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/></svg>
-                                    {{ copiado ? '¡Enlace copiado!' : 'Copiar URL' }}
-                                </button>
-
                                 <a
                                     v-if="urlActivaSegura"
                                     :href="urlActivaSegura"
@@ -159,7 +150,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, computed } from 'vue'
+import { ref, watch, computed, onUnmounted } from 'vue'
 import type { Articulo, ImagenArticuloReferencia } from '../types'
 import { articuloService } from '../services/articuloService'
 
@@ -170,18 +161,18 @@ const props = defineProps<{
 
 const emit = defineEmits<(e: 'close') => void>()
 
+type PosicionFoto = 1 | 2 | 3
+
 const articulo = ref<Articulo | null>(null)
 const loading = ref(false)
-const posicionActiva = ref<1 | 2 | 3>(1)
-const copiado = ref(false)
+const posicionActiva = ref<PosicionFoto>(1)
 const descargando = ref(false)
 
 // Fetch full details whenever the modal opens
 watch(() => props.isOpen, async (val) => {
     if (val && props.articuloBase) {
         posicionActiva.value = 1
-        copiado.value = false
-        articulo.value = props.articuloBase 
+        articulo.value = props.articuloBase
         
         // Petición al backend rápido para traer datos actualizados incluidos imágenes
         loading.value = true
@@ -198,13 +189,30 @@ watch(() => props.isOpen, async (val) => {
 })
 
 // Helpers
-const obtenerImagen = (pos: 1 | 2 | 3): ImagenArticuloReferencia | undefined => {
+const obtenerImagen = (pos: PosicionFoto): ImagenArticuloReferencia | undefined => {
     return articulo.value?.imagenes?.find(img => img.posicion === pos)
 }
 
 const imagenActivaObj = computed(() => {
     return obtenerImagen(posicionActiva.value)
 })
+
+// Solo se navega entre posiciones que tienen una imagen real cargada -- si
+// el usuario cicla con las flechas no tiene sentido detenerse en una
+// miniatura vacía (P/S1/S2 sin urlFinal).
+const posicionesConImagen = computed<PosicionFoto[]>(() => {
+    return ([1, 2, 3] as const).filter(pos => !!obtenerImagen(pos)?.urlFinal)
+})
+
+function navegarImagen(direccion: 1 | -1) {
+    const posiciones = posicionesConImagen.value
+    if (posiciones.length === 0) return
+
+    const indiceActual = posiciones.indexOf(posicionActiva.value)
+    const base = indiceActual === -1 ? 0 : indiceActual
+    const siguienteIndice = (base + direccion + posiciones.length) % posiciones.length
+    posicionActiva.value = posiciones[siguienteIndice]
+}
 
 // Solo se permite navegar/abrir el enlace si es http(s): evita que una URL con
 // esquema no seguro (p. ej. javascript:) llegue a renderizarse como href.
@@ -229,16 +237,37 @@ function close() {
     emit('close')
 }
 
-async function copiarLink() {
-    if (!imagenActivaObj.value?.urlFinal) return
-    try {
-        await navigator.clipboard.writeText(imagenActivaObj.value.urlFinal)
-        copiado.value = true
-        setTimeout(() => copiado.value = false, 2000)
-    } catch (err) {
-        console.error('Failed to copy', err)
+// El componente permanece montado todo el tiempo (el padre solo alterna
+// :is-open, ver GestionArticulos.vue), así que el listener de teclado no
+// puede vivir en onMounted/onUnmounted del ciclo de vida del componente --
+// se engancha/desengancha explícitamente cuando isOpen cambia, para no
+// robarle ← / → / Esc al resto de la página mientras el modal está cerrado.
+function handleKeydown(event: KeyboardEvent) {
+    if (event.key === 'Escape') {
+        event.preventDefault()
+        close()
+        return
+    }
+    if (event.key === 'ArrowRight') {
+        event.preventDefault()
+        navegarImagen(1)
+    } else if (event.key === 'ArrowLeft') {
+        event.preventDefault()
+        navegarImagen(-1)
     }
 }
+
+watch(() => props.isOpen, (abierto) => {
+    if (abierto) {
+        window.addEventListener('keydown', handleKeydown)
+    } else {
+        window.removeEventListener('keydown', handleKeydown)
+    }
+})
+
+onUnmounted(() => {
+    window.removeEventListener('keydown', handleKeydown)
+})
 
 async function descargarImagen() {
     const url = imagenActivaObj.value?.urlFinal

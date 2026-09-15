@@ -399,12 +399,13 @@
       {{ queryMessage }}
     </p>
 
-    <div
+    <dialog
+      ref="adPasswordModalRef"
       v-if="showAdPasswordModal"
-      class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4"
-      role="dialog"
-      aria-modal="true"
       aria-labelledby="ad-password-title"
+      class="pyg-ad-password-modal-dialog m-auto p-0 px-4 border-0 bg-transparent"
+      @cancel.prevent="cancelDisablePeriodLock"
+      @click="onAdPasswordBackdropClick"
     >
       <div class="w-full max-w-md rounded-xl border border-gray-200 bg-white p-4 shadow-xl dark:border-gray-700 dark:bg-gray-800">
         <h3 id="ad-password-title" class="text-sm font-semibold text-gray-900 dark:text-white">
@@ -443,19 +444,19 @@
           </button>
         </div>
       </div>
-    </div>
+    </dialog>
 
   </section>
 
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { APP_LOCALE } from '@/plugins/locale'
 import { lastNotification } from '@/composables/useNotificaciones'
 import { useModuleNotifications } from '@/composables/useModuleNotifications'
 import { useAuthStore } from '@/stores/auth'
-import QuickTablePagination from '@/components/QuickTablePagination.vue'
+import QuickTablePagination from '@/components/paginacion/QuickTablePagination.vue'
 import { TableCellsIcon } from '@heroicons/vue/24/outline'
 import {
   downloadErrors,
@@ -490,6 +491,7 @@ const loadingPeriodValidationSetting = ref(false)
 const periodValidationAvailable = ref(true)
 const isWithinValidPeriod = ref(false)
 const showAdPasswordModal = ref(false)
+const adPasswordModalRef = ref<HTMLDialogElement | null>(null)
 const adPasswordInput = ref('')
 const adPasswordError = ref('')
 
@@ -872,9 +874,17 @@ async function updatePeriodLock(nextSkipWritePeriodValidation: boolean, adPasswo
 }
 
 function cancelDisablePeriodLock() {
+  if (loadingPeriodValidationSetting.value) return
+  adPasswordModalRef.value?.close()
   showAdPasswordModal.value = false
   adPasswordInput.value = ''
   adPasswordError.value = ''
+}
+
+function onAdPasswordBackdropClick(evento: MouseEvent) {
+  if (evento.target === adPasswordModalRef.value) {
+    cancelDisablePeriodLock()
+  }
 }
 
 async function confirmDisablePeriodLock() {
@@ -886,6 +896,7 @@ async function confirmDisablePeriodLock() {
   adPasswordError.value = ''
   const ok = await updatePeriodLock(true, pass)
   if (ok) {
+    adPasswordModalRef.value?.close()
     showAdPasswordModal.value = false
     adPasswordInput.value = ''
     adPasswordError.value = ''
@@ -1106,6 +1117,13 @@ onMounted(async () => {
   await loadUploads()
 })
 
+watch(showAdPasswordModal, async (isVisible) => {
+  if (isVisible) {
+    await nextTick()
+    adPasswordModalRef.value?.showModal()
+  }
+})
+
 watch(lastNotification, (notification) => {
   if (!notification) return
   if (notification.metadata?.accion !== 'pyg_upload_completed') return
@@ -1120,3 +1138,12 @@ onBeforeUnmount(() => {
   isPygViewMounted.value = false
 })
 </script>
+
+<style>
+/* ::backdrop del <dialog> nativo: no se puede scopear (pseudo-elemento fuera del arbol normal),
+   por eso el nombre de clase bien especifico y el estilo sin "scoped". Reemplaza al overlay
+   manual bg-black/40 que envolvia el modal antes de la migracion a <dialog>. */
+.pyg-ad-password-modal-dialog::backdrop {
+  background-color: rgb(0 0 0 / 0.4);
+}
+</style>

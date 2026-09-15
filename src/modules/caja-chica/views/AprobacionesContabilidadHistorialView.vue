@@ -396,7 +396,7 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { cajaChicaApi, slayerHttp as slayerApi } from '@/lib/http'
 import { useAdjuntosByDetalle } from '@/composables/useAdjuntosByDetalle'
-import { resolveUserNames } from '../utils/resolveUserNames'
+import { resolveUserNames } from '@/utils/resolveUserNames'
 import { extractItemsArray } from '../utils/apiPayload'
 
 interface LiquidacionItem {
@@ -891,7 +891,11 @@ const toggleGroup = (idLiquidacion: number) => {
   openGroups.value[idLiquidacion] = !isGroupOpen(idLiquidacion)
 }
 
-const isIntegrado = (idLiquidacion: number) => integraciones.value[idLiquidacion]?.estado === 'INTEGRADO'
+const isIntegrado = (idLiquidacion: number) => {
+  const estado = String(integraciones.value[idLiquidacion]?.estado || '').toUpperCase()
+  // EN_PROCESO tambien bloquea el boton: otro usuario/pestaña la esta integrando.
+  return estado === 'INTEGRADO' || estado === 'EN_PROCESO'
+}
 
 const isEnProcesoJob = (idLiquidacion: number) => {
   const estado = String(integraciones.value[idLiquidacion]?.estado || '').toUpperCase()
@@ -1315,6 +1319,24 @@ const handleIntegracionExitosa = async (idLiquidacion: number, response: { data:
 }
 
 const handleIntegracionError = async (idLiquidacion: number, err: any) => {
+  // Timeout o corte de red: NO sabemos si SAP recibio el documento. Marcarlo como
+  // ERROR habilitaba reintentar a ciegas y asi se duplicaron liquidaciones (3253 x4).
+  const sinRespuesta = err?.code === 'ECONNABORTED' || !err?.response
+  if (sinRespuesta) {
+    const mensaje = 'La peticion a SAP no obtuvo respuesta (posible timeout). El documento PUDO haberse creado: '
+      + 'verifique en SAP (o use "Actualizar estado") antes de volver a integrar.'
+    console.error('[Integracion][SinRespuesta]', { idLiquidacion, err })
+    error.value = mensaje
+    await cajaChicaApi.post('/Integraciones/Compras', {
+      idLiquidacion,
+      estado: 'DESCONOCIDO',
+      mensaje
+    })
+    integraciones.value[idLiquidacion] = { estado: 'DESCONOCIDO', mensaje }
+    integrationMessages.value[idLiquidacion] = { tipo: 'error', texto: mensaje }
+    return
+  }
+
   const rawMsg = err?.response?.data?.message || err?.response?.data
   const mensaje = typeof rawMsg === 'string' ? rawMsg : JSON.stringify(rawMsg) || 'No se pudo integrar la liquidacion.'
   console.error('[Integracion][Error]', { idLiquidacion, mensaje, err })
@@ -1331,6 +1353,63 @@ const handleIntegracionError = async (idLiquidacion: number, err: any) => {
   integrationMessages.value[idLiquidacion] = {
     tipo: 'error',
     texto: mensaje
+  }
+}
+
+/** Confirmación extra cuando la integración anterior quedó sin respuesta (posible timeout). */
+const confirmarEnvioTrasDesconocido = (idLiquidacion: number): boolean => {
+  const estadoPrevio = String(integraciones.value[idLiquidacion]?.estado || '').toUpperCase()
+  if (estadoPrevio !== 'DESCONOCIDO') return true
+  return window.confirm(
+    'ATENCION: la integracion anterior de esta liquidacion quedo SIN CONFIRMACION (posible timeout). '
+    + 'El documento pudo haberse creado en SAP. Verifique en SAP que NO exista antes de continuar.\n\n'
+    + 'Enviar de todas formas?'
+  )
+}
+
+const DESCRIPCION_ESTADO_BLOQUEO: Record<string, string> = {
+  INTEGRADO: 'integrada',
+  ENCOLADO: 'encolada'
+}
+
+/** Refleja en pantalla el estado vigente que devolvió el 409 del candado. */
+const registrarBloqueoCandado = (idLiquidacion: number, actual: any) => {
+  const estadoActual = String(actual.estado ?? actual.Estado ?? 'EN_PROCESO').toUpperCase()
+  integraciones.value[idLiquidacion] = {
+    estado: estadoActual,
+    docEntry: normalizeString(actual.docEntry ?? actual.DocEntry),
+    docNum: normalizeString(actual.docNum ?? actual.DocNum),
+    jobId: normalizeString(actual.jobId ?? actual.JobId),
+    mensaje: normalizeString(actual.mensaje ?? actual.Mensaje)
+  }
+  const descripcion = DESCRIPCION_ESTADO_BLOQUEO[estadoActual] ?? 'siendo integrada por otro usuario'
+  integrationMessages.value[idLiquidacion] = {
+    tipo: 'error',
+    texto: `Esta liquidacion ya esta ${descripcion}. No se envio de nuevo.`
+  }
+}
+
+/**
+ * Candado en servidor: solo un usuario/pestaña puede integrar esta liquidación a la vez,
+ * y una ya INTEGRADA o ENCOLADA no se vuelve a enviar (evita duplicados en SAP).
+ * Devuelve true si se puede continuar con el envío a SAP.
+ */
+const reclamarCandadoIntegracion = async (idLiquidacion: number): Promise<boolean> => {
+  try {
+    await cajaChicaApi.post(`/Integraciones/Compras/${idLiquidacion}/iniciar`)
+    return true
+  } catch (claimErr: any) {
+    if (claimErr?.response?.status === 409) {
+      registrarBloqueoCandado(idLiquidacion, claimErr.response.data || {})
+      return false
+    }
+    // API sin el endpoint /iniciar todavía desplegado: continuar sin candado
+    // (se mantienen las demás protecciones: timeout amplio y estado DESCONOCIDO).
+    if (claimErr?.response?.status === 404) {
+      console.warn('[Integracion] Endpoint /iniciar no disponible; se continúa sin candado de servidor.')
+      return true
+    }
+    throw claimErr
   }
 }
 
@@ -1356,10 +1435,18 @@ const integrarLiquidacion = async (idLiquidacion: number) => {
     if (!window.confirm(confirmationMessage)) {
       return
     }
+    if (!confirmarEnvioTrasDesconocido(idLiquidacion)) {
+      return
+    }
+    if (!(await reclamarCandadoIntegracion(idLiquidacion))) {
+      return
+    }
 
     console.log('[Integracion][Payload Liquidaciones]', JSON.stringify(built.payload, null, 2))
 
-    const response = await slayerApi.post<SlayerIntegracionResponse | string>('/v1/liquidaciones', built.payload)
+    // Timeout generoso: el Service Layer de SAP puede tardar mas de los 60 s por defecto;
+    // abortar antes de tiempo era lo que provocaba reintentos y documentos duplicados.
+    const response = await slayerApi.post<SlayerIntegracionResponse | string>('/v1/liquidaciones', built.payload, { timeout: 180_000 })
 
     if (response.status === 202) {
       await handleIntegracionEncolada(idLiquidacion, response)
@@ -1466,9 +1553,11 @@ const loadHistorial = async () => {
       return
     }
 
+    // No se envía idUsuario: una vez aprobada/rechazada, cualquier usuario con acceso a esta
+    // pantalla debe ver e integrar el historial completo, sin importar quién quedó asignado
+    // como aprobador de contabilidad (nivel 2).
     const response = await cajaChicaApi.get('/Aprobaciones/historial-contabilidad', {
       params: {
-        idUsuario: userId,
         fechaDesde: fechaDesde.value,
         fechaHasta: fechaHasta.value,
         soloPendientes: activeTab.value === 'APROBADAS' && filtroIntegracion.value === 'PENDIENTES',

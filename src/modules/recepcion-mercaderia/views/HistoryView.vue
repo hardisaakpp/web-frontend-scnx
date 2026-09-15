@@ -2,10 +2,26 @@
 import { computed, onMounted, ref } from 'vue'
 import { useHistoryStore } from '../stores/historyStore'
 import { useAuthStore } from '@/stores/auth'
-import { CalendarIcon, DocumentArrowDownIcon, PencilIcon, ArrowLeftIcon } from '@heroicons/vue/24/outline'
+import { CalendarIcon, ArrowDownTrayIcon, PencilIcon, ArrowLeftIcon, EyeIcon } from '@heroicons/vue/24/outline'
 import type { HistoryRow } from '../types'
 import { triggerBlobDownload } from '../utils/downloadBlob'
 import PageJumpInput from '../components/PageJumpInput.vue'
+import HistoryDetailModal from '../components/HistoryDetailModal.vue'
+import { APP_LOCALE } from '@/plugins/locale'
+
+// Backend sends materializedAtUtc as ISO-8601 UTC (with Z suffix) and intentionally does not
+// format it — the client owns locale/timezone. Parse as UTC, convert to the browser's local
+// time, and drop the sub-second precision.
+function formatMaterializedAt(value: string): string {
+  return new Date(value).toLocaleString(APP_LOCALE, {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: true,
+  })
+}
 
 const store = useHistoryStore()
 const authStore = useAuthStore()
@@ -40,21 +56,17 @@ function todayLocalDateString(): string {
   return `${y}-${m}-${d}`
 }
 
-// "Mis almacenes" mode: a single "Fecha de picking" field — internally becomes a
-// one-day range (from = to = that day) through the SAME setDateRange/toLocalDateBound
-// path already used and tested for the range fields. No store change needed.
-// Defaults to today so the view opens already scoped to "today's picking", matching
-// the reference UI — applied on mount below, not just a placeholder value.
-const pickingDateInput = ref(todayLocalDateString())
-
-// "Consolidado" mode: real Desde/Hasta range + N° transferencia (transfer# overrides
-// the range entirely — see historyStore's buildFilterParams). Both default to today.
+// Both modes filter by a real Desde/Hasta range — the backend's getHistory (own warehouse) and
+// getAllHistory (consolidado) accept the same dateFrom/dateTo params, so one shared pair of
+// inputs covers both; only the endpoint each mode hits differs (see activeScope below). "Mis
+// almacenes" additionally skips N° transferencia/export, which stay consolidado-only. Both
+// default to today so the view opens already scoped to "today's picking", matching the reference
+// UI — applied on mount below, not just a placeholder value.
 const dateFromInput = ref(todayLocalDateString())
 const dateToInput = ref(todayLocalDateString())
 
 function applyOwnFilters(): void {
-  const day = pickingDateInput.value || null
-  store.setDateRange(day, day)
+  store.setDateRange(dateFromInput.value || null, dateToInput.value || null)
 }
 
 function applyAllFilters(): void {
@@ -80,6 +92,7 @@ const activeScope = computed(() =>
         setTransferNumberQuery: store.setAllTransferNumberQuery,
         updateGlpiTicket: store.updateGlpiTicketAdmin,
         downloadDifferencesReport: store.downloadDifferencesReportAdmin,
+        exportCsv: store.exportAllHistoryCsv,
         applyFilters: applyAllFilters,
       }
     : {
@@ -95,6 +108,7 @@ const activeScope = computed(() =>
         setTransferNumberQuery: store.setTransferNumberQuery,
         updateGlpiTicket: store.updateGlpiTicket,
         downloadDifferencesReport: store.downloadDifferencesReport,
+        exportCsv: store.exportHistoryCsv,
         applyFilters: applyOwnFilters,
       }
 )
@@ -110,10 +124,23 @@ onMounted(() => {
 // prior "Ver" detail-navigation button per explicit product decision). One-shot axios-blob
 // download, same pattern as handleExportCsv below, scoped per row/transferId rather than a
 // single "active transfer" (there is no such concept on a history list).
+// A "Ver detalle" eye-icon button now lives alongside it again (explicit product decision,
+// reversing part of the above) — but as a read-only MODAL over data already in memory
+// (HistoryRow.lines), not the old navigation-to-another-screen behavior.
 async function handleExportRowDifferences(transferId: number): Promise<void> {
   const blob = await activeScope.value.downloadDifferencesReport(transferId)
   if (!blob) return
   triggerBlobDownload(blob, `diferencias-${transferId}.xlsx`)
+}
+
+const detailRow = ref<HistoryRow | null>(null)
+
+function openDetail(row: HistoryRow): void {
+  detailRow.value = row
+}
+
+function closeDetail(): void {
+  detailRow.value = null
 }
 
 // Real server-side pagination AND filtering (verified HistoryController: dateFrom/dateTo/
@@ -168,7 +195,7 @@ async function saveGlpi(transferId: number): Promise<void> {
 // through the shared axios instance and its interceptors, and the browser download is
 // triggered from the resulting Blob.
 async function handleExportCsv(): Promise<void> {
-  const blob = await store.exportAllHistoryCsv()
+  const blob = await activeScope.value.exportCsv()
   if (!blob) return
   triggerBlobDownload(blob, 'historial-recepcion.xlsx')
 }
@@ -204,16 +231,30 @@ async function handleExportCsv(): Promise<void> {
         </div>
       </div>
 
-      <!-- Filters: fixed per role — single picking-date for a store user, range + transfer# for admin/supervisor -->
+      <!-- Filters: fixed per role — Desde/Hasta range for both, admin/supervisor additionally gets N° transferencia + export -->
       <div v-if="mode === 'own'" class="flex flex-wrap items-end gap-3">
           <div>
-            <label for="picking-date-input" class="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">Fecha de picking</label>
+            <label for="date-from-input" class="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">Desde</label>
             <div class="flex items-center gap-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 px-3 py-2 transition-shadow focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-blue-500">
-              <CalendarIcon class="w-4 h-4 text-gray-400" />
+              <CalendarIcon class="w-4 h-4 text-gray-400 dark:text-gray-500" />
               <input
-                id="picking-date-input"
-                data-testid="picking-date-input"
-                v-model="pickingDateInput"
+                id="date-from-input"
+                data-testid="date-from-input"
+                v-model="dateFromInput"
+                type="date"
+                class="border-none outline-none focus:ring-0 focus:outline-none p-0 text-sm bg-transparent text-gray-900 dark:text-white"
+                @change="applyOwnFilters"
+              />
+            </div>
+          </div>
+          <div>
+            <label for="date-to-input" class="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">Hasta</label>
+            <div class="flex items-center gap-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 px-3 py-2 transition-shadow focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-blue-500">
+              <CalendarIcon class="w-4 h-4 text-gray-400 dark:text-gray-500" />
+              <input
+                id="date-to-input"
+                data-testid="date-to-input"
+                v-model="dateToInput"
                 type="date"
                 class="border-none outline-none focus:ring-0 focus:outline-none p-0 text-sm bg-transparent text-gray-900 dark:text-white"
                 @change="applyOwnFilters"
@@ -228,6 +269,15 @@ async function handleExportCsv(): Promise<void> {
           >
             Buscar
           </button>
+          <button
+            type="button"
+            data-testid="export-csv-btn"
+            class="inline-flex items-center justify-center gap-2 h-10 px-4 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-sm transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+            @click="handleExportCsv"
+          >
+            <ArrowDownTrayIcon class="w-4 h-4" />
+            Exportar Excel
+          </button>
         </div>
 
         <div v-else class="space-y-1">
@@ -235,7 +285,7 @@ async function handleExportCsv(): Promise<void> {
             <div>
               <label for="date-from-input" class="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">Desde</label>
               <div class="flex items-center gap-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 px-3 py-2 transition-shadow focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-blue-500">
-                <CalendarIcon class="w-4 h-4 text-gray-400" />
+                <CalendarIcon class="w-4 h-4 text-gray-400 dark:text-gray-500" />
                 <input
                   id="date-from-input"
                   data-testid="date-from-input"
@@ -249,7 +299,7 @@ async function handleExportCsv(): Promise<void> {
             <div>
               <label for="date-to-input" class="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">Hasta</label>
               <div class="flex items-center gap-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 px-3 py-2 transition-shadow focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-blue-500">
-                <CalendarIcon class="w-4 h-4 text-gray-400" />
+                <CalendarIcon class="w-4 h-4 text-gray-400 dark:text-gray-500" />
                 <input
                   id="date-to-input"
                   data-testid="date-to-input"
@@ -283,10 +333,10 @@ async function handleExportCsv(): Promise<void> {
             <button
               type="button"
               data-testid="export-csv-btn"
-              class="flex items-center gap-2 px-4 py-2 text-sm font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg hover:bg-emerald-100 dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-800 transition-colors shadow-sm"
+              class="inline-flex items-center justify-center gap-2 h-10 px-4 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-sm transition-all disabled:opacity-60 disabled:cursor-not-allowed"
               @click="handleExportCsv"
             >
-              <DocumentArrowDownIcon class="w-4 h-4" />
+              <ArrowDownTrayIcon class="w-4 h-4" />
               Exportar Excel
             </button>
           </div>
@@ -340,7 +390,7 @@ async function handleExportCsv(): Promise<void> {
                   <svg class="w-12 h-12 mx-auto mb-3 opacity-20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2" />
                   </svg>
-                  <p class="text-base font-medium">{{ mode === 'own' ? 'No hay datos para la fecha seleccionada.' : 'No hay datos para el rango seleccionado.' }}</p>
+                  <p class="text-base font-medium">No hay datos para el rango seleccionado.</p>
                 </td>
               </tr>
               <tr v-else v-for="row in pagedRows" :key="row.transferId" class="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors group">
@@ -355,7 +405,7 @@ async function handleExportCsv(): Promise<void> {
                 <td class="px-4 py-3 text-sm text-right" :class="row.differencesCount > 0 ? 'text-amber-600 dark:text-amber-400 font-semibold' : 'text-gray-600 dark:text-gray-300'">
                   {{ row.differencesCount }}
                 </td>
-                <td v-if="mode === 'all'" class="px-4 py-3 text-sm text-gray-600 dark:text-gray-300">{{ row.materializedAtUtc }}</td>
+                <td v-if="mode === 'all'" class="px-4 py-3 text-sm text-gray-600 dark:text-gray-300">{{ formatMaterializedAt(row.materializedAtUtc) }}</td>
                 <td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-300">{{ row.originWarehouseCode ?? '—' }} → {{ row.transitWarehouseCode ?? row.destinationWarehouseCode ?? row.warehouseCode }}</td>
                 <td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-300">{{ row.responsibleName || '—' }}</td>
                 <td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-300">{{ row.courierWaybillNumber || '—' }}</td>
@@ -394,14 +444,25 @@ async function handleExportCsv(): Promise<void> {
                   </div>
                 </td>
                 <td class="px-4 py-3 text-sm text-right">
-                  <button
-                    type="button"
-                    :data-testid="`export-differences-btn-${row.transferId}`"
-                    class="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 font-medium transition-colors text-xs"
-                    @click="handleExportRowDifferences(row.transferId)"
-                  >
-                    Exportar Diferencias
-                  </button>
+                  <div class="flex items-center justify-end gap-2">
+                    <button
+                      type="button"
+                      :data-testid="`view-detail-btn-${row.transferId}`"
+                      title="Ver detalle"
+                      class="p-2 text-blue-600 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
+                      @click="openDetail(row)"
+                    >
+                      <EyeIcon class="w-5 h-5" />
+                    </button>
+                    <button
+                      type="button"
+                      :data-testid="`export-differences-btn-${row.transferId}`"
+                      class="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 font-medium transition-colors text-xs"
+                      @click="handleExportRowDifferences(row.transferId)"
+                    >
+                      Exportar Diferencias
+                    </button>
+                  </div>
                 </td>
               </tr>
             </tbody>
@@ -451,4 +512,6 @@ async function handleExportCsv(): Promise<void> {
       </div>
     </div>
   </div>
+
+  <HistoryDetailModal :open="!!detailRow" :row="detailRow" @close="closeDetail" />
 </template>

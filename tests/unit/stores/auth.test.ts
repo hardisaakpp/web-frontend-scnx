@@ -2,11 +2,20 @@ import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest'
 import { setActivePinia, createPinia } from 'pinia'
 import { useAuthStore } from '@/stores/auth'
 import type { AuthCapabilities } from '@/stores/auth'
-import api from '@/plugins/axios'
+import api, { mba3Api } from '@/plugins/axios'
 
 // Mock del módulo axios
 vi.mock('@/plugins/axios', () => ({
   default: {
+    post: vi.fn(),
+    get: vi.fn(),
+    defaults: {
+      headers: {
+        common: {}
+      }
+    }
+  },
+  mba3Api: {
     post: vi.fn(),
     get: vi.fn(),
     defaults: {
@@ -173,7 +182,7 @@ describe('Auth Store', () => {
       }
 
       vi.mocked(api.post).mockResolvedValue(mockResponse)
-      vi.mocked(api.get).mockResolvedValue(mockMeResponse)
+      vi.mocked(mba3Api.get).mockResolvedValue(mockMeResponse)
 
       const authStore = useAuthStore()
       await authStore.login({
@@ -181,8 +190,10 @@ describe('Auth Store', () => {
         password: 'password123'
       })
 
-      expect(api.get).toHaveBeenCalledWith('/Auth/me')
-      expect(authStore.capabilities).toEqual(mockMeResponse.data.capabilities)
+      expect(mba3Api.get).toHaveBeenCalledWith('/Auth/me')
+      // fetchMe fusiona las capabilities de la API con las derivadas de permissions/roles
+      // (deriveCapabilitiesFromPermissions) -- objectContaining, no igualdad exacta.
+      expect(authStore.capabilities).toEqual(expect.objectContaining(mockMeResponse.data.capabilities))
     })
   })
 
@@ -211,16 +222,19 @@ describe('Auth Store', () => {
         config: {} as any
       }
 
-      vi.mocked(api.get).mockResolvedValue(mockMeResponse)
+      vi.mocked(mba3Api.get).mockResolvedValue(mockMeResponse)
 
       const authStore = useAuthStore()
       authStore.token = 'test-token'
       
       await authStore.fetchMe()
 
-      expect(authStore.userData).toEqual(mockMeResponse.data.user)
-      expect(authStore.capabilities).toEqual(mockMeResponse.data.capabilities)
-      expect(localStorage.setItem).toHaveBeenCalledWith('user', JSON.stringify(mockMeResponse.data.user))
+      // fetchMe conserva/normaliza warehouseAccesses (no lo trae /Auth/me de MBA3, ver auth.ts)
+      expect(authStore.userData).toEqual({ ...mockMeResponse.data.user, warehouseAccesses: [] })
+      // fetchMe fusiona las capabilities de la API con las derivadas de permissions/roles
+      // (deriveCapabilitiesFromPermissions) -- objectContaining, no igualdad exacta.
+      expect(authStore.capabilities).toEqual(expect.objectContaining(mockMeResponse.data.capabilities))
+      expect(localStorage.setItem).toHaveBeenCalledWith('user', JSON.stringify(authStore.userData))
     })
 
     it('should not fetch if no token present', async () => {
@@ -229,11 +243,11 @@ describe('Auth Store', () => {
       
       await authStore.fetchMe()
 
-      expect(api.get).not.toHaveBeenCalled()
+      expect(mba3Api.get).not.toHaveBeenCalled()
     })
 
     it('should logout on 401 error', async () => {
-      vi.mocked(api.get).mockRejectedValue({
+      vi.mocked(mba3Api.get).mockRejectedValue({
         response: { status: 401 }
       })
 

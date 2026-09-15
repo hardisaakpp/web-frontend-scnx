@@ -130,7 +130,7 @@ export interface OrdenCompra {
   pedido_id: string | null    // ⭐ NUEVO - ID del pedido relacionado
   proveedor: string
   fecha_generacion: string
-  estado: 'PENDIENTE' | 'ENVIADA' | 'ERROR'
+  estado: 'PENDIENTE' | 'ENVIANDO' | 'ENVIADA' | 'ERROR'
   numero_oc_sap: string | null
   doc_entry: number | null    // ⭐ DocEntry de SAP (importante para trazabilidad)
   doc_num?: number | null     // ⭐ DocNum de SAP (número de documento en SAP)
@@ -165,6 +165,8 @@ export interface OrdenesCompraListFilters {
   search?: string
   referencia_despacho?: string
   numero_oc_sap?: string
+  /** Solo ODCs donde aplica "Reintentar" (PENDIENTE/ERROR) o "Reintentar ST" (ENVIADA con tiendas pendientes). */
+  solo_pendiente_reintento?: boolean
 }
 
 export interface OrdenCompraResponse {
@@ -211,6 +213,9 @@ export interface IntegracionSAPDetalle {
   error_source: string | null       // ⭐ NUEVO - "SAP" | "BACKEND" | "SAP_CONNECTION"
   /** True si el fallo fue probablemente transitorio (conexión/SL); el usuario puede reintentar envío. */
   retry_recommended?: boolean | null
+  /** True si el middleware encoló la creación de la ODC (HTTP 202, SAP saturado): no es
+   * un error, SAP la sigue procesando en segundo plano y se confirmará sola. */
+  queued?: boolean | null
   solicitudes_transferencia?: SolicitudesTransferencia | null  // ⭐ NUEVO - Solicitudes de Transferencia creadas automáticamente
   sap_response?: Record<string, any> | null  // Respuesta completa de SAP
   sap_error_details?: Record<string, any> | null  // Detalles completos del error
@@ -573,6 +578,20 @@ export interface SugerenciasSkuResponse {
   message?: string
   sugerencias: SugerenciaSkuSap[]
   total_encontrados: number
+}
+
+// Información de SAP (pack/pvp/etc.) para uno o más códigos — GET /api/plantillas/sap-info-productos
+export interface SapInfoProducto {
+  encontrado: boolean
+  motivo: 'no_existe' | 'inactivo' | 'mismatch' | null
+  pack_sap?: string | null
+  pvp_sap?: number | null
+  codigo_barras?: string | null
+  item_name?: string | null
+}
+
+export interface SapInfoProductosResponse {
+  productos: Record<string, SapInfoProducto>
 }
 
 // Tipo para respuesta de buscar SKU en MBA3 (con sugerencias opcionales)
@@ -960,6 +979,29 @@ export interface PedidoCabecera {
   // ⭐ Campos de SAP (disponibles cuando estado_id = 12 CONFIRMADO_ENVIADO)
   numero_oc_sap?: string | null  // Número de OC en SAP (DocNum)
   doc_entry?: number | null      // DocEntry de SAP para trazabilidad
+  /** Fecha Facturación (req. 1.8): en blanco por defecto, exclusiva de Producción El Rayo,
+   * editable solo mientras el pedido está en Gestionar Pedido (estado_id = 3). */
+  fecha_facturacion?: string | null
+  /** Req. 1.2: UUID del pedido "padre" si este es un pedido "hijo" generado con la
+   * diferencia no producida (null/undefined en un pedido padre normal). */
+  pedido_padre_id?: string | null
+  /** Bodega(s)/CD detectadas a partir de las tiendas del pedido (ROLAND→RL-CD,
+   * REGIONS→RG-CD, DESCUENTON→OUT-CD). Calculado, no persistido; distinto del
+   * campo `origen_traslado` (valor único escrito a mano en el Excel). Puede traer
+   * más de un código cuando el pedido mezcla tiendas de ambas marcas. */
+  origen_traslado_detectado?: string[]
+  /** ODC(s) del pedido (disponible cuando estado_id = 12 CONFIRMADO_ENVIADO). Trae más
+   * de un elemento cuando el pedido mezcla tiendas de más de una bodega/CD (ver
+   * origen_traslado_detectado) -- el frontend usa esto para mostrar un botón
+   * "Generar TXT MBA3" por ODC en vez de uno solo, y para abrir el modal de
+   * integración SAP de cada ODC (oc_id) desde PedidoCabecera.vue. */
+  ordenes_compra?: Array<{
+    oc_id: string
+    codigo_bodega: string | null
+    numero_oc_sap: string | null
+    doc_entry: number | null
+    estado: string | null
+  }>
 }
 
 export interface TiendaDistribucion {
@@ -982,6 +1024,15 @@ export interface PedidoDetalle {
   subtotal: number | null
   total: number | null
   comentario?: string | null  // ⭐ Campo editable para comentarios
+  /** Columna "Costo" de la plantilla Excel (req. 1.4): informativa para el Margen de
+   * Rentabilidad; distinta de costo_doc_sin_iva (que sí alimenta la OC). */
+  costo_margen?: number | null
+  /** Margen de Rentabilidad (req. 1.5): calculado en el backend a partir de costo_margen
+   * y pvp (ver calcular_margen_rentabilidad en pedido_utils.py). Fracción decimal (0.35 = 35%). */
+  margen?: number | null
+  /** Cantidad que Mabel Trading cargó originalmente en la plantilla Excel (req. 1.2), fijada
+   * una sola vez en el INSERT. null en pedidos anteriores a la migración 641. */
+  cantidad_solicitada_original?: number | null
   tiendas: TiendaDistribucion[]
 }
 
@@ -1000,12 +1051,16 @@ export interface PedidoCompleto {
   respuesta_proveedor?: RespuestaProveedor  // Incluido si incluir_respuesta=true
   /** true si el pedido está en BORRADOR o NUEVO PEDIDO; false en el resto (p. ej. GESTIONAR PEDIDO). Backend: GET plantillas/ultimo, GET plantillas/{id}, POST .../gestionar */
   puede_descartar?: boolean
-  /** true si se puede cancelar (Redistribución); false desde estado Confirmado redistribución (estado_id ≥ 10). Backend: GET /api/pedidos/{id} */
+  /** true si se puede cancelar (Redistribución), o "Rechazar" si estado_id === 22 = PRODUCCION POSPUESTA; false desde estado Confirmado redistribución (estado_id ≥ 10). Backend: GET /api/pedidos/{id} */
   puede_cancelar_pedido?: boolean
+  /** true si se puede "Aceptar" la diferencia pospuesta (solo estado_id === 22 = PRODUCCION POSPUESTA), pasando a LISTO PARA REDISTRIBUCION (25). Backend: GET /api/pedidos/{id} */
+  puede_aceptar_produccion_pospuesta?: boolean
   /** true si se puede confirmar redistribución (estados 4-REDISTRIBUCION, 5-RESPUESTA_PROVEEDOR_CARGADA, 6-CONFIRMADO_PROVEEDOR, 8-EN_AJUSTE_MABEL, 9-REDISTRIBUIDO); false para CANCELADO y otros estados */
   puede_confirmar_redistribucion?: boolean
   /** true si se puede finalizar el pedido (solo cuando estado_id === 17 = DESPACHAR Y FACTURAR). Backend: GET /api/pedidos/{id} y GET /api/plantillas/{numero_pedido} */
   puede_finalizar?: boolean
+  /** true si se puede generar el TXT MBA3 (estado_id === 12 = CONFIRMADO Y ENVIADO; el DocNum de SAP que exige la columna 12 del TXT recién existe ahí). Backend: GET /api/pedidos/{id} */
+  puede_generar_txt_mba3?: boolean
   /**
    * true si el usuario puede reintentar el proceso completo (envío ODC a SAP), p. ej. estado 21 o 10 con ODC reintentable.
    * Backend: enrich tras GET plantillas/pedido y respuestas que devuelven pedido completo.
@@ -1079,6 +1134,7 @@ export interface DistribucionTienda {
   tienda_codigo: string
   tienda_nombre: string
   cantidad: number
+  agregada_manualmente?: boolean
 }
 
 export interface AjusteDetalle {
@@ -1112,6 +1168,7 @@ export interface DistribucionTiendaItemResponse {
   cantidad_asignada: number
   cantidad_solicitada?: number
   cantidad_confirmada?: number
+  agregada_manualmente?: boolean
 }
 
 export interface ProductoDistribucionResponse {
@@ -1122,6 +1179,13 @@ export interface ProductoDistribucionResponse {
   cantidad_confirmada_total: number
   cantidad_asignada_total: number
   distribuciones: DistribucionTiendaItemResponse[]
+}
+
+/** Item del catálogo maestro de tiendas (GET /api/pedidos/tiendas/buscar). */
+export interface TiendaCatalogoItem {
+  tienda_id: string
+  codigo: string
+  nombre: string | null
 }
 
 export interface DistribucionPedidoResponse {
@@ -1164,6 +1228,48 @@ export interface ProcesarConfirmacionResponse {
   ajustes_detalle: AjusteDetalle[]
 }
 
+// ========== Req. 1.2: Gestión de pedidos parciales (diferencia de producción) ==========
+
+/** Línea de detalle cuyo Total actual quedó por debajo de la cantidad solicitada original. */
+export interface DetalleDiferenciaProduccion {
+  pedido_detalle_id: string
+  codigo_interno: string | null
+  descripcion_sap: string | null
+  cantidad_solicitada_original: number
+  total_actual: number
+  diferencia: number
+}
+
+export interface DiferenciaProduccionResponse {
+  tiene_diferencia: boolean
+  detalles: DetalleDiferenciaProduccion[]
+}
+
+export interface PedidoHijoDiferencia {
+  pedido_id: string
+  numero_pedido: string
+  pedido_padre_id: string
+  detalles_insertados: number
+}
+
+/** Cantidad de una línea de la diferencia asignada a un pedido hijo específico. */
+export interface DetalleAsignadoHijo {
+  pedido_detalle_id: string
+  cantidad: number
+}
+
+/** Un pedido hijo a generar: su fecha de entrega y la porción de cada línea asignada. */
+export interface HijoDiferenciaPayload {
+  fecha_entrega: string
+  detalles: DetalleAsignadoHijo[]
+}
+
+export interface ConfirmarConDiferenciaResponse {
+  status: 'success'
+  confirmacion: CargarRespuestaProveedorResponse
+  pedidos_hijos: PedidoHijoDiferencia[]
+}
+
 // ========== Proceso Completo SAP (Redistribución + ODC + Envío SAP) ==========
 
 /**
@@ -1176,10 +1282,14 @@ export interface ProcesoCompletoSAPDetalleODC {
   doc_entry: number | null
   numero_oc_sap?: string | null  // Num ODC (orden_compra_cabecera.numero_oc_sap)
   error: string | null
+  error_code?: string | null
   message?: string | null
   solicitudes_transferencia?: SolicitudesTransferencia | null
   /** True si el fallo fue probablemente transitorio (conexión/SL); el cliente puede ofrecer reintento manual. */
   retry_recommended?: boolean | null
+  /** True si el middleware encoló la creación de la ODC (HTTP 202, SAP saturado): no es
+   * un error, SAP la sigue procesando en segundo plano y se confirmará sola. */
+  queued?: boolean | null
 }
 
 /**
@@ -1210,16 +1320,24 @@ export interface ProcesoCompletoSAPResponse {
     oc_id: string
     detalles_insertados: number
   }
-  /** Resultado del envío a SAP (Paso 3) */
+  /** Resultado del envío a SAP de la primera ODC (Paso 3) */
   envio_sap?: ProcesoCompletoSAPDetalleODC
+  /**
+   * Resultado del envío a SAP de TODAS las ODC del pedido. La mayoría de los pedidos
+   * generan 1 sola (mismo contenido que envio_sap); un pedido que mezcla tiendas de
+   * más de una marca (ROLAND + REGIONS en el mismo Excel) genera 2.
+   */
+  envios_sap?: ProcesoCompletoSAPDetalleODC[]
   /** Solicitudes de Transferencia (ITR) creadas; puede venir en raíz o en envio_sap */
   solicitudes_transferencia?: SolicitudesTransferencia
   /** Resumen de cantidades */
   resumen?: ResumenConfirmacion
   /** Si hubo error parcial, indica en qué paso falló */
   paso_fallido?: 'redistribucion' | 'generar_odc' | 'enviar_sap'
-  /** Mensaje de error si falló algún paso */
-  error?: string
+  /** Mensaje de error si falló algún paso. Nombre real del campo en el backend
+   * (ProcesoCompletoSAPResponse.error_detalle) -- OJO: no confundir con
+   * envio_sap.error (error de una ODC puntual). */
+  error_detalle?: string
 }
 
 /**
@@ -1286,6 +1404,8 @@ export interface ModificarPedidoCabeceraRequest {
   comprador_codigo?: string | null
   origen_traslado?: string | null
   serie?: string | null
+  /** Fecha Facturación (req. 1.8): exclusiva de Producción El Rayo, solo en Gestionar Pedido. */
+  fecha_facturacion?: string | null
 }
 
 export interface ModificarPedidoCabeceraResponse {
@@ -1301,6 +1421,9 @@ export interface ColumnaModificada {
   columna_key: string
   modificado_por?: string
   fecha_modificacion?: string
+  /** Rol responsable de la última modificación (derivado por el backend del estado del
+   *  pedido al guardar, no del permiso del usuario): 'PRODUCCION_ELRAYO' u 'ODCSAP'. */
+  rol_modificador?: 'PRODUCCION_ELRAYO' | 'ODCSAP' | null
 }
 
 export interface GuardarModificacionesColumnasRequest {
@@ -1409,10 +1532,11 @@ export interface SolicitudTransferenciaResultado {
   error: string | null
 }
 
-/** Una entrada por ITR para la tabla del modal (DocNum + código tienda) */
+/** Una entrada por ITR para la tabla del modal (DocNum + tienda) */
 export interface ItrPorTienda {
   doc_num: number
   tienda_codigo: string
+  tienda_nombre?: string | null
 }
 
 /**
@@ -1424,6 +1548,12 @@ export interface SolicitudesTransferencia {
   total_tiendas: number
   transferencias_creadas: number
   transferencias_errores: number
+  /** Tiendas cuyo ITR quedó "pendiente_confirmacion" (SAP devolvió 202/job encolado, o se
+   * agotaron los reintentos sin un rechazo definitivo) -- no son error ni éxito confirmado
+   * todavía. Sin este campo, creadas + errores puede sumar menos que total_tiendas sin que
+   * el modal explique por qué (ver bug detectado 2026-08-31: "4 exitosas, 0 con errores"
+   * con una 5ta tienda invisible que el badge "Reintentar ST" de la tabla sí mostraba). */
+  transferencias_pendientes_confirmacion?: number
   resultados: SolicitudTransferenciaResultado[]
   /** Lista para el modal: una entrada por ITR con DocNum y tienda (rellenado por backend) */
   itrs_por_tienda?: ItrPorTienda[]
@@ -1483,19 +1613,26 @@ export interface TienePedidosResponse {
   message: string
 }
 
+/** Columna de fecha sobre la que aplica fecha_desde/fecha_hasta (default: 'pedido') */
+export type TipoFechaFiltro = 'pedido' | 'creacion' | 'modificacion' | 'entrega' | 'facturacion'
+
 export interface PedidosListadoFiltros {
   estado?: string
   fecha_desde?: string
   fecha_hasta?: string
+  tipo_fecha?: TipoFechaFiltro
   proveedor_nombre?: string
   numero_pedido?: string
   creado_por?: string
+  modificado_por?: string
   limit?: number
   offset?: number
   /** Si true, excluye BORRADOR, NUEVO PEDIDO, GESTIONAR PEDIDO y CANCELADO (solo muestra estado_id >= 4 y != 19) */
   solo_redistribucion?: boolean
   /** Si true, solo pedidos que requieren acción del proveedor (paginado en servidor) */
   solo_pendientes_accion?: boolean
+  /** Si true, restringe a NUEVO_PEDIDO/GESTIONAR_PEDIDO (pantalla Producción El Rayo, req. 1.8) */
+  solo_produccion_elrayo?: boolean
 }
 
 // ========== Estados de Pedido (dropdown dinámico) ==========
@@ -1511,6 +1648,14 @@ export interface EstadoPedidoOption {
 export interface EstadosPedidoResponse {
   status: string
   data: EstadoPedidoOption[]
+}
+
+/** Respuesta de /api/pedidos/creadores y /api/pedidos/modificadores: lista de
+ * valores distintos de creado_por/modificado_por, para alimentar los <select>
+ * "Creado Por"/"Modificado Por" del contenedor "Filtros de Búsqueda". */
+export interface UsuariosPedidoResponse {
+  status: string
+  data: string[]
 }
 
 // ========== HU-08: Exportación de Pedidos a Formato MBA ==========
@@ -1567,7 +1712,7 @@ export interface InfoArchivoPlantilla {
   hash_md5?: string | null
   fecha_subida: string
   subido_por: string
-  descargas_count: number
+  descargas: number
   ultima_descarga?: string | null
 }
 
@@ -1633,18 +1778,19 @@ export interface ArchivoOriginalItem {
   hash_md5?: string | null
   fecha_subida: string
   subido_por: string
-  descargas_count: number
+  descargas: number
   ultima_descarga?: string | null
   activo: boolean
 }
 
 /**
- * Respuesta del endpoint GET /api/plantillas/archivos
+ * Respuesta del endpoint GET /api/plantillas/archivos (paginado offset/limit, mismo shape de
+ * metadata que PedidosListadoMetadata -- el backend puede incluir además storage_habilitado).
  */
 export interface ListadoArchivosOriginalesResponse {
   status: 'success'
   data: ArchivoOriginalItem[]
-  total: number
+  metadata: PedidosListadoMetadata
   message?: string
 }
 

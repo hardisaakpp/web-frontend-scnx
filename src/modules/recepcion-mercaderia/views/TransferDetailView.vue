@@ -4,11 +4,12 @@ import { useRoute, useRouter } from 'vue-router'
 import { usePickingStore } from '../stores/pickingStore'
 import { useAuthStore } from '@/stores/auth'
 import { APP_LOCALE } from '@/plugins/locale'
-import { ExclamationTriangleIcon, PencilIcon, DocumentArrowDownIcon, TrashIcon, ArrowLeftIcon } from '@heroicons/vue/24/outline'
+import { PencilIcon, ArrowDownTrayIcon, TrashIcon, ArrowLeftIcon } from '@heroicons/vue/24/outline'
 import type { ReceptionLine } from '../types'
 import { triggerBlobDownload } from '../utils/downloadBlob'
 import { statusMeta } from '../utils/statusMeta'
 import ErrorDialog from '../components/ErrorDialog.vue'
+import ConfirmDialog from '../components/ConfirmDialog.vue'
 
 function buildScanFeedback(result: { matchedLine: ReceptionLine | null; fillAmount: number; excess: number }): string {
   if (!result.matchedLine) {
@@ -83,9 +84,10 @@ watch(
 // Two coexisting input paths per legacy recP.php parity:
 // - Lines WITH a barcode: driven exclusively by the barcode-scanner input below (handleBarcodeScan).
 //   Their "Escaneados" cell is a read-only display of line.scanned, not an editable draft.
-// - Lines WITHOUT a barcode (barcode === null): no scanner input can address them, so they keep
-//   the manual editable quantity input (scanQuantities) as a fallback, submitted via the
-//   "Guardar escaneo" batch button (handleScan) exactly as before.
+// - Lines WITHOUT a barcode (falsy: null or '', matching the barcode-cell display below) — no
+//   scanner input can address them, so they keep the manual editable quantity input
+//   (scanQuantities) as a fallback, submitted via the "Guardar escaneo" batch button (handleScan)
+//   exactly as before.
 const scanQuantities = ref<Record<number, number>>({})
 const scanResponsibleName = ref('')
 const scanCourierWaybill = ref('')
@@ -136,12 +138,11 @@ watch(
 
 async function handleScan(): Promise<void> {
   if (!store.currentTransfer) return
-  const scans = store.currentTransfer.lines
+  const entries = store.currentTransfer.lines
     .filter((l) => scanQuantities.value[l.lineId] !== l.scanned)
-    .map((l) => ({ lineId: l.lineId, scannedQuantity: scanQuantities.value[l.lineId] }))
-  if (scans.length === 0) return
-  await store.scan({
-    scans,
+    .map((l) => ({ lineId: l.lineId, enteredQuantity: scanQuantities.value[l.lineId] }))
+  if (entries.length === 0) return
+  await store.scanManual(entries, {
     responsibleName: scanResponsibleName.value || null,
     courierWaybillNumber: scanCourierWaybill.value || null,
   })
@@ -151,11 +152,6 @@ async function handleScan(): Promise<void> {
 async function handleConfirm(): Promise<void> {
   await store.confirm({})
 }
-
-const hasIncompleteLines = computed(() => {
-  if (!store.currentTransfer) return false
-  return store.currentTransfer.lines.some((l) => l.scanned < l.quantity)
-})
 
 // Confirm/scan/recordDifference failures shown as a dismissible modal instead of an inline banner
 // above the table — same request as legacy's receive-confirmation pattern (ConfirmDialog), just
@@ -167,9 +163,12 @@ const pickingErrorMessage = computed(() => store.sapErrorMessage ?? store.action
 
 // Forced-recount gate (parity with legacy recP.php's crearTransferencia()): the first "Confirmar
 // parcial" attempt on a transfer with any line still short of its requested quantity blocks,
-// resets that line's scan input to 0, and forces the user to recount/re-scan before a second
-// attempt is allowed through. The second attempt proceeds regardless of whether the user actually
+// resets that line's scan input to 0, and opens a modal so the user can either go back and
+// re-scan or confirm the partial reception right from there. A second attempt — from the modal or
+// from the "Confirmar parcial" button itself — proceeds regardless of whether the user actually
 // re-scanned anything — that's the legacy behavior being replicated, not a shortcut taken here.
+const showRecountDialog = ref(false)
+
 async function handleConfirmPartial(): Promise<void> {
   if (!store.currentTransfer) return
   const incompleteLines = store.currentTransfer.lines.filter((l) => l.scanned < l.quantity)
@@ -179,13 +178,20 @@ async function handleConfirmPartial(): Promise<void> {
     for (const line of incompleteLines) {
       scanQuantities.value[line.lineId] = 0
     }
+    showRecountDialog.value = true
     return
   }
   await store.confirm({ allowPartial: true })
 }
 
+async function confirmPartialFromRecountDialog(): Promise<void> {
+  showRecountDialog.value = false
+  await store.confirm({ allowPartial: true })
+}
+
 interface DifferenceGroup {
-  barcode: string
+  barcode: string | null
+  lineId: number | null
   productDescription: string | null
   count: number
   scannedAtUtc: string
@@ -193,19 +199,24 @@ interface DifferenceGroup {
 }
 
 // Display-only grouping: the backend still persists one difference row per scanned unit (see
-// scanBarcode in pickingStore.ts) so no audit granularity is lost — this just collapses repeat
-// scans of the same barcode into one row with a count, instead of one row per unit.
+// scanBarcode/scanManual in pickingStore.ts) so no audit granularity is lost — this just collapses
+// repeat scans of the same barcode (or the same manual line) into one row with a count, instead of
+// one row per unit. Grouped by `barcode ?? line-${lineId}` rather than bare barcode: a manual
+// (lineId-identified) difference always has barcode: null, so grouping by barcode alone would
+// collapse every different manual item into a single row.
 const groupedDifferences = computed<DifferenceGroup[]>(() => {
   const groups = new Map<string, DifferenceGroup>()
   for (const d of store.differences) {
-    const group = groups.get(d.barcode)
+    const key = d.barcode ?? `line-${d.lineId}`
+    const group = groups.get(key)
     if (group) {
       group.count += 1
       group.differenceIds.push(d.differenceId)
       if (d.scannedAtUtc > group.scannedAtUtc) group.scannedAtUtc = d.scannedAtUtc
     } else {
-      groups.set(d.barcode, {
+      groups.set(key, {
         barcode: d.barcode,
+        lineId: d.lineId,
         productDescription: d.productDescription,
         count: 1,
         scannedAtUtc: d.scannedAtUtc,
@@ -310,9 +321,19 @@ async function handleDownloadPickingReport(): Promise<void> {
                 <span :class="[statusMeta(store.currentTransfer.status).classes, 'inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold border uppercase tracking-wider']">
                   {{ statusMeta(store.currentTransfer.status).label }}
                 </span>
+                <!-- SAP confirm queued, not resolved inline yet — transient (a background job
+                     retries every 5 min), not an error. Driven by pendingSapJobQueuedAtUtc from the
+                     transfer itself (not the one-off confirm response) so it survives a reload. -->
+                <span
+                  v-if="store.currentTransfer.pendingSapJobQueuedAtUtc"
+                  data-testid="pending-sap-job-badge"
+                  class="inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold border uppercase tracking-wider bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800"
+                >
+                  Procesando en SAP
+                </span>
               </div>
               <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                Basado en transferencia {{ store.currentTransfer.documentNumber }}. {{ store.currentTransfer.originWarehouseCode }} a {{ store.currentTransfer.destinationWarehouseCode }}
+                Basado en transferencia {{ store.currentTransfer.documentNumber }}. {{ store.currentTransfer.transitWarehouseCode ?? store.currentTransfer.originWarehouseCode }} a {{ store.currentTransfer.destinationWarehouseCode }}
               </p>
             </div>
           </div>
@@ -348,17 +369,18 @@ async function handleDownloadPickingReport(): Promise<void> {
           </div>
         </div>
 
-        <!-- Forced-recount notice: shown after a blocked partial-confirm attempt, until the
-             incomplete lines are re-scanned and confirmed again. -->
-        <div
-          v-if="store.hasRecounted && hasIncompleteLines"
-          data-testid="recount-warning"
-          role="alert"
-          class="py-4 text-sm text-amber-700 dark:text-amber-500 bg-amber-50 dark:bg-amber-900/10 rounded-lg px-4 border border-amber-200 dark:border-amber-900/30 flex items-start gap-3"
-        >
-          <ExclamationTriangleIcon class="w-6 h-6 text-amber-500 shrink-0" />
-          <p>Es necesario recontar los ítems con diferencias para proceder con la confirmación parcial. Volvé a escanear las líneas marcadas y confirmá nuevamente.</p>
-        </div>
+        <!-- Forced-recount dialog: opened after a blocked partial-confirm attempt. Lets the user
+             either close it to re-scan the marked lines, or confirm the partial reception directly
+             from here. -->
+        <ConfirmDialog
+          :open="showRecountDialog"
+          title="Confirmación parcial"
+          message="Es necesario volver a contar los ítems con diferencias antes de confirmar parcialmente. Vuelva a escanear las líneas marcadas o confirme la recepción directamente desde aquí."
+          confirm-label="Confirmar parcial"
+          cancel-label="Volver a escanear"
+          @confirm="confirmPartialFromRecountDialog"
+          @cancel="showRecountDialog = false"
+        />
 
         <!-- Lines table: real backend model is "pick an existing line, submit its new absolute
              scanned total" (ScanLineRequest/ApplyScan) — no free-typed item code. When the user
@@ -382,7 +404,7 @@ async function handleDownloadPickingReport(): Promise<void> {
                 v-model="scanBarcodeInput"
                 type="text"
                 autofocus
-                placeholder="Escaneá o ingresá el código"
+                placeholder="Escanee o ingrese el código"
                 class="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-1.5 text-sm text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-600 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
                 @keyup.enter.prevent="handleBarcodeScan"
               />
@@ -444,8 +466,10 @@ async function handleDownloadPickingReport(): Promise<void> {
                   <td class="px-3 py-1 text-center text-sm">
                     <!-- Manual fallback: only for lines with NO barcode — the scanner input above
                          can't address them. Lines that DO have a barcode are read-only here; their
-                         scanned total comes exclusively from handleBarcodeScan. -->
-                    <div v-if="canScan && line.barcode === null" class="flex flex-col items-center gap-0.5">
+                         scanned total comes exclusively from handleBarcodeScan. Falsy check (not
+                         `=== null`) to match the barcode-cell display just above: the backend can
+                         send either null or '' for "no barcode", and both must show the manual input. -->
+                    <div v-if="canScan && !line.barcode" class="flex flex-col items-center gap-1">
                       <label :for="`scan-quantity-input-${line.lineId}`" class="sr-only">Cantidad escaneada</label>
                       <input
                         :id="`scan-quantity-input-${line.lineId}`"
@@ -453,10 +477,12 @@ async function handleDownloadPickingReport(): Promise<void> {
                         v-model.number="scanQuantities[line.lineId]"
                         type="number"
                         min="0"
-                        :max="line.quantity"
-                        class="w-16 text-center rounded-md border border-amber-300 dark:border-amber-800 bg-gray-50 dark:bg-gray-900 px-2 py-0.5 text-sm font-semibold text-blue-600 dark:text-blue-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                        class="w-16 text-center rounded-lg border border-indigo-200 dark:border-indigo-800 bg-indigo-50/60 dark:bg-indigo-950/30 px-2 py-1 text-sm font-semibold text-indigo-700 dark:text-indigo-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
                       />
-                      <span class="text-[9px] text-amber-600 dark:text-amber-400">Sin código — carga manual</span>
+                      <span class="inline-flex items-center gap-1 text-[9px] font-medium text-indigo-500 dark:text-indigo-400">
+                        <PencilSquareIcon class="w-2.5 h-2.5" />
+                        Carga manual
+                      </span>
                     </div>
                     <span v-else class="font-semibold text-blue-600 dark:text-blue-400">{{ line.scanned }}</span>
                   </td>
@@ -519,8 +545,8 @@ async function handleDownloadPickingReport(): Promise<void> {
                 </tr>
               </thead>
               <tbody class="divide-y divide-gray-200 dark:divide-gray-700 bg-white dark:bg-gray-800">
-                <tr v-for="group in groupedDifferences" :key="group.barcode" class="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
-                  <td class="px-3 py-1 text-sm font-medium text-gray-900 dark:text-white">{{ group.barcode }}</td>
+                <tr v-for="group in groupedDifferences" :key="group.barcode ?? `line-${group.lineId}`" class="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
+                  <td class="px-3 py-1 text-sm font-medium text-gray-900 dark:text-white">{{ group.barcode ?? 'Manual (sin código)' }}</td>
                   <td class="px-3 py-1 text-xs text-gray-600 dark:text-gray-300">{{ group.productDescription ?? '—' }}</td>
                   <td class="px-3 py-1 text-center text-sm font-semibold text-gray-900 dark:text-white">{{ group.count }}</td>
                   <td class="px-3 py-1 text-xs text-gray-600 dark:text-gray-300">{{ formatDateTime(group.scannedAtUtc) }}</td>
@@ -566,19 +592,19 @@ async function handleDownloadPickingReport(): Promise<void> {
           <button
             type="button"
             data-testid="download-report-btn"
-            class="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-600 dark:hover:bg-gray-700 transition-colors shadow-sm"
+            class="inline-flex items-center justify-center gap-2 h-10 px-4 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-sm transition-all disabled:opacity-60 disabled:cursor-not-allowed"
             @click="handleDownloadReport"
           >
-            <DocumentArrowDownIcon class="w-4 h-4" />
+            <ArrowDownTrayIcon class="w-4 h-4" />
             Descargar reporte de diferencias
           </button>
           <button
             type="button"
             data-testid="download-picking-report-btn"
-            class="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-600 dark:hover:bg-gray-700 transition-colors shadow-sm"
+            class="inline-flex items-center justify-center gap-2 h-10 px-4 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-sm transition-all disabled:opacity-60 disabled:cursor-not-allowed"
             @click="handleDownloadPickingReport"
           >
-            <DocumentArrowDownIcon class="w-4 h-4" />
+            <ArrowDownTrayIcon class="w-4 h-4" />
             Exportar Picking
           </button>
         </div>

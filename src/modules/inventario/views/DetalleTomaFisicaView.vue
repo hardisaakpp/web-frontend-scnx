@@ -34,7 +34,7 @@
 
     <template v-if="stats">
       <!-- Stat cards -->
-      <div class="grid grid-cols-2 sm:grid-cols-5 gap-3 mb-5">
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
         <!-- Consolidado: download-only -->
         <button
           type="button"
@@ -108,16 +108,16 @@
             <table class="min-w-full divide-y divide-gray-100 dark:divide-gray-700 text-sm">
               <thead class="bg-gray-50 dark:bg-gray-900/50 sticky top-0">
                 <tr>
-                  <th class="th">Nivel 1</th>
-                  <th class="th">Nivel 2</th>
-                  <th class="th">Nivel 3</th>
-                  <th class="th">Familia</th>
-                  <th class="th">Cód. Barras</th>
-                  <th class="th">Item Code</th>
-                  <th class="th">Descripción</th>
-                  <th class="th text-right">Stock</th>
-                  <th class="th text-right">Scan</th>
-                  <th class="th text-right">Diferencia</th>
+                  <th class="th cursor-pointer select-none" @click="toggleSort('nivel1')">Nivel 1{{ sortIndicator('nivel1') }}</th>
+                  <th class="th cursor-pointer select-none" @click="toggleSort('nivel2')">Nivel 2{{ sortIndicator('nivel2') }}</th>
+                  <th class="th cursor-pointer select-none" @click="toggleSort('nivel3')">Nivel 3{{ sortIndicator('nivel3') }}</th>
+                  <th class="th cursor-pointer select-none" @click="toggleSort('familia')">Género{{ sortIndicator('familia') }}</th>
+                  <th class="th cursor-pointer select-none" @click="toggleSort('barcode')">Cód. Barras{{ sortIndicator('barcode') }}</th>
+                  <th class="th cursor-pointer select-none" @click="toggleSort('itemCode')">Item Code{{ sortIndicator('itemCode') }}</th>
+                  <th class="th cursor-pointer select-none" @click="toggleSort('description')">Descripción{{ sortIndicator('description') }}</th>
+                  <th class="th text-right cursor-pointer select-none" @click="toggleSort('systemQuantity')">Stock{{ sortIndicator('systemQuantity') }}</th>
+                  <th class="th text-right cursor-pointer select-none" @click="toggleSort('countedQuantity')">Scan{{ sortIndicator('countedQuantity') }}</th>
+                  <th class="th text-right cursor-pointer select-none" @click="toggleSort('difference')">Diferencia{{ sortIndicator('difference') }}</th>
                 </tr>
               </thead>
               <tbody class="divide-y divide-gray-50 dark:divide-gray-700/50">
@@ -138,7 +138,13 @@
                   <td class="td font-mono text-xs font-semibold">{{ row.itemCode }}</td>
                   <td class="td max-w-xs truncate">{{ row.description ?? '—' }}</td>
                   <td class="td text-right font-mono">{{ fmtQty(row.systemQuantity) }}</td>
-                  <td class="td text-right font-mono" :class="row.countedQuantity > 0 ? 'text-blue-600 dark:text-blue-400' : 'text-gray-400'">{{ fmtQty(row.countedQuantity) }}</td>
+                  <td class="td text-right font-mono whitespace-nowrap" :class="row.countedQuantity > 0 ? 'text-blue-600 dark:text-blue-400' : 'text-gray-400'">
+                    <span
+                      v-if="row.notCounted"
+                      class="mr-1.5 inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-sans font-semibold uppercase tracking-wide bg-gray-200 text-gray-600 dark:bg-gray-700 dark:text-gray-300"
+                      title="Nadie registró esta referencia: se toma como faltante completo"
+                    >Sin conteo</span>{{ fmtQty(row.countedQuantity) }}
+                  </td>
                   <td class="td text-right font-mono font-semibold" :class="diffClass(row.difference)">
                     {{ row.difference === 0 ? '—' : (row.difference > 0 ? '+' : '') + fmtQty(row.difference) }}
                   </td>
@@ -215,7 +221,7 @@
             </thead>
             <tbody class="divide-y divide-gray-50 dark:divide-gray-700/50">
               <tr v-for="u in scansData.summary" :key="u.userId" class="hover:bg-gray-50 dark:hover:bg-gray-700/20">
-                <td class="td font-mono font-semibold">{{ u.userId }}</td>
+                <td class="td font-semibold">{{ userLabel(u.userId) }}</td>
                 <td class="td text-right">
                   <span class="inline-flex items-center justify-center rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 px-2.5 py-0.5 text-xs font-bold">{{ u.totalScans.toLocaleString() }}</span>
                 </td>
@@ -250,7 +256,7 @@
               <tbody class="divide-y divide-gray-50 dark:divide-gray-700/50">
                 <tr v-for="(d, i) in pagedScanDetail" :key="i" class="hover:bg-gray-50 dark:hover:bg-gray-700/20">
                   <td class="td text-xs whitespace-nowrap text-gray-500 dark:text-gray-400">{{ fmtDt(d.scannedAt) }}</td>
-                  <td class="td font-mono text-xs font-semibold">{{ d.userId }}</td>
+                  <td class="td text-xs font-semibold">{{ userLabel(d.userId) }}</td>
                   <td class="td font-mono text-xs">{{ d.barcode ?? '—' }}</td>
                   <td class="td font-mono text-xs font-semibold">{{ d.itemCode }}</td>
                   <td class="td text-xs max-w-xs truncate">{{ d.description ?? '—' }}</td>
@@ -281,8 +287,9 @@ import { useRouter, useRoute } from 'vue-router'
 import { ChevronLeftIcon, ArrowPathIcon, ArrowDownTrayIcon, ShoppingCartIcon, ShieldExclamationIcon } from '@heroicons/vue/24/outline'
 import { inventarioSesionesService } from '../services/inventarioSesionesApi'
 import { useInventarioModulePermissions } from '../composables/useInventarioModulePermissions'
-import type { SessionDetailLineDto, SessionDetailStatsDto, SessionScansByUserDto } from '../types'
-import { APP_LOCALE } from '@/plugins/locale'
+import { resolveUserNames } from '@/utils/resolveUserNames'
+import { downloadExcel, type ExcelColumn } from '@/utils/exportExcel'
+import type { SessionDetailLineDto, SessionDetailStatsDto, SessionScansByUserDto, UserScanSummaryDto, UserScanDetailEntryDto } from '../types'
 
 const router = useRouter()
 const route = useRoute()
@@ -302,21 +309,45 @@ const loadingScans = ref(false)
 const scanTab = ref<'summary' | 'detail'>('summary')
 const scanSearch = ref('')
 const scanPage = ref(0)
+const userNames = ref<Record<string, string>>({})
 
-type FilterKey = 'Balanced' | 'Difference' | 'New' | 'NotCounted'
+function userLabel(userId: string): string {
+  return userNames.value[userId] || userId
+}
+
+type FilterKey = 'Balanced' | 'Difference' | 'New'
 const activeFilter = ref<FilterKey | null>(null)
 const search = ref('')
 const page = ref(0)
 const pageSize = ref(100)
 
-watch([activeFilter, search, pageSize], () => { page.value = 0 })
+type LineSortKey = 'nivel1' | 'nivel2' | 'nivel3' | 'familia' | 'barcode' | 'itemCode' | 'description' | 'systemQuantity' | 'countedQuantity' | 'difference'
+const sortKey = ref<LineSortKey>('itemCode')
+const sortDir = ref<'asc' | 'desc'>('asc')
+
+function toggleSort(key: LineSortKey) {
+  if (sortKey.value === key) {
+    sortDir.value = sortDir.value === 'asc' ? 'desc' : 'asc'
+  } else {
+    sortKey.value = key
+    sortDir.value = 'asc'
+  }
+}
+
+function sortIndicator(key: LineSortKey) {
+  if (sortKey.value !== key) return ''
+  return sortDir.value === 'asc' ? ' ▲' : ' ▼'
+}
+
+watch([activeFilter, search, pageSize, sortKey, sortDir], () => { page.value = 0 })
 watch(scanSearch, () => { scanPage.value = 0 })
 
 const FILTER_CARDS = computed(() => [
   { filter: 'Balanced' as FilterKey, label: 'Cerrados', count: stats.value?.balanced ?? 0, iconClass: 'text-green-500', numClass: 'text-green-600 dark:text-green-400' },
   { filter: 'Difference' as FilterKey, label: 'Diferencias', count: stats.value?.difference ?? 0, iconClass: 'text-red-500', numClass: 'text-red-600 dark:text-red-400' },
   { filter: 'New' as FilterKey, label: 'Otros Códigos', count: stats.value?.newItems ?? 0, iconClass: 'text-amber-500', numClass: 'text-amber-600 dark:text-amber-400' },
-  { filter: 'NotCounted' as FilterKey, label: 'No contados', count: stats.value?.notCounted ?? 0, iconClass: 'text-gray-400', numClass: 'text-gray-500 dark:text-gray-400' },
+  // "No contados" dejó de ser categoría: una referencia con stock que nadie contó es una Diferencia
+  // (faltante completo, se cobra en el ajuste), igual que en StoreControl; la fila lleva la marca "Sin conteo".
 ])
 
 const activeLabelShort = computed(() => FILTER_CARDS.value.find(c => c.filter === activeFilter.value)?.label ?? 'vista')
@@ -349,9 +380,22 @@ const filteredLines = computed(() => {
   )
 })
 
+const sortedLines = computed(() => {
+  const dir = sortDir.value === 'asc' ? 1 : -1
+  const key = sortKey.value
+  return [...filteredLines.value].sort((a, b) => {
+    const av = a[key] ?? (typeof a[key] === 'number' ? 0 : '')
+    const bv = b[key] ?? (typeof b[key] === 'number' ? 0 : '')
+    if (typeof av === 'string' || typeof bv === 'string') {
+      return String(av).localeCompare(String(bv)) * dir
+    }
+    return ((av as number) - (bv as number)) * dir
+  })
+})
+
 const totalPages = computed(() => Math.max(1, Math.ceil(filteredLines.value.length / pageSize.value)))
 const pageStart = computed(() => page.value * pageSize.value)
-const pagedLines = computed(() => filteredLines.value.slice(pageStart.value, pageStart.value + pageSize.value))
+const pagedLines = computed(() => sortedLines.value.slice(pageStart.value, pageStart.value + pageSize.value))
 
 const filteredScanDetail = computed(() => {
   if (!scansData.value) return []
@@ -359,6 +403,7 @@ const filteredScanDetail = computed(() => {
   if (!q) return scansData.value.detail
   return scansData.value.detail.filter(d =>
     d.userId.toLowerCase().includes(q) ||
+    userLabel(d.userId).toLowerCase().includes(q) ||
     d.itemCode.toLowerCase().includes(q) ||
     (d.barcode ?? '').toLowerCase().includes(q) ||
     (d.description ?? '').toLowerCase().includes(q)
@@ -374,8 +419,8 @@ function fmtQty(n: number): string {
 
 function fmtDt(v: string): string {
   const d = new Date(v)
-  return d.toLocaleDateString(APP_LOCALE, { day: '2-digit', month: '2-digit', year: '2-digit' }) +
-    ' ' + d.toLocaleTimeString(APP_LOCALE, { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+  return d.toLocaleDateString('es', { day: '2-digit', month: '2-digit', year: '2-digit' }) +
+    ' ' + d.toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
 }
 
 function rowClass(status: string): string {
@@ -383,7 +428,6 @@ function rowClass(status: string): string {
     Balanced: '',
     Difference: 'bg-red-50/40 dark:bg-red-900/5',
     New: 'bg-amber-50/40 dark:bg-amber-900/5',
-    NotCounted: 'opacity-50',
   }[status] ?? ''
 }
 
@@ -392,32 +436,42 @@ function diffClass(diff: number): string {
   return diff > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-red-600 dark:text-red-400'
 }
 
-function toCSV(headers: string[], rows: string[][]): string {
-  const escape = (v: string) => `"${v.replace(/"/g, '""')}"`
-  return '﻿' + [headers, ...rows].map(r => r.map(escape).join(',')).join('\r\n')
-}
+const LINE_COLUMNS: ExcelColumn<SessionDetailLineDto>[] = [
+  { header: 'Nivel1', key: r => r.nivel1 ?? '' },
+  { header: 'Nivel2', key: r => r.nivel2 ?? '' },
+  { header: 'Nivel3', key: r => r.nivel3 ?? '' },
+  { header: 'Género', key: r => r.familia ?? '' },
+  { header: 'CodigoBarras', key: r => r.barcode ?? '', text: true },
+  { header: 'ItemCode', key: 'itemCode', text: true },
+  { header: 'Descripcion', key: r => r.description ?? '' },
+  { header: 'Stock', key: 'systemQuantity' },
+  { header: 'Scan', key: 'countedQuantity' },
+  { header: 'Diferencia', key: 'difference' },
+  { header: 'Estado', key: 'status' },
+  { header: 'SinConteo', key: r => (r.notCounted ? 'SI' : '') },
+]
 
-function downloadCSV(filename: string, csv: string) {
-  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url; a.download = filename; a.click()
-  URL.revokeObjectURL(url)
-}
+const SCAN_SUMMARY_COLUMNS: ExcelColumn<UserScanSummaryDto>[] = [
+  { header: 'Usuario', key: u => userLabel(u.userId) },
+  { header: 'TotalScans', key: 'totalScans' },
+  { header: 'ArticulosUnicos', key: 'uniqueItems' },
+  { header: 'PrimerScan', key: u => fmtDt(u.firstScan) },
+  { header: 'UltimoScan', key: u => fmtDt(u.lastScan) },
+]
 
-function linesToCSVRows(rows: SessionDetailLineDto[]) {
-  return rows.map(r => [
-    r.nivel1 ?? '', r.nivel2 ?? '', r.nivel3 ?? '', r.familia ?? '',
-    r.barcode ?? '', r.itemCode, r.description ?? '',
-    String(r.systemQuantity), String(r.countedQuantity), String(r.difference), r.status
-  ])
-}
-
-const LINE_HEADERS = ['Nivel1', 'Nivel2', 'Nivel3', 'Familia', 'CodigoBarras', 'ItemCode', 'Descripcion', 'Stock', 'Scan', 'Diferencia', 'Estado']
+const SCAN_DETAIL_COLUMNS: ExcelColumn<UserScanDetailEntryDto>[] = [
+  { header: 'FechaScan', key: d => fmtDt(d.scannedAt) },
+  { header: 'Usuario', key: d => userLabel(d.userId) },
+  { header: 'CodigoBarras', key: d => d.barcode ?? '', text: true },
+  { header: 'ItemCode', key: 'itemCode', text: true },
+  { header: 'Descripcion', key: d => d.description ?? '' },
+  { header: 'Cantidad', key: 'quantity' },
+  { header: 'Grupo', key: d => d.nivel3 ?? '' },
+  { header: 'Ronda', key: 'round' },
+]
 
 function descargarFiltrado() {
-  const csv = toCSV(LINE_HEADERS, linesToCSVRows(filteredLines.value))
-  downloadCSV(`toma_${sessionId.slice(0, 8)}_${activeLabelShort.value.toLowerCase()}.csv`, csv)
+  downloadExcel(`toma_${sessionId.slice(0, 8)}_${activeLabelShort.value.toLowerCase()}.xlsx`, LINE_COLUMNS, sortedLines.value)
 }
 
 async function descargarConsolidado() {
@@ -425,8 +479,7 @@ async function descargarConsolidado() {
   error.value = null
   try {
     const allLines = await inventarioSesionesService.getDetailLines(sessionId)
-    const csv = toCSV(LINE_HEADERS, linesToCSVRows(allLines))
-    downloadCSV(`toma_${sessionId.slice(0, 8)}_consolidado.csv`, csv)
+    downloadExcel(`toma_${sessionId.slice(0, 8)}_consolidado.xlsx`, LINE_COLUMNS, allLines)
   } catch (e: any) {
     error.value = e.message ?? 'Error al descargar consolidado.'
   } finally {
@@ -437,17 +490,9 @@ async function descargarConsolidado() {
 function descargarScans() {
   if (!scansData.value) return
   if (scanTab.value === 'summary') {
-    const csv = toCSV(
-      ['Usuario', 'TotalScans', 'ArticulosUnicos', 'PrimerScan', 'UltimoScan'],
-      scansData.value.summary.map(u => [u.userId, String(u.totalScans), String(u.uniqueItems), fmtDt(u.firstScan), fmtDt(u.lastScan)])
-    )
-    downloadCSV(`toma_${sessionId.slice(0, 8)}_scans_resumen.csv`, csv)
+    downloadExcel(`toma_${sessionId.slice(0, 8)}_scans_resumen.xlsx`, SCAN_SUMMARY_COLUMNS, scansData.value.summary)
   } else {
-    const csv = toCSV(
-      ['FechaScan', 'Usuario', 'CodigoBarras', 'ItemCode', 'Descripcion', 'Cantidad', 'Grupo', 'Ronda'],
-      filteredScanDetail.value.map(d => [fmtDt(d.scannedAt), d.userId, d.barcode ?? '', d.itemCode, d.description ?? '', String(d.quantity), d.nivel3 ?? '', String(d.round)])
-    )
-    downloadCSV(`toma_${sessionId.slice(0, 8)}_scans_detalle.csv`, csv)
+    downloadExcel(`toma_${sessionId.slice(0, 8)}_scans_detalle.xlsx`, SCAN_DETAIL_COLUMNS, filteredScanDetail.value)
   }
 }
 
@@ -474,6 +519,13 @@ async function cargarScans() {
   loadingScans.value = true
   try {
     scansData.value = await inventarioSesionesService.getScansByUser(sessionId)
+    if (scansData.value) {
+      const ids = [
+        ...scansData.value.summary.map(u => u.userId),
+        ...scansData.value.detail.map(d => d.userId),
+      ]
+      userNames.value = await resolveUserNames(ids)
+    }
   } catch (e: any) {
     error.value = e.message ?? 'Error al cargar scans.'
   } finally {

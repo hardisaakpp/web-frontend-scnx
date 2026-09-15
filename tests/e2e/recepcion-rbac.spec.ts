@@ -1,69 +1,129 @@
 import { test, expect } from '@playwright/test'
-import { installRecepcionAuth, installHistoryMocks, installRecepcionApiTripwire, type MockHistoryRow } from './helpers/recepcionMocks'
+import {
+  installRecepcionAuth,
+  installHistoryMocks,
+  installPendingMocks,
+  type MockHistoryRow,
+  type MockPendingLine,
+} from './helpers/recepcionMocks'
 
 /**
  * E2E de control de acceso de Recepción de Mercadería:
- * - `history.viewall` ya no gatea una ruta separada: gatea, dentro de HistoryView.vue,
- *   la presencia del toggle "Mi almacén" / "Todas las tiendas" — UI-only per design.md, no
- *   es un boundary de seguridad server-side. La vieja ruta /historial/admin ahora es un
- *   redirect a /historial (compatibilidad de bookmarks/links viejos).
- * - Pending-transfers se muestra en estado deshabilitado ("Próximamente") mientras
- *   featureReadiness.pendingTransfersReady es false, sin disparar ningún llamado en vivo.
+ * - `history.view` y `history.viewall` son permisos independientes. Cualquiera de los dos permite
+ *   entrar a la ruta; `history.viewall` prioriza el historial consolidado cuando está presente.
+ * - Pending-transfers está en vivo (featureReadiness.pendingTransfersReady=true, ver
+ *   config/featureReadiness.ts) — el banner "Próximamente" es un kill switch manual que hoy no
+ *   se alcanza; ese estado degradado ya está cubierto a nivel unitario
+ *   (pendingStore.test.ts/PendingTransfersView.test.ts togglean el flag directamente).
  */
 
 const adminRows: MockHistoryRow[] = [
   { transferId: 1, documentNumber: 'DOC-100', warehouseCode: 'D001', materializedAtUtc: '2026-07-01T09:00:00Z', differencesCount: 0 },
 ]
 
-test.describe('Recepción — RBAC historial admin (history.viewall)', () => {
-  test('usuario sin history.viewall no ve el toggle "Todas las tiendas" en /historial', async ({ page }) => {
-    await installRecepcionAuth(page, {
-      roles: ['User'],
-      permissions: ['recepcion.history.view'], // tiene el permiso de historial de almacén, NO viewall
-    })
-    await installHistoryMocks(page, { rows: [], allRows: adminRows })
+test.describe('Recepción — RBAC de historial', () => {
+  test('solo history permite entrar y consulta únicamente el historial del propio almacén', async ({ page }) => {
+    await installRecepcionAuth(page, { roles: ['User'], permissions: ['recepcion.history.view'] })
+    const mocks = await installHistoryMocks(page, { rows: [], allRows: adminRows })
 
     await page.goto('/recepcion-mercaderia/historial')
 
     await expect(page.getByRole('heading', { name: /historial de recepciones/i })).toBeVisible()
-    await expect(page.getByTestId('mode-toggle-all')).toHaveCount(0)
-    await expect(page.getByTestId('mode-toggle-own')).toHaveCount(0)
-    await expect(page.getByTestId('export-csv-btn')).toHaveCount(0)
+    await expect(page.getByTestId('date-from-input')).toBeVisible()
+    await expect(page.getByTestId('date-to-input')).toBeVisible()
+    await expect(page.getByTestId('transfer-number-input')).toHaveCount(0)
+    await expect(page.getByTestId('export-csv-btn')).toBeVisible()
+    expect(mocks.getHistoryCalls()).toBe(1)
+    expect(mocks.getAllHistoryCalls()).toBe(0)
   })
 
-  test('el bookmark viejo /historial/admin redirige a /historial y el usuario con history.viewall ve el toggle y accede al historial global', async ({ page }) => {
+  test('solo historyAll permite entrar y consulta únicamente el historial ampliado', async ({ page }) => {
+    await installRecepcionAuth(page, { roles: ['User'], permissions: ['recepcion.history.viewall'] })
+    const mocks = await installHistoryMocks(page, { rows: [], allRows: adminRows })
+
+    await page.goto('/recepcion-mercaderia/historial')
+
+    await expect(page.getByRole('heading', { name: /historial de recepciones/i })).toBeVisible()
+    await expect(page.getByTestId('export-csv-btn')).toBeVisible()
+    expect(mocks.getHistoryCalls()).toBe(0)
+    expect(mocks.getAllHistoryCalls()).toBe(1)
+  })
+
+  test('ambos permisos priorizan el historial ampliado', async ({ page }) => {
     await installRecepcionAuth(page, {
       roles: ['User'],
-      permissions: ['recepcion.history.viewall'],
+      permissions: ['recepcion.history.view', 'recepcion.history.viewall'],
     })
+    const mocks = await installHistoryMocks(page, { rows: [], allRows: adminRows })
+
+    await page.goto('/recepcion-mercaderia/historial')
+
+    await expect(page.getByRole('heading', { name: /historial de recepciones/i })).toBeVisible()
+    expect(mocks.getHistoryCalls()).toBe(0)
+    expect(mocks.getAllHistoryCalls()).toBe(1)
+  })
+
+  test('ningún permiso redirige a forbidden sin consultar endpoints de historial', async ({ page }) => {
+    await installRecepcionAuth(page, { roles: ['User'], permissions: [] })
+    const mocks = await installHistoryMocks(page, { rows: [], allRows: adminRows })
+
+    await page.goto('/recepcion-mercaderia/historial')
+
+    await expect(page).toHaveURL(/\/forbidden$/)
+    expect(mocks.getHistoryCalls()).toBe(0)
+    expect(mocks.getAllHistoryCalls()).toBe(0)
+  })
+
+  test('el bookmark viejo /historial/admin redirige a /historial', async ({ page }) => {
+    await installRecepcionAuth(page, { roles: ['User'], permissions: ['recepcion.history.viewall'] })
     await installHistoryMocks(page, { rows: [], allRows: adminRows })
 
     await page.goto('/recepcion-mercaderia/historial/admin')
 
     await expect(page).toHaveURL(/\/recepcion-mercaderia\/historial$/)
-    await expect(page.getByTestId('mode-toggle-all')).toBeVisible()
 
-    await page.getByTestId('mode-toggle-all').click()
+    // La vista abre filtrando por "hoy" por defecto — ampliar el rango para ver el fixture (julio 2026).
+    await page.getByTestId('date-from-input').fill('2026-01-01')
+    await page.getByTestId('date-from-input').dispatchEvent('change')
+    await page.getByTestId('date-to-input').fill('2026-12-31')
+    await page.getByTestId('date-to-input').dispatchEvent('change')
 
-    await expect(page.getByRole('heading', { name: /historial global de recepciones/i })).toBeVisible()
     await expect(page.getByText('DOC-100')).toBeVisible()
   })
 })
 
-test.describe('Recepción — pending-transfers estado deshabilitado', () => {
-  test('vista pendientes se muestra bloqueada por SAP, sin acción de materializar y sin llamado en vivo', async ({ page }) => {
+const pendingLines: MockPendingLine[] = [
+  {
+    sapTransferRequestNumber: 'PT-900',
+    itemCode: 'SKU-900',
+    description: 'Producto pendiente E2E',
+    openQuantity: 8,
+    originWarehouseCode: 'CD01',
+    destinationWarehouseCode: 'D001',
+    sapBaseDocEntry: 1,
+    sapBaseLineNum: 0,
+    sapDocumentDate: '2026-08-01',
+  },
+]
+
+test.describe('Recepción — pending-transfers (vista en vivo)', () => {
+  test('usuario con permiso ve la lista de pendientes y puede iniciar la recepción de una línea', async ({ page }) => {
     await installRecepcionAuth(page, { permissions: ['recepcion.reception.view'] })
-    const tripwire = await installRecepcionApiTripwire(page)
+    const mocks = await installPendingMocks(page, { lines: pendingLines, materializedTransferId: 901 })
 
     await page.goto('/recepcion-mercaderia/pendientes')
 
-    await expect(page.getByRole('heading', { name: /transferencias pendientes/i })).toBeVisible()
-    await expect(page.getByRole('heading', { name: /próximamente/i })).toBeVisible()
-    await expect(page.getByText(/bloqueada por la integración con sap/i)).toBeVisible()
+    // Scoped a <main>: el shell de la app también renderiza un h1 con este mismo título de ruta.
+    await expect(page.getByRole('main').getByRole('heading', { name: /transferencias pendientes/i })).toBeVisible()
+    await expect(page.getByText('PT-900')).toBeVisible()
+    await expect(page.getByTestId('materialize-btn')).toBeVisible()
+    expect(mocks.getPendingCalls()).toBe(1)
 
-    await expect(page.getByTestId('materialize-btn')).toHaveCount(0)
+    await page.getByTestId('materialize-btn').click()
+    await page.getByTestId('confirm-dialog-confirm-btn').click()
 
-    // featureReadiness.pendingTransfersReady=false → fetchPending() retorna temprano; cero llamados reales.
-    expect(tripwire.getCallCount()).toBe(0)
+    // receive() materializa y navega al detalle de la nueva transferencia (en-curso/:id).
+    expect(mocks.getMaterializeCalls()).toBe(1)
+    await expect(page).toHaveURL(/\/recepcion-mercaderia\/en-curso\/901$/)
   })
 })

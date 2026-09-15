@@ -1,13 +1,13 @@
 <template>
   <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md border border-gray-200 dark:border-gray-700 overflow-hidden">
     <!-- Barra de pestañas -->
-    <div v-if="tabs.length > 0" class="flex border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50">
+    <div v-if="tabs.length > 0" class="flex overflow-x-auto border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50">
       <button
         v-for="(tab, index) in tabs"
         :key="tab.id"
         type="button"
         :disabled="disabled"
-        :class="[getTabClass(tab, index), 'px-5 py-3 text-sm font-medium flex items-center gap-2 min-w-0']"
+        :class="[getTabClass(tab, index), 'px-5 py-3 text-sm font-medium flex items-center gap-2 min-w-0 shrink-0']"
         @click="selectTab(tab.id)"
       >
         <span class="truncate">{{ tab.label }}</span>

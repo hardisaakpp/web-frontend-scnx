@@ -52,3 +52,22 @@ La app es en español y el formato de fechas/números **NO debe depender del nav
   (router con `meta.permissions`, servicio API, store opcional, vistas con validación de
   permisos, entrada en el menú de `src/layouts/MainLayout.vue`).
 - Aplicar **siempre** las convenciones de locale y permisos de arriba.
+
+### 5. Reutilización de componentes / eliminar duplicación
+
+- Antes de copiar-pegar un patrón de UI o lógica a un segundo archivo, o al encontrar
+  código ya duplicado en 2+ archivos: seguir el proceso obligatorio de
+  [`docs/FUNCIONALIDADES_ESTANDARIZADAS.md` §8](docs/FUNCIONALIDADES_ESTANDARIZADAS.md#8-reutilización-de-componentes-y-eliminación-segura-de-duplicación)
+  (leer el código real de todos los consumidores, no promediar variantes con
+  comportamiento distinto, nunca mezclar presentación con lógica de datos/permisos, rama
+  dedicada, verificar tipos antes y después, revisar cada diff a mano).
+- **`src/components/` ya está estandarizado por categoría** (`navegacion/`, `paginacion/`,
+  `feedback/`, `modales/`, `datos/` — ver §8.6 del documento de arriba) con un contrato
+  mínimo para componentes nuevos (TSDoc de cabecera, dark mode obligatorio, sintaxis de
+  tupla en `defineEmits`). **Antes de crear un componente de UI genérico dentro de un
+  módulo** (`src/modules/*/components/`), revisar primero si ya existe algo equivalente ahí
+  — y si el módulo en el que se está trabajando tiene un componente que resulta ser copia
+  (o casi copia) de uno de `src/components/`, es responsabilidad de quien toca ese código
+  migrarlo al compartido en vez de perpetuar la copia. El backlog de duplicados ya
+  detectados (por módulo, con nivel de riesgo) está en §8.7 del mismo documento — revisarlo
+  antes de asumir que un patrón es nuevo.

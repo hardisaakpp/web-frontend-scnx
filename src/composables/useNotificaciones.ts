@@ -20,6 +20,7 @@
 
 import { ref, type Ref } from '@vue/reactivity'
 import { onUnmounted } from '@vue/runtime-core'
+import { useRoute } from 'vue-router'
 import { useToast } from '@/composables/useToast'
 import { useAuthStore } from '@/stores/auth'
 import { MBA3_API_BASE_URL } from '@/config/apiBaseUrls'
@@ -93,7 +94,6 @@ function extractNotificationFromSSEData(data: Record<string, unknown>): SSENotif
 
 /** URL base de la API MBA3 (ruta relativa; el proxy de Vite/Nginx resuelve el host). */
 const API_BASE_URL = MBA3_API_BASE_URL
-const SSE_ENABLED = String(import.meta.env.VITE_ENABLE_NOTIFICACIONES_SSE ?? 'false').toLowerCase() === 'true'
 
 function getSSEStreamCandidates(baseUrl: string): string[] {
   const normalizedBase = baseUrl.replace(/\/+$/, '')
@@ -111,15 +111,42 @@ function getSSEStreamCandidates(baseUrl: string): string[] {
  */
 export const lastNotification: Ref<SSENotification | null> = ref(null)
 
+/**
+ * Contador global (a nivel de módulo) que se incrementa cada vez que el stream SSE
+ * reconecta después de haber estado desconectado. SSE no reenvía a un cliente que
+ * reconecta tarde los eventos emitidos mientras estaba desconectado (ej. una
+ * pestaña en segundo plano cuyo timer de reconexión fue pausado por el navegador);
+ * las vistas de listado pueden hacer watch() sobre esto para refrescar sus datos
+ * igual, sin depender de haber recibido ese evento puntual.
+ */
+export const reconnectedAfterGap: Ref<number> = ref(0)
+
 /** Intervalo de reconexión en milisegundos (5 segundos) */
 const RECONNECT_INTERVAL = 5000
 
-/** Máximo número de intentos de reconexión consecutivos */
-const MAX_RECONNECT_ATTEMPTS = 10
+/** Prefijo de ruta del módulo MBA3 Consultas. Las notificaciones SSE se entregan por
+ * permiso (odcsap.view/mabel.view/produccion-elrayo.view), no por módulo activo -- un
+ * usuario con esos permisos puede estar navegando en cualquier otro módulo (Pyg,
+ * Inventario, Caja Chica, etc.) cuando llega el evento, ya que la conexión SSE es
+ * única para toda la sesión (se abre una vez en MainLayout.vue, no se reabre/cierra
+ * al cambiar de módulo). El toast solo debe verse dentro de este módulo. */
+const MBA3_CONSULTAS_ROUTE_PREFIX = '/mba3-consultas'
+
+function estaEnModuloMba3Consultas(routePath: string): boolean {
+  return routePath === MBA3_CONSULTAS_ROUTE_PREFIX || routePath.startsWith(`${MBA3_CONSULTAS_ROUTE_PREFIX}/`)
+}
+
+/** Techo del backoff: nunca esperar más de 30s entre reintentos. No hay límite de
+ * intentos -- un backend caído (ej. reinicio del contenedor en desarrollo) no debe
+ * dejar al cliente sin reconectar nunca más; antes de este cambio, tras 10 intentos
+ * (~4.5 min acumulados) el composable se rendía para siempre y solo un F5 manual
+ * volvía a conectar. */
+const RECONNECT_MAX_DELAY_MS = 30000
 
 export function useNotificaciones() {
   const toast = useToast()
   const authStore = useAuthStore()
+  const route = useRoute()
 
   /** Estado de la conexión SSE */
   const isConnected = ref(false)
@@ -139,18 +166,15 @@ export function useNotificaciones() {
   /** Flag para indicar que se cerró intencionalmente */
   let intentionalClose = false
 
+  /** true mientras se está reintentando tras una desconexión no intencional -- evita
+   * repetir el toast de aviso en cada intento y dispara el de "reconectado" una sola vez */
+  let disconnectWarningShown = false
+
   /**
    * Inicia la conexión SSE con el backend.
    * Se reconecta automáticamente si la conexión se pierde.
    */
   async function connect() {
-    if (!SSE_ENABLED) {
-      if (import.meta.env.DEV) {
-        console.info('📢 [Notificaciones] SSE deshabilitado por VITE_ENABLE_NOTIFICACIONES_SSE')
-      }
-      return
-    }
-
     const token = localStorage.getItem('token')
     if (!token) {
       if (import.meta.env.DEV) {
@@ -279,16 +303,28 @@ export function useNotificaciones() {
     }
   }
 
+  /** Cuerpo del caso 'connected' de handleSSEEvent, extraído para reducir su complejidad cognitiva. */
+  function handleSSEConnected(data: Record<string, unknown>) {
+    isConnected.value = true
+    if (disconnectWarningShown) {
+      disconnectWarningShown = false
+      if (estaEnModuloMba3Consultas(route.path)) {
+        toast.success('Notificaciones reconectadas', 'La conexión en tiempo real se restableció.')
+      }
+      reconnectedAfterGap.value++
+    }
+    if (import.meta.env.DEV) {
+      console.log('📢 [Notificaciones] Conectado al stream SSE:', data)
+    }
+  }
+
   /**
    * Procesa un evento SSE recibido.
    */
   function handleSSEEvent(eventType: string, data: Record<string, unknown>) {
     switch (eventType) {
       case 'connected':
-        isConnected.value = true
-        if (import.meta.env.DEV) {
-          console.log('📢 [Notificaciones] Conectado al stream SSE:', data)
-        }
+        handleSSEConnected(data)
         break
 
       case 'notification':
@@ -339,6 +375,13 @@ export function useNotificaciones() {
     // Actualizar ref global para que las vistas puedan reaccionar
     lastNotification.value = notification
 
+    if (!estaEnModuloMba3Consultas(route.path)) {
+      if (import.meta.env.DEV) {
+        console.debug('📢 [Notificaciones] Toast omitido (usuario fuera de mba3-consultas):', route.path)
+      }
+      return
+    }
+
     // Mostrar toast según el tipo
     const duration = notification.type === 'error' ? 10000 : 7000
 
@@ -360,26 +403,29 @@ export function useNotificaciones() {
   }
 
   /**
-   * Programa una reconexión automática con backoff exponencial limitado.
+   * Programa una reconexión automática con backoff exponencial hasta un techo, sin
+   * límite de intentos: mientras no se haya cerrado intencionalmente (logout), sigue
+   * reintentando para siempre cada RECONNECT_MAX_DELAY_MS como máximo.
    */
   function scheduleReconnect() {
     if (intentionalClose) return
 
-    if (reconnectAttempts.value >= MAX_RECONNECT_ATTEMPTS) {
-      if (import.meta.env.DEV) {
-        console.warn(
-          `📢 [Notificaciones] Máximo de ${MAX_RECONNECT_ATTEMPTS} intentos de reconexión alcanzado`
+    if (!disconnectWarningShown) {
+      disconnectWarningShown = true
+      if (estaEnModuloMba3Consultas(route.path)) {
+        toast.warning(
+          'Notificaciones desconectadas',
+          'Se perdió la conexión en tiempo real. Reintentando automáticamente...'
         )
       }
-      return
     }
 
     reconnectAttempts.value++
-    const delay = Math.min(RECONNECT_INTERVAL * reconnectAttempts.value, 30000) // Max 30s
+    const delay = Math.min(RECONNECT_INTERVAL * reconnectAttempts.value, RECONNECT_MAX_DELAY_MS)
 
     if (import.meta.env.DEV) {
       console.log(
-        `📢 [Notificaciones] Reconectando en ${delay / 1000}s (intento ${reconnectAttempts.value}/${MAX_RECONNECT_ATTEMPTS})`
+        `📢 [Notificaciones] Reconectando en ${delay / 1000}s (intento ${reconnectAttempts.value})`
       )
     }
 
@@ -424,9 +470,37 @@ export function useNotificaciones() {
     }
   }
 
+  /**
+   * Fuerza una reconexión inmediata (saltándose el timer de backoff) si no estamos
+   * conectados. Los navegadores throttlean los setTimeout de pestañas en segundo plano
+   * (a veces varios minutos) -- sin esto, una laptop que se durmió o una pestaña
+   * minimizada puede tardar mucho más que el backoff normal en reconectar, aun con
+   * reintentos infinitos.
+   */
+  function reconnectAhoraSiNecesario() {
+    if (intentionalClose || isConnected.value) return
+
+    if (reconnectTimer) {
+      clearTimeout(reconnectTimer)
+      reconnectTimer = null
+    }
+    void connect()
+  }
+
+  function handleVisibilityChange() {
+    if (document.visibilityState === 'visible') {
+      reconnectAhoraSiNecesario()
+    }
+  }
+
+  document.addEventListener('visibilitychange', handleVisibilityChange)
+  window.addEventListener('focus', reconnectAhoraSiNecesario)
+
   // Cleanup al desmontar el componente
   onUnmounted(() => {
     disconnect()
+    document.removeEventListener('visibilitychange', handleVisibilityChange)
+    window.removeEventListener('focus', reconnectAhoraSiNecesario)
   })
 
   return {

@@ -20,9 +20,13 @@ export const useOrdenesCompraStore = defineStore('mba3OrdenesCompra', () => {
   const totalPendientes = ref(0)
   const totalEnviadas = ref(0)
   const totalErrores = ref(0)
+  /** Total real (todas las páginas) de ODCs con "Reintentar" o "Reintentar ST" disponible.
+   * A diferencia de un conteo sobre `ordenesCompra` (solo la página cargada), este viene del
+   * backend vía `solo_pendiente_reintento`, así que no depende de qué página esté visible. */
+  const totalPendientesReintento = ref(0)
 
   const count = computed(() => ordenesCompra.value.length)
-  
+
   // Usar los totales para las estadísticas del dashboard
   const pendientes = computed(() => totalPendientes.value)
   const enviadas = computed(() => totalEnviadas.value)
@@ -37,15 +41,17 @@ export const useOrdenesCompraStore = defineStore('mba3OrdenesCompra', () => {
     try {
       // Obtener conteos por estado usando llamadas con paginación para obtener el total
       // Hacemos llamadas con pageSize=1 solo para obtener el metadata.total
-      const [pendientesRes, enviadasRes, erroresRes] = await Promise.all([
+      const [pendientesRes, enviadasRes, erroresRes, pendientesReintentoRes] = await Promise.all([
         mba3ConsultasService.getOrdenesCompra('PENDIENTE', 1, 1).catch(() => ({ data: [], total: 0, metadata: { count: 0, total: 0 } })),
         mba3ConsultasService.getOrdenesCompra('ENVIADA', 1, 1).catch(() => ({ data: [], total: 0, metadata: { count: 0, total: 0 } })),
-        mba3ConsultasService.getOrdenesCompra('ERROR', 1, 1).catch(() => ({ data: [], total: 0, metadata: { count: 0, total: 0 } }))
+        mba3ConsultasService.getOrdenesCompra('ERROR', 1, 1).catch(() => ({ data: [], total: 0, metadata: { count: 0, total: 0 } })),
+        mba3ConsultasService.getOrdenesCompra(undefined, 1, 1, { solo_pendiente_reintento: true }).catch(() => ({ data: [], total: 0, metadata: { count: 0, total: 0 } }))
       ])
-      
+
       totalPendientes.value = pendientesRes.total ?? pendientesRes.metadata?.total ?? 0
       totalEnviadas.value = enviadasRes.total ?? enviadasRes.metadata?.total ?? 0
       totalErrores.value = erroresRes.total ?? erroresRes.metadata?.total ?? 0
+      totalPendientesReintento.value = pendientesReintentoRes.total ?? pendientesReintentoRes.metadata?.total ?? 0
     } catch (err) {
       console.error('Error fetching estadisticas:', err)
     }
@@ -110,6 +116,7 @@ export const useOrdenesCompraStore = defineStore('mba3OrdenesCompra', () => {
     pendientes,
     enviadas,
     errores,
+    totalPendientesReintento,
     total,
     currentPage,
     pageSize,

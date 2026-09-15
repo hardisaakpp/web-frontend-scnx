@@ -1,9 +1,17 @@
 import axios from 'axios'
 import { defineStore } from 'pinia'
-import { articuloService } from '../services/articuloService'
+import { articuloService, parsearErrorBlob } from '../services/articuloService'
 import type { Articulo, ArticuloFilters, ArticuloPagination } from '../types'
 
 const SEARCH_DEBOUNCE_MS = 350
+
+// Error estructurado del reporte diario: conserva el status HTTP para que la
+// vista adapte la severidad del toast (404 = "sin datos" no es lo mismo que
+// un 500 real) en vez de mostrar siempre una notificación de error genérica.
+export interface ReporteDiarioError {
+    status?: number
+    message: string
+}
 
 interface ArticuloState {
     articulos: Articulo[]
@@ -98,7 +106,12 @@ export const useArticuloStore = defineStore('articuloMaestro', {
                 await articuloService.descargarReporteDiario(fecha)
                 return true
             } catch (err: any) {
-                throw err.response?.data?.detail || 'Error al descargar el reporte diario'
+                const mensaje = await parsearErrorBlob(err)
+                const error: ReporteDiarioError = {
+                    status: err?.response?.status,
+                    message: mensaje
+                }
+                throw error
             }
         }
     }

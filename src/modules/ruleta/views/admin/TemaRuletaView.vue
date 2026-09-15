@@ -2,7 +2,7 @@
 import { computed } from 'vue'
 import { useTemaStore, TEMA_DEFECTO } from '../../stores/temaStore'
 import RuletaWheel from '../../components/RuletaWheel.vue'
-import VolverButton from '@/components/VolverButton.vue'
+import VolverButton from '@/components/navegacion/VolverButton.vue'
 import type { SegmentoRuleta } from '../../types'
 
 const temaStore = useTemaStore()

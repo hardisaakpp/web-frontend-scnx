@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import recepcionApi from '../services/recepcionApi'
+import { backendErrorMessage } from '../utils/apiErrorMapper'
 import type {
   ConfirmTransferRequest,
   Difference,
@@ -9,10 +10,11 @@ import type {
   ReceptionTransfer,
   RecordDifferenceRequest,
   SaveScanProgressRequest,
+  ScanLineRequest,
 } from '../types'
 
 const SAP_ERROR_MESSAGE =
-  'No se pudo integrar la transferencia a SAP. Los escaneos se guardaron; reintentá cuando el servicio esté disponible.'
+  'No se pudo integrar la transferencia a SAP. Los escaneos se guardaron; vuelva a intentarlo cuando el servicio esté disponible.'
 
 /**
  * KNOWN LIMITATION: this treats ANY HTTP 500 from confirm() as the benign "SAP integration not
@@ -32,39 +34,18 @@ function isSapFiveHundred(err: unknown): boolean {
 }
 
 /**
- * Two distinct backend error shapes reach here: ReceptionExceptionHandler.cs's generic unhandled-
- * exception replies { error: message } (real/actionable for 400/403/404; always the same
- * non-actionable "An unexpected error occurred." for a 500, so that case falls back below instead
- * of parroting the generic English string). But confirm() specifically can also return 422 with
- * ConfirmReceptionTransferResult's own shape { success, sapDocEntry, sapDocNum, message } — e.g.
- * the real SAP/middleware rejection detail (ConfirmReceptionTransferCommand ->
- * MiddlewareSapHttpClient's StockTransferResult.Message). Check both field names, error takes
- * precedence since the exception-handler shape is more common across this store's other actions.
- */
-function backendErrorMessage(err: unknown, fallback: string): string {
-  const response = (err as { response?: { status?: number; data?: { error?: unknown; message?: unknown } } })?.response
-  if (response?.status === 500) return fallback
-  const message = response?.data?.error ?? response?.data?.message
-  return typeof message === 'string' && message.trim() !== '' ? message : fallback
-}
-
-/**
- * In-progress list, transfer detail/scan/confirm/differences/GLPI/report. confirm()'s SAP step
- * goes through api-middleware-sap's /stock-transfers/based-on-document — see confirm() below.
+ * Transfer detail: scan/confirm/differences/GLPI/report. confirm()'s SAP step goes through
+ * api-middleware-sap's /stock-transfers/based-on-document — see confirm() below. The "En Curso"
+ * list (fetch/paginate) used to live here too; it's now inProgressStore.ts — a distinct concern
+ * consumed only by InProgressView.vue, split out per the module's SOLID/SRP audit.
  */
 export const usePickingStore = defineStore('recepcionPicking', () => {
-  const transfers = ref<ReceptionTransfer[]>([])
-  // Real server-side pagination (verified InProgressTransfersController: pageNumber/pageSize
-  // only, NO filter query params — the view's search box can only filter the loaded page).
-  const page = ref(1)
-  const pageSize = ref(20)
-  const totalCount = ref(0)
   const currentTransfer = ref<ReceptionTransfer | null>(null)
   const status = ref<FlowStatus>('ready')
-  // Split by concern: fetchError covers the two read/load actions (fetchInProgress, fetchTransfer)
-  // and gates the inline "couldn't load" banner; actionError covers the 7 mutating actions taken on
-  // an already-loaded transfer and feeds the ErrorDialog modal alongside sapErrorMessage. Kept apart
-  // so a fetch failure can never accidentally pop the action-error modal (or vice versa).
+  // Split by concern: fetchError covers fetchTransfer and gates the inline "couldn't load" banner;
+  // actionError covers the 7 mutating actions taken on an already-loaded transfer and feeds the
+  // ErrorDialog modal alongside sapErrorMessage. Kept apart so a fetch failure can never
+  // accidentally pop the action-error modal (or vice versa).
   const fetchError = ref<string | null>(null)
   const actionError = ref<string | null>(null)
   const sapErrorMessage = ref<string | null>(null)
@@ -92,43 +73,6 @@ export const usePickingStore = defineStore('recepcionPicking', () => {
   /** Cantidad/Escaneados/Diferencia are computed client-side, never trusted from the API. */
   function lineDiferencia(line: ReceptionLine): number {
     return line.quantity - line.scanned
-  }
-
-  async function fetchInProgress(): Promise<void> {
-    status.value = 'loading'
-    fetchError.value = null
-    try {
-      const result = await recepcionApi.getInProgressTransfers({ pageNumber: page.value, pageSize: pageSize.value })
-      transfers.value = result.items
-      totalCount.value = result.totalCount
-      status.value = 'ready'
-    } catch (err) {
-      console.error('fetchInProgress failed', err)
-      fetchError.value = backendErrorMessage(err, 'No se pudo cargar la lista de transferencias en curso.')
-      status.value = 'error'
-    }
-  }
-
-  function setPage(newPage: number): void {
-    page.value = newPage
-    fetchInProgress()
-  }
-
-  function setPageSize(newSize: number): void {
-    pageSize.value = newSize
-    page.value = 1
-    fetchInProgress()
-  }
-
-  /**
-   * The store is a Pinia singleton and outlives InProgressView — without this, leaving the view
-   * on e.g. page 6 and coming back would silently re-fetch page 6 again instead of starting
-   * fresh, even though nothing on screen suggests the list remembers where you left it. Views
-   * should call this instead of fetchInProgress() directly in onMounted.
-   */
-  function resetInProgressAndFetch(): void {
-    page.value = 1
-    fetchInProgress()
   }
 
   async function fetchTransfer(transferId: number): Promise<void> {
@@ -231,8 +175,10 @@ export const usePickingStore = defineStore('recepcionPicking', () => {
     sapErrorMessage.value = null
     isSubmitting.value = true
     try {
-      // confirm's own response carries no usable transfer data (see recepcionApi.confirm) — the
-      // canonical post-confirm state comes from re-fetching, same as scan()/recordDifference().
+      // A 200 response here can still carry success:false with reason 'Queued'/'StillPending'
+      // (SAP confirm was queued, not an error) — not surfaced as a failure. The canonical
+      // post-confirm state, including whether a SAP job is still pending, comes from re-fetching
+      // (currentTransfer.pendingSapJobQueuedAtUtc), same as scan()/recordDifference().
       await recepcionApi.confirm(transferId, body)
       if (activeTransferId.value !== transferId) return
       const result = await recepcionApi.getTransfer(transferId)
@@ -342,6 +288,12 @@ export const usePickingStore = defineStore('recepcionPicking', () => {
     }
   }
 
+  async function recordDifferences(barcode: string, count: number): Promise<void> {
+    for (let i = 0; i < count; i++) {
+      await recordDifference({ barcode })
+    }
+  }
+
   /**
    * Matches legacy recP.php's procesarCodigo() mechanics (sc22, lines ~766-822): no match ->
    * unrecognized code, logged as a difference; match with room -> fill capped at the line's
@@ -361,32 +313,90 @@ export const usePickingStore = defineStore('recepcionPicking', () => {
   ): Promise<{ matchedLine: ReceptionLine | null; fillAmount: number; excess: number } | null> {
     if (!currentTransfer.value) return null
 
-    const line = currentTransfer.value.lines.find((l) => l.barcode === barcode) ?? null
+    const matchingLines = currentTransfer.value.lines.filter((l) => l.barcode === barcode)
+    const line = matchingLines.find((l) => l.scanned < l.quantity) ?? null
 
-    if (!line) {
-      for (let i = 0; i < enteredQty; i++) {
-        await recordDifference({ barcode })
-      }
+    if (matchingLines.length === 0) {
+      await recordDifferences(barcode, enteredQty)
       return { matchedLine: null, fillAmount: 0, excess: enteredQty }
     }
 
-    const available = Math.max(0, line.quantity - line.scanned)
-    const fillAmount = Math.min(enteredQty, available)
-    const excess = enteredQty - fillAmount
+    if (!line) {
+      await recordDifferences(barcode, enteredQty)
+      return { matchedLine: matchingLines[0], fillAmount: 0, excess: enteredQty }
+    }
 
-    if (fillAmount > 0) {
+    let remaining = enteredQty
+    const scans: ScanLineRequest[] = []
+    for (const matchingLine of matchingLines) {
+      const available = Math.max(0, matchingLine.quantity - matchingLine.scanned)
+      const allocated = Math.min(remaining, available)
+      if (allocated > 0) {
+        scans.push({ lineId: matchingLine.lineId, scannedQuantity: matchingLine.scanned + allocated })
+        remaining -= allocated
+      }
+      if (remaining === 0) break
+    }
+    const fillAmount = enteredQty - remaining
+    const excess = remaining
+
+    if (scans.length > 0) {
       await scan({
-        scans: [{ lineId: line.lineId, scannedQuantity: line.scanned + fillAmount }],
+        scans,
         responsibleName: options.responsibleName ?? null,
         courierWaybillNumber: options.courierWaybillNumber ?? null,
       })
     }
 
-    for (let i = 0; i < excess; i++) {
-      await recordDifference({ barcode })
-    }
+    await recordDifferences(barcode, excess)
 
     return { matchedLine: line, fillAmount, excess }
+  }
+
+  /**
+   * Manual-entry counterpart to scanBarcode, for lines with no barcode. The manual quantity input
+   * already holds an ABSOLUTE total (unlike scanBarcode's incremental enteredQty), so the math is
+   * simpler: cap each entry at the line's requested quantity and redirect the overflow to
+   * recordDifference, one call per excess unit (same "nothing silently dropped" decision as
+   * scanBarcode). Batches every changed line's capped fill into one scan() POST, matching the
+   * existing "Guardar escaneo" batch-save UX.
+   *
+   * @returns null (and does nothing) when there is no active transfer to scan against.
+   */
+  async function scanManual(
+    entries: { lineId: number; enteredQuantity: number }[],
+    options: { responsibleName?: string | null; courierWaybillNumber?: string | null } = {}
+  ): Promise<void> {
+    if (!currentTransfer.value) return
+    const lines = currentTransfer.value.lines
+
+    const scans: ScanLineRequest[] = []
+    const excessEntries: { lineId: number; excess: number }[] = []
+
+    for (const entry of entries) {
+      const line = lines.find((l) => l.lineId === entry.lineId)
+      if (!line) continue
+      const fillAmount = Math.min(entry.enteredQuantity, line.quantity)
+      const excess = entry.enteredQuantity - fillAmount
+      if (fillAmount !== line.scanned) {
+        scans.push({ lineId: line.lineId, scannedQuantity: fillAmount })
+      }
+      if (excess > 0) excessEntries.push({ lineId: line.lineId, excess })
+    }
+
+    if (scans.length > 0) {
+      await scan({
+        scans,
+        responsibleName: options.responsibleName ?? null,
+        courierWaybillNumber: options.courierWaybillNumber ?? null,
+      })
+    }
+
+    for (const { lineId, excess } of excessEntries) {
+      for (let i = 0; i < excess; i++) {
+        await recordDifference({ lineId })
+      }
+    }
   }
 
   async function downloadDifferencesReport(): Promise<Blob | null> {
@@ -420,10 +430,6 @@ export const usePickingStore = defineStore('recepcionPicking', () => {
   }
 
   return {
-    transfers,
-    page,
-    pageSize,
-    totalCount,
     currentTransfer,
     status,
     fetchError,
@@ -433,16 +439,13 @@ export const usePickingStore = defineStore('recepcionPicking', () => {
     isSubmitting,
     hasRecounted,
     lineDiferencia,
-    fetchInProgress,
-    resetInProgressAndFetch,
-    setPage,
-    setPageSize,
     fetchTransfer,
     scan,
     confirm,
     clearConfirmError,
     recordDifference,
     scanBarcode,
+    scanManual,
     deleteDifference,
     updateGlpiTicket,
     downloadDifferencesReport,

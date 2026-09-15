@@ -7,7 +7,7 @@ import { APP_LOCALE, NUMBER_LOCALE } from '@/plugins/locale'
 /**
  * Formatea una fecha o maneja valores especiales como "INMEDIATO"
  */
-export function formatDate(dateString: string | null): string {
+export function formatDate(dateString: string | null | undefined): string {
   if (!dateString) return 'N/A'
   
   // Manejar valores especiales que no son fechas (ej: "INMEDIATO", "INMEDIATA", etc.)
@@ -49,7 +49,7 @@ export function formatDate(dateString: string | null): string {
  * Formatea una fecha+hora (DATETIME) para mostrar fecha y hora.
  * Ideal para campos como creado_en que son timestamps del sistema.
  */
-export function formatDateTime(dateString: string | null): string {
+export function formatDateTime(dateString: string | null | undefined): string {
   if (!dateString) return 'N/A'
 
   try {
@@ -162,7 +162,10 @@ export function formatEstadoPedido(estado: string | undefined): string {
     'CONFIRMADO_PROVEEDOR': 'Confirmado por Proveedor',
     'CONFIRMADO': 'Confirmado',
     'CONFIRMADO REDISTRIBUCION': 'Confirmado redistribución',
+    'REDISTRIBUIDO': 'Redistribuido',
     'PEDIDO_CONFIRMADO': 'Pedido Confirmado',
+    'PENDIENTE_LOGISTICA': 'Pendiente Logística',
+    'ERROR_DATOS_MAESTROS': 'Error Datos Maestros',
     'PROCESADO_SAP': 'Procesado SAP',
     'CONFIRMADO_ENVIADO': 'Confirmado y Enviado',
     'CONFIRMADO Y ENVIADO': 'Confirmado y Enviado',
@@ -179,8 +182,15 @@ export function formatEstadoPedido(estado: string | undefined): string {
     'CANCELADO_POR_EL_RAYO': 'Cancelado por El Rayo',
     'CONFIRMADO POR EL RAYO': 'Confirmado por El Rayo',
     'CONFIRMADO_POR_EL_RAYO': 'Confirmado por El Rayo',
+    'CONFIRMADO POR PRODUCCION': 'Confirmado por Producción',
+    'CONFIRMADO_POR_PRODUCCION': 'Confirmado por Producción',
     'ERROR ENVIO SAP REINTENTO': 'Error envío SAP (reintentar)',
-    'ERROR_ENVIO_SAP_REINTENTO': 'Error envío SAP (reintentar)'
+    'ERROR_ENVIO_SAP_REINTENTO': 'Error envío SAP (reintentar)',
+    'PRODUCCION POSPUESTA': 'Producción Pospuesta',
+    'PRODUCCION_POSPUESTA': 'Producción Pospuesta',
+    'RECHAZADO': 'Rechazado',
+    'LISTO PARA REDISTRIBUCION': 'Listo para Redistribución',
+    'LISTO_PARA_REDISTRIBUCION': 'Listo para Redistribución'
   }
   return estados[estado] || estado
 }
@@ -214,8 +224,33 @@ export interface ColumnConfig {
   label: string
   visible: boolean
   align?: 'left' | 'right' | 'center'
-  format?: 'text' | 'number' | 'currency'
+  format?: 'text' | 'number' | 'currency' | 'percent'
   fixed?: boolean // Si es true, la columna no puede ser ocultada ni arrastrada
+}
+
+// Margen de Rentabilidad (req. 1.5): calculado en el backend, no aquí — ver
+// calcular_margen_rentabilidad en pedido_utils.py. Evita duplicar la fórmula en dos lenguajes.
+function formatMargenColumnValue(detalle: any): string {
+  const margen = detalle.margen
+  return margen === null || margen === undefined ? 'N/A' : `${(margen * 100).toFixed(2)}%`
+}
+
+function formatColumnValueByFormat(column: ColumnConfig, value: any): string {
+  switch (column.format) {
+    case 'currency':
+      // Columna COSTO UNIT. (costo_doc_sin_iva) y COSTO (costo_margen): hasta 4 decimales
+      if (column.key === 'costo_doc_sin_iva' || column.key === 'costo_margen') {
+        return formatCurrencyWithDecimals(value, 4)
+      }
+      return formatCurrency(value)
+    case 'number':
+      return formatNumber(value)
+    case 'percent':
+      return formatPorcentaje(value)
+    case 'text':
+    default:
+      return value.toString()
+  }
 }
 
 /**
@@ -226,39 +261,27 @@ export function formatColumnValue(detalle: any, column: ColumnConfig, index?: nu
   if (column.key === 'numero' && index !== undefined) {
     return (index + 1).toString()
   }
-  
+
+  if (column.key === 'margen') {
+    return formatMargenColumnValue(detalle)
+  }
+
   const value = detalle[column.key]
-  
+
   // Manejar valores null/undefined (pero NO 0)
   // El valor 0 es válido y debe mostrarse formateado
   if (value === null || value === undefined) {
-    // Para columnas de costo y total, también mostrar 0 si están explícitamente en 0
-    if (column.key === 'costo_doc_sin_iva' || column.key === 'total' || column.format === 'currency' || column.format === 'number') {
-      return 'N/A'
-    }
     return 'N/A'
   }
-  
+
   // Formatear descuentos como porcentaje
   if (column.key === 'descuento_1' || column.key.includes('descuento')) {
     return formatPorcentaje(value)
   }
-  
+
   // Formatear según el tipo
   // Nota: El valor 0 pasará por aquí y se formateará correctamente
-  switch (column.format) {
-    case 'currency':
-      // Columna COSTO UNIT. (costo_doc_sin_iva): hasta 4 decimales
-      if (column.key === 'costo_doc_sin_iva') {
-        return formatCurrencyWithDecimals(value, 4)
-      }
-      return formatCurrency(value)
-    case 'number':
-      return formatNumber(value)
-    case 'text':
-    default:
-      return value.toString()
-  }
+  return formatColumnValueByFormat(column, value)
 }
 
 /**

@@ -1,6 +1,6 @@
 <template>
   <div class="space-y-4">
-    <OdcSapVolverButton
+    <VolverButton
       v-if="odcSapVolverTarget"
       :to="odcSapVolverTarget"
       :title="odcSapVolverTitle"
@@ -78,19 +78,39 @@
         <LoadingSpinner v-else layout="inline" size="md" color="current" aria-label="Cargando plantillas Excel" />
         {{ uploading ? 'Cargando...' : 'Cargar Plantillas Excel' }}
       </button>
-      <button
-        v-if="!esModoMabelTrading && !hideConfirmAndDownload"
-        @click="$emit('descargar-plano-mba')"
-        :disabled="loading || !pedido || descargandoPlanoMba"
-        class="px-4 py-2 bg-cyan-600 dark:bg-cyan-500 text-white rounded-lg hover:bg-cyan-700 dark:hover:bg-cyan-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 text-sm"
-        title="Descargar archivo TXT para MBA (Cliente CLI1795, moneda US)"
-      >
-        <LoadingSpinner v-if="descargandoPlanoMba" layout="inline" size="md" color="current" aria-label="Descargando archivo MBA" />
-        <svg v-else class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-        </svg>
-        {{ descargandoPlanoMba ? 'Descargando...' : 'Descargar para MBA' }}
-      </button>
+      <template v-if="!esModoMabelTrading && !hideConfirmAndDownload">
+        <!-- Pedido con una sola ODC (caso normal): un solo botón, sin distinguir bodega -->
+        <button
+          v-if="ordenesCompraParaTxt.length <= 1"
+          @click="$emit('descargar-plano-mba')"
+          :disabled="loading || !pedido || descargandoPlanoMba || !puedeGenerarTxtMba3"
+          class="px-4 py-2 bg-cyan-600 dark:bg-cyan-500 text-white rounded-lg hover:bg-cyan-700 dark:hover:bg-cyan-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 text-sm"
+          title="Generar archivo TXT MBA3 (Cliente CLI1795, moneda US). Requiere estado Confirmado y Enviado."
+        >
+          <LoadingSpinner v-if="descargandoPlanoMba" layout="inline" size="md" color="current" aria-label="Generando archivo MBA3" />
+          <svg v-else class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+          </svg>
+          {{ descargandoPlanoMba ? 'Descargando...' : 'Generar TXT MBA3' }}
+        </button>
+        <!-- Pedido con más de una ODC (mezcla tiendas de más de una bodega/CD): un botón por ODC -->
+        <template v-else>
+          <button
+            v-for="oc in ordenesCompraParaTxt"
+            :key="oc.codigo_bodega"
+            @click="$emit('descargar-plano-mba', oc.codigo_bodega ?? undefined)"
+            :disabled="loading || !pedido || descargandoPlanoMba || !puedeGenerarTxtMba3"
+            class="px-4 py-2 bg-cyan-600 dark:bg-cyan-500 text-white rounded-lg hover:bg-cyan-700 dark:hover:bg-cyan-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 text-sm"
+            :title="`Generar archivo TXT MBA3 de la ODC ${oc.codigo_bodega} (DocNum ${oc.numero_oc_sap ?? 'pendiente'}). Requiere estado Confirmado y Enviado.`"
+          >
+            <LoadingSpinner v-if="descargandoPlanoMbaBodega === oc.codigo_bodega" layout="inline" size="md" color="current" aria-label="Generando archivo MBA3" />
+            <svg v-else class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            {{ descargandoPlanoMbaBodega === oc.codigo_bodega ? 'Descargando...' : `Generar TXT MBA3 (${oc.codigo_bodega})` }}
+          </button>
+        </template>
+      </template>
       <button
         v-if="canGenerarOC"
         @click="$emit('generar-oc')"
@@ -103,24 +123,29 @@
         <LoadingSpinner v-else layout="inline" size="md" color="current" aria-label="Generando orden de compra" />
         {{ generandoOC ? 'Generando...' : 'Generar Orden de Compra' }}
       </button>
-      <button
-        v-if="showDespacharYFacturar && puedeDespacharYFacturar"
-        type="button"
-        @click="$emit('update-estado', 'DESPACHAR Y FACTURAR')"
-        class="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 transition-colors flex items-center gap-2 text-sm font-medium"
-      >
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-        </svg>
-        Despachar y Facturar
-      </button>
+      <div v-if="showDespacharYFacturar && puedeDespacharYFacturar" class="flex flex-col items-end gap-1">
+        <button
+          type="button"
+          @click="$emit('update-estado', 'DESPACHAR Y FACTURAR')"
+          :disabled="despacharYFacturarDeshabilitado"
+          class="px-4 py-2 bg-purple-600 dark:bg-purple-500 text-white rounded-lg hover:bg-purple-700 dark:hover:bg-purple-600 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 text-sm font-medium"
+        >
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          Despachar y Facturar
+        </button>
+        <p v-if="despacharYFacturarDeshabilitado" class="text-xs text-amber-600 dark:text-amber-400">
+          Seleccione la Fecha Facturación para Despachar y Facturar
+        </p>
+      </div>
       <!-- Botón Finalizar Pedido (estado DESPACHAR Y FACTURAR → FINALIZADO) -->
       <button
         v-if="showFinalizarPedido && puedeFinalizarPedido"
         type="button"
         @click="$emit('finalizar-pedido')"
         :disabled="finalizandoPedido"
-        class="px-4 py-2 bg-sky-600 text-white rounded-lg hover:bg-sky-700 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 text-sm font-medium"
+        class="px-4 py-2 bg-green-700 text-white rounded-lg hover:bg-green-800 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 text-sm font-medium"
         title="Marcar el pedido como Finalizado"
       >
         <svg v-if="!finalizandoPedido" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -133,9 +158,9 @@
         v-if="puedeDescargarPedido"
         type="button"
         @click="$emit('descargar-pedido')"
-        :disabled="loading || descargandoPedido"
+        :disabled="loading || descargandoPedido || esPedidoHijo"
         class="px-4 py-2 bg-teal-600 dark:bg-teal-500 text-white rounded-lg hover:bg-teal-700 dark:hover:bg-teal-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 text-sm font-medium"
-        title="Descargar pedido en formato Excel"
+        :title="esPedidoHijo ? 'Este pedido hijo no tiene un archivo Excel original propio' : 'Descargar pedido en formato Excel'"
       >
         <svg v-if="!descargandoPedido" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -159,7 +184,8 @@
         {{ descargandoExcelOriginal ? 'Descargando...' : 'Descargar Excel Original' }}
       </button>
       <!-- Botón Confirmar (movido al final, junto a Descargar Excel Original) -->
-      <div v-if="!esModoMabelTrading && !hideConfirmAndDownload" class="flex flex-col items-end gap-1">
+      <!-- Oculto para produccion-elrayo.view (req. 1.8): usa "Confirmar Producción" en su lugar -->
+      <div v-if="!esModoMabelTrading && !hideConfirmAndDownload && !puedeConfirmarProduccion" class="flex flex-col items-end gap-1">
         <button
           @click="$emit('confirmar')"
           :disabled="loading || !pedido || confirmando || confirmarDeshabilitado"
@@ -171,9 +197,24 @@
           <LoadingSpinner v-else layout="inline" size="md" color="current" aria-label="Confirmando pedido" />
           {{ confirmando ? 'Confirmando...' : 'Confirmar' }}
         </button>
-        <p v-if="esInmediatoSinFecha" class="text-xs text-amber-600 dark:text-amber-400">
+        <p v-if="faltaFechaEntrega" class="text-xs text-amber-600 dark:text-amber-400">
           Seleccione una fecha de entrega para confirmar
         </p>
+      </div>
+      <!-- Botón Confirmar Producción (req. 1.8): exclusivo de produccion-elrayo.view, solo en Gestionar Pedido -->
+      <div v-if="puedeConfirmarProduccion" class="flex flex-col items-end gap-1">
+        <button
+          @click="$emit('confirmar-produccion')"
+          :disabled="loading || !pedido || confirmandoProduccion"
+          class="px-4 py-2 bg-amber-600 dark:bg-amber-500 text-white rounded-lg hover:bg-amber-700 dark:hover:bg-amber-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 text-sm font-medium"
+          title="Confirma el pedido desde Producción y notifica a Administración El Rayo"
+        >
+          <svg v-if="!confirmandoProduccion" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <LoadingSpinner v-else layout="inline" size="md" color="current" aria-label="Confirmando producción" />
+          {{ confirmandoProduccion ? 'Confirmando...' : 'Confirmar Producción' }}
+        </button>
       </div>
       <slot name="toolbar-extra" />
     </div>
@@ -182,7 +223,7 @@
 
 <script setup lang="ts">
 import { computed, type Ref } from '@vue/reactivity'
-import OdcSapVolverButton from '@/components/OdcSapVolverButton.vue'
+import VolverButton from '@/components/navegacion/VolverButton.vue'
 import LoadingSpinner from './LoadingSpinner.vue'
 import { useOdcSapVolver } from '../../../composables/useOdcSapVolver'
 
@@ -199,6 +240,10 @@ const props = defineProps<{
   descargandoPedido?: boolean
   /** Descarga en curso del archivo plano MBA (un clic, sin modal) */
   descargandoPlanoMba?: boolean
+  /** codigo_bodega del botón que disparó la descarga en curso (pedidos con más de una
+   * ODC) -- para mostrar el spinner solo en ese botón. undefined en el caso de una
+   * sola ODC (single button) o cuando no hay descarga en curso. */
+  descargandoPlanoMbaBodega?: string
   descargandoCsv?: boolean
   descargandoExcelOriginal?: boolean
   finalizandoPedido?: boolean
@@ -207,32 +252,45 @@ const props = defineProps<{
   pedido: any
   /** Deshabilita "Confirmar" cuando el pedido ya tiene respuesta cargada o está confirmado (ver docs/FRONTEND.md §2) */
   confirmarDeshabilitado?: boolean
-  /** Indica si el botón está deshabilitado porque el pedido es INMEDIATO y falta seleccionar fecha de entrega */
-  esInmediatoSinFecha?: boolean
+  /** Indica si falta una fecha de entrega real (vacía, o todavía "INMEDIATO" sin reemplazar) */
+  faltaFechaEntrega?: boolean
   hideConfirmAndDownload?: boolean
   showCrearPedido?: boolean
   hideCargarPlantillas?: boolean
   /** Mostrar botón "Despachar y Facturar" (solo en vista detalle de pedido, no en Cargar Plantilla) */
   showDespacharYFacturar?: boolean
+  /** Deshabilita "Despachar y Facturar" hasta que se seleccione la Fecha Facturación (req. 1.8, odcsap.view) */
+  despacharYFacturarDeshabilitado?: boolean
   /** Mostrar botón "Descargar Pedido" desde estado GESTIONAR PEDIDO (estado_id >= 3) */
   puedeDescargarPedido?: boolean
   /** @deprecated Botón "Descargar Excel" retirado. Prop mantenida para compatibilidad. */
   puedeDescargarCsv?: boolean
+  /** Habilita "Generar TXT MBA3" solo cuando la OC está en estado Confirmado y Enviado (flag puede_generar_txt_mba3 del backend, con respaldo local si no viene) */
+  puedeGenerarTxtMba3?: boolean
   /** Indica si existe el archivo Excel original en storage (MinIO/S3) para mostrar botón de descarga */
   tieneArchivoOriginal?: boolean
   /** Indica si se puede finalizar el pedido (flag puede_finalizar del backend, true cuando estado_id === 17) */
   puedeFinalizarPedido?: boolean
   /** Mostrar botón "Finalizar Pedido" (solo en vista Cargar Plantilla, no en Detalle del Pedido) */
   showFinalizarPedido?: boolean
+  /**
+   * Req. 1.8: true si el usuario tiene produccion-elrayo.view y el pedido está en
+   * Gestionar Pedido. Oculta "Confirmar" y muestra "Confirmar Producción" en su lugar.
+   */
+  puedeConfirmarProduccion?: boolean
+  /** Confirmación de producción en curso (deshabilita el botón mientras se envía) */
+  confirmandoProduccion?: boolean
 }>()
 
 const emit = defineEmits<{
   'cargar-plantillas': []
   'generar-oc': []
   'confirmar': []
+  'confirmar-produccion': []
   'go-to-pedido': []
   'search-blur': []
-  'descargar-plano-mba': []
+  /** codigoBodega presente solo cuando el pedido tiene más de una ODC (una por bodega/CD) */
+  'descargar-plano-mba': [codigoBodega?: string]
   'descargar-pedido': []
   'crear-pedido': []
   'update-estado': [estado: string]
@@ -258,4 +316,18 @@ const puedeDespacharYFacturar = computed(() => {
   if (e.replace(/\s+/g, '_').replace(/\s*Y\s*/gi, '_') === 'CONFIRMADO_ENVIADO') return true
   return false
 })
+
+// Req. 1.2: un pedido "hijo" (generado con la diferencia no producida, ver
+// confirmar-con-diferencia) no tiene un archivo Excel original propio subido por
+// el usuario -- deshabilita "Descargar Pedido Original" solo para estos, no para
+// el pedido "padre".
+const esPedidoHijo = computed(() => !!props.pedido?.cabecera?.pedido_padre_id)
+
+// Botones "Generar TXT MBA3": uno por ODC cuando el pedido mezcla tiendas de más de
+// una bodega/CD (ver origen_traslado_detectado / PedidoOCService). Se ignoran las ODC
+// sin codigo_bodega (datos anteriores a la Fase 2 de PYTD002) para no mostrar un botón
+// sin forma de distinguir a qué bodega corresponde.
+const ordenesCompraParaTxt = computed(() =>
+  (props.pedido?.cabecera?.ordenes_compra ?? []).filter((oc: { codigo_bodega: string | null }) => !!oc.codigo_bodega)
+)
 </script>

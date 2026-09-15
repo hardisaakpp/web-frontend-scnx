@@ -11,15 +11,32 @@
 
       <form v-if="canEditarAjuste" class="mt-4 grid grid-cols-1 md:grid-cols-4 gap-3" @submit.prevent="createAdjustment">
         <label class="block md:col-span-2">
-          <span class="label">SessionId cerrado</span>
-          <input v-model="createForm.sessionId" class="input font-mono text-xs" required />
+          <span class="label">Toma cerrada pendiente de ajuste</span>
+          <select v-model="createForm.sessionId" class="input" required :disabled="loadingSesiones">
+            <option value="" disabled>{{ loadingSesiones ? 'Cargando tomas cerradas...' : 'Selecciona una toma...' }}</option>
+            <option v-for="s in sesionesPendientes" :key="s.sessionId" :value="s.sessionId">
+              {{ s.warehouseCode }} — {{ s.description || 'Sin descripción' }} ({{ fmtDate(s.closedAt) }}) — {{ s.sessionId.slice(0, 8) }}…
+            </option>
+          </select>
+          <p v-if="!loadingSesiones && sesionesPendientes.length === 0" class="mt-1 text-xs text-gray-400">
+            No hay tomas cerradas pendientes de ajuste o descarte.
+          </p>
         </label>
         <label class="block md:col-span-2">
           <span class="label">Notas</span>
           <input v-model="createForm.notes" class="input" placeholder="Ajuste inicial auditoría" />
         </label>
-        <div class="md:col-span-4">
-          <button class="btn-primary" type="submit" :disabled="creating">{{ creating ? 'Creando...' : 'Crear Ajuste' }}</button>
+        <div class="md:col-span-4 flex flex-wrap items-center gap-3">
+          <button class="btn-primary" type="submit" :disabled="creating || !createForm.sessionId">{{ creating ? 'Creando...' : 'Crear Ajuste' }}</button>
+          <button
+            class="btn-secondary"
+            type="button"
+            :disabled="discarding || !createForm.sessionId"
+            @click="discardAdjustment"
+          >{{ discarding ? 'Descartando...' : 'Descartar (sin ajuste)' }}</button>
+          <span class="text-xs text-gray-400">
+            Descartar no genera ningún cobro — solo marca la toma seleccionada como revisada, sin diferencias que ajustar. La toma se queda cerrada tal cual está.
+          </span>
         </div>
       </form>
     </section>
@@ -30,31 +47,51 @@
         <button class="btn-secondary" type="button" @click="loadAdjustments">Refrescar</button>
       </div>
 
+      <div class="mt-4 flex flex-wrap items-end gap-3">
+        <label class="block">
+          <span class="label">Desde</span>
+          <input v-model="dateFrom" class="input" type="date" />
+        </label>
+        <label class="block">
+          <span class="label">Hasta</span>
+          <input v-model="dateTo" class="input" type="date" />
+        </label>
+        <button class="btn-secondary" type="button" @click="resetDateFilter">Últimos 15 días</button>
+        <input v-model="adjustmentSearch" type="search" placeholder="Buscar bodega, id..." class="search-input w-56" />
+        <span class="text-xs text-gray-400">
+          Mostrando {{ sortedAdjustments.length }} de {{ adjustments.length }} ajustes
+        </span>
+      </div>
+
       <div class="mt-4 overflow-x-auto">
         <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
           <thead class="bg-gray-50 dark:bg-gray-900/60">
             <tr>
-              <th class="th">AdjustmentId</th>
-              <th class="th">SessionId</th>
-              <th class="th">Bodega</th>
-              <th class="th">Estado</th>
-              <th class="th text-right">Líneas</th>
+              <th class="th cursor-pointer select-none" @click="toggleAdjustmentSort('createdAt')">Fecha{{ adjustmentSortIndicator('createdAt') }}</th>
+              <th class="th cursor-pointer select-none" @click="toggleAdjustmentSort('warehouseCode')">Bodega{{ adjustmentSortIndicator('warehouseCode') }}</th>
+              <th class="th cursor-pointer select-none" @click="toggleAdjustmentSort('status')">Estado{{ adjustmentSortIndicator('status') }}</th>
+              <th class="th text-right cursor-pointer select-none" @click="toggleAdjustmentSort('totalLines')">Líneas{{ adjustmentSortIndicator('totalLines') }}</th>
+              <th class="th text-right cursor-pointer select-none" @click="toggleAdjustmentSort('totalValorizedAmount')">Valorizado{{ adjustmentSortIndicator('totalValorizedAmount') }}</th>
+              <th class="th">Nota</th>
               <th class="th text-right">Acciones</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
-            <tr v-for="item in adjustments" :key="item.adjustmentId">
-              <td class="td font-mono text-xs">{{ item.adjustmentId }}</td>
-              <td class="td font-mono text-xs">{{ item.sessionId }}</td>
+            <tr v-for="item in sortedAdjustments" :key="item.adjustmentId">
+              <td class="td whitespace-nowrap">{{ fmtDate(item.createdAt) }}</td>
               <td class="td">{{ item.warehouseCode }}</td>
               <td class="td">{{ item.status }}</td>
               <td class="td text-right">{{ item.totalLines }} / {{ item.differenceLines }}</td>
+              <td class="td text-right">{{ fmtCurrency(item.totalValorizedAmount) }} <span class="text-xs text-gray-400">({{ valuationLabel(item.valuationMode) }})</span></td>
+              <td class="td text-gray-500 dark:text-gray-400">{{ item.notes || '—' }}</td>
               <td class="td text-right">
                 <button class="link" type="button" @click="openAdjustment(item.adjustmentId)">Detalle</button>
               </td>
             </tr>
-            <tr v-if="adjustments.length === 0">
-              <td class="td text-center" colspan="6">Sin ajustes.</td>
+            <tr v-if="sortedAdjustments.length === 0">
+              <td class="td text-center" colspan="7">
+                {{ adjustments.length === 0 ? 'Sin ajustes.' : 'Sin ajustes en el rango de fechas seleccionado.' }}
+              </td>
             </tr>
           </tbody>
         </table>
@@ -80,11 +117,55 @@
         </div>
       </div>
 
-      <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
+      <div class="grid grid-cols-1 md:grid-cols-5 gap-3">
         <div class="card-mini"><span class="muted">SessionId</span><strong class="font-mono text-xs">{{ current.sessionId }}</strong></div>
         <div class="card-mini"><span class="muted">Bodega</span><strong>{{ current.warehouseCode }}</strong></div>
         <div class="card-mini"><span class="muted">Estado</span><strong>{{ current.status }}</strong></div>
         <div class="card-mini"><span class="muted">Líneas</span><strong>{{ current.lines.length }}</strong></div>
+        <div class="card-mini"><span class="muted">Valorizado ({{ valuationLabel(current.valuationMode) }})</span><strong>{{ fmtCurrency(current.totalValorizedAmount) }}</strong></div>
+      </div>
+
+      <!-- Valorización: cómo se cobra el ajuste en el reporte final -->
+      <div class="rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/40 p-4">
+        <h3 class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-3">Valorización del reporte final</h3>
+        <div class="flex flex-wrap items-end gap-3">
+          <label class="block">
+            <span class="label">Modo</span>
+            <select v-model="valuationForm.mode" class="input" :disabled="!canEditarAjuste || isValuationLocked">
+              <option value="Cost">Costo</option>
+              <option value="Pvp">PVP</option>
+              <option value="PvpWithDiscount">PVP menos descuento</option>
+            </select>
+          </label>
+          <label v-if="valuationForm.mode === 'PvpWithDiscount'" class="block">
+            <span class="label">Descuento %</span>
+            <input v-model.number="valuationForm.discountPercentage" class="input" type="number" min="0" max="100" step="0.01" :disabled="!canEditarAjuste || isValuationLocked" />
+          </label>
+          <button
+            class="btn-secondary"
+            type="button"
+            :disabled="!canEditarAjuste || isValuationLocked || savingValuation"
+            @click="saveValuation"
+          >{{ savingValuation ? 'Guardando...' : 'Guardar valorización' }}</button>
+          <span v-if="isValuationLocked" class="text-xs text-gray-400">Ya no se puede cambiar: el informe final ya fue generado.</span>
+        </div>
+      </div>
+
+      <!-- Las líneas solo se pueden ajustar en Draft: Submit (→InReview) y Approve las congelan
+           para que el informe final no cambie después de aprobado. -->
+      <div v-if="current.status !== 'Draft'" class="rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 px-3 py-2 text-sm text-amber-800 dark:text-amber-300">
+        Este ajuste está en estado <strong>{{ current.status }}</strong> — las diferencias ya no se pueden editar.
+        Solo se puede ajustar el valor mientras el ajuste está en <strong>Draft</strong> (antes de enviarlo a revisión y de aprobarlo).
+      </div>
+
+      <div class="flex items-center justify-between gap-3">
+        <label class="inline-flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+          <input v-model="showOnlyDifferences" type="checkbox" class="rounded border-gray-300 dark:border-gray-600" />
+          Ver solo diferencias
+        </label>
+        <span v-if="showOnlyDifferences && hiddenBalancedCount > 0" class="text-xs text-gray-400">
+          {{ hiddenBalancedCount }} línea(s) balanceada(s) ocultas (no suman al valorizado)
+        </span>
       </div>
 
       <div class="overflow-x-auto max-h-[380px]">
@@ -94,12 +175,15 @@
               <th class="th">Item</th>
               <th class="th text-right">Raw Diff</th>
               <th class="th text-right">Adjusted Diff</th>
+              <th class="th text-right">Costo</th>
+              <th class="th text-right">PVP</th>
+              <th class="th text-right">Valorizado</th>
               <th class="th">Notas</th>
               <th class="th text-right">Acción</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
-            <tr v-for="line in current.lines" :key="line.lineId">
+            <tr v-for="line in visibleLines" :key="line.lineId">
               <td class="td">
                 <div class="font-medium">{{ line.itemCode }}</div>
                 <div class="text-xs text-gray-500 dark:text-gray-400">{{ line.itemDescription || '-' }}</div>
@@ -110,10 +194,14 @@
                   v-model.number="lineEdit[line.lineId].adjustedDifference"
                   class="input text-right"
                   type="number"
-                  step="0.0001"
+                  step="1"
+                  inputmode="numeric"
                   :disabled="!canEditarAjuste || current.status !== 'Draft'"
                 />
               </td>
+              <td class="td text-right text-xs text-gray-500 dark:text-gray-400">{{ line.unitCost != null ? fmtCurrency(line.unitCost) : '—' }}</td>
+              <td class="td text-right text-xs text-gray-500 dark:text-gray-400">{{ line.unitPvp != null ? fmtCurrency(line.unitPvp) : '—' }}</td>
+              <td class="td text-right font-medium">{{ line.valorizedAmount != null ? fmtCurrency(line.valorizedAmount) : '—' }}</td>
               <td class="td">
                 <input
                   v-model="lineEdit[line.lineId].auditorNotes"
@@ -126,6 +214,9 @@
                 <button class="link" type="button" :disabled="!canEditarAjuste || current.status !== 'Draft' || savingLine" @click="saveLine(line.lineId)">Guardar</button>
               </td>
             </tr>
+            <tr v-if="visibleLines.length === 0">
+              <td class="td text-center" colspan="8">Sin líneas con diferencias.</td>
+            </tr>
           </tbody>
         </table>
       </div>
@@ -134,18 +225,48 @@
 </template>
 
 <script setup lang="ts">
-import { reactive, ref } from 'vue'
+import { computed, reactive, ref } from 'vue'
 import {
   type AdjustmentDetailDto,
   type AdjustmentSummaryDto,
   scnexusInventoryApi
 } from '../services/scnexusInventoryApi'
+import { inventarioSesionesService } from '../services/inventarioSesionesApi'
+import type { InventorySessionListItemDto } from '../types'
 import { useInventarioModulePermissions } from '../composables/useInventarioModulePermissions'
-import { NUMBER_LOCALE } from '@/plugins/locale'
 
 const { canEditarAjuste, canRevisarAjuste, canIntegrarSap } = useInventarioModulePermissions()
 
-const numberFmt = new Intl.NumberFormat(NUMBER_LOCALE, { maximumFractionDigits: 2 })
+const numberFmt = new Intl.NumberFormat('es-DO', { maximumFractionDigits: 2 })
+const currencyFmt = new Intl.NumberFormat('es-EC', { style: 'currency', currency: 'USD' })
+const dateFmt = new Intl.DateTimeFormat('es-EC', { dateStyle: 'short', timeStyle: 'short' })
+const VALUATION_LABELS: Record<string, string> = { Cost: 'Costo', Pvp: 'PVP', PvpWithDiscount: 'PVP - desc.' }
+
+const DEFAULT_RANGE_DAYS = 15
+
+function toDateInputValue(date: Date): string {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+function defaultDateFrom(): string {
+  const date = new Date()
+  date.setDate(date.getDate() - DEFAULT_RANGE_DAYS)
+  return toDateInputValue(date)
+}
+
+// El listado va a crecer indefinidamente (un ajuste por sesión cerrada) — se filtra por fecha de
+// creación en el cliente para no tener que scrollear años de historial; por defecto los últimos
+// 15 días, ajustable a cualquier rango.
+const dateFrom = ref(defaultDateFrom())
+const dateTo = ref(toDateInputValue(new Date()))
+
+function resetDateFilter() {
+  dateFrom.value = defaultDateFrom()
+  dateTo.value = toDateInputValue(new Date())
+}
 
 const adjustments = ref<AdjustmentSummaryDto[]>([])
 const current = ref<AdjustmentDetailDto | null>(null)
@@ -153,19 +274,147 @@ const error = ref<string | null>(null)
 const success = ref<string | null>(null)
 
 const creating = ref(false)
+const discarding = ref(false)
 const savingLine = ref(false)
 const downloadingReport = ref(false)
+const savingValuation = ref(false)
+
+// Tomas cerradas para el selector de "Crear Ajuste" — evita tener que copiar/pegar el sessionId a
+// mano. Solo se ofrecen las que aún no tienen ningún ajuste (de cualquier estado) ni fueron
+// descartadas — las demás ya están "resueltas" de una forma u otra.
+const sesiones = ref<InventorySessionListItemDto[]>([])
+const loadingSesiones = ref(false)
+
+const sesionesPendientes = computed(() =>
+  sesiones.value
+    .filter(s => s.status === 'Closed' && !s.adjustmentId && !s.adjustmentDiscarded)
+    .sort((a, b) => new Date(b.closedAt ?? 0).getTime() - new Date(a.closedAt ?? 0).getTime())
+)
+
+async function cargarSesiones() {
+  loadingSesiones.value = true
+  try {
+    sesiones.value = await inventarioSesionesService.getSesiones()
+  } catch {
+    // No bloquear la pantalla si esto falla — el campo simplemente queda vacío y sigue
+    // funcionando el resto de la bandeja (listado/detalle de ajustes ya creados).
+  } finally {
+    loadingSesiones.value = false
+  }
+}
 
 const createForm = reactive({
   sessionId: '',
   notes: ''
 })
 
+const valuationForm = reactive<{ mode: 'Cost' | 'Pvp' | 'PvpWithDiscount'; discountPercentage: number }>({
+  mode: 'Cost',
+  discountPercentage: 0
+})
+
+// El informe final es inmutable una vez generado (Approve lo dispara) — el backend rechaza el
+// cambio de valorización a partir de ahí, así que el selector se bloquea igual en la UI.
+const isValuationLocked = computed(() => !current.value || ['Approved', 'SentToSap'].includes(String(current.value.status)))
+
 const lineEdit = reactive<Record<string, { adjustedDifference: number; auditorNotes: string }>>({})
+
+// "Balanced" = línea sin diferencia (adjustedDifference 0), no aporta al Valorizado (el backend
+// la excluye de la hoja de diferencias del informe final). El toggle solo oculta esas líneas de
+// la tabla; el total ya viene sumado desde el backend y no cambia con el filtro.
+const showOnlyDifferences = ref(true)
+
+const visibleLines = computed(() => {
+  if (!current.value) return []
+  if (!showOnlyDifferences.value) return current.value.lines
+  return current.value.lines.filter((line) => String(line.lineType) !== 'Balanced')
+})
+
+const hiddenBalancedCount = computed(() => {
+  if (!current.value) return 0
+  return current.value.lines.filter((line) => String(line.lineType) === 'Balanced').length
+})
 
 function fmt(value: number) {
   return numberFmt.format(value || 0)
 }
+
+function fmtCurrency(value: number) {
+  return currencyFmt.format(value || 0)
+}
+
+function valuationLabel(mode: string | number) {
+  return VALUATION_LABELS[String(mode)] ?? String(mode)
+}
+
+function fmtDate(value?: string | null) {
+  if (!value) return '—'
+  const date = new Date(value)
+  return Number.isNaN(date.getTime()) ? '—' : dateFmt.format(date)
+}
+
+const filteredAdjustments = computed(() => {
+  // dateTo se interpreta como "hasta el final de ese día" para que incluya ajustes creados
+  // en cualquier hora de la fecha límite, no solo hasta medianoche.
+  const from = dateFrom.value ? new Date(`${dateFrom.value}T00:00:00`) : null
+  const to = dateTo.value ? new Date(`${dateTo.value}T23:59:59.999`) : null
+
+  return adjustments.value.filter((item) => {
+    const createdAt = new Date(item.createdAt)
+    if (Number.isNaN(createdAt.getTime())) return true
+    if (from && createdAt < from) return false
+    if (to && createdAt > to) return false
+    return true
+  })
+})
+
+const adjustmentSearch = ref('')
+
+type AdjustmentSortKey = 'createdAt' | 'warehouseCode' | 'status' | 'totalLines' | 'totalValorizedAmount'
+const adjustmentSortKey = ref<AdjustmentSortKey>('createdAt')
+const adjustmentSortDir = ref<'asc' | 'desc'>('desc')
+
+function toggleAdjustmentSort(key: AdjustmentSortKey) {
+  if (adjustmentSortKey.value === key) {
+    adjustmentSortDir.value = adjustmentSortDir.value === 'asc' ? 'desc' : 'asc'
+  } else {
+    adjustmentSortKey.value = key
+    adjustmentSortDir.value = 'asc'
+  }
+}
+
+function adjustmentSortIndicator(key: AdjustmentSortKey) {
+  if (adjustmentSortKey.value !== key) return ''
+  return adjustmentSortDir.value === 'asc' ? ' ▲' : ' ▼'
+}
+
+const sortedAdjustments = computed(() => {
+  const q = adjustmentSearch.value.trim().toLowerCase()
+  let result = filteredAdjustments.value
+  if (q) {
+    result = result.filter((item) =>
+      item.warehouseCode.toLowerCase().includes(q) ||
+      item.adjustmentId.toLowerCase().includes(q) ||
+      item.sessionId.toLowerCase().includes(q) ||
+      String(item.status).toLowerCase().includes(q) ||
+      (item.notes ?? '').toLowerCase().includes(q)
+    )
+  }
+
+  const dir = adjustmentSortDir.value === 'asc' ? 1 : -1
+  const key = adjustmentSortKey.value
+  return [...result].sort((a, b) => {
+    if (key === 'createdAt') {
+      return (new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()) * dir
+    }
+    const av = a[key]
+    const bv = b[key]
+    if (typeof av === 'string' || typeof bv === 'string') {
+      return String(av).localeCompare(String(bv)) * dir
+    }
+    return ((av as number) - (bv as number)) * dir
+  })
+})
 
 function hydrateLineEdit(detail: AdjustmentDetailDto) {
   for (const line of detail.lines) {
@@ -174,6 +423,8 @@ function hydrateLineEdit(detail: AdjustmentDetailDto) {
       auditorNotes: line.auditorNotes || ''
     }
   }
+  valuationForm.mode = (String(detail.valuationMode) as typeof valuationForm.mode) || 'Cost'
+  valuationForm.discountPercentage = detail.discountPercentage ?? 0
 }
 
 async function loadAdjustments() {
@@ -194,11 +445,35 @@ async function createAdjustment() {
     current.value = detail
     hydrateLineEdit(detail)
     success.value = `Ajuste creado: ${detail.adjustmentId}`
-    await loadAdjustments()
+    createForm.sessionId = ''
+    createForm.notes = ''
+    await Promise.all([loadAdjustments(), cargarSesiones()])
   } catch (err) {
     error.value = err instanceof Error ? err.message : 'No se pudo crear ajuste.'
   } finally {
     creating.value = false
+  }
+}
+
+async function discardAdjustment() {
+  if (!createForm.sessionId) return
+  const sesion = sesionesPendientes.value.find(s => s.sessionId === createForm.sessionId)
+  const label = sesion ? `${sesion.warehouseCode} — ${sesion.description || 'sin descripción'}` : createForm.sessionId
+  if (!window.confirm(`¿Confirmas descartar el ajuste de "${label}"? No se generará ningún cobro, solo se marcará como revisada sin diferencias que ajustar.`)) {
+    return
+  }
+  discarding.value = true
+  error.value = null
+  success.value = null
+  try {
+    await scnexusInventoryApi.discardAdjustment(createForm.sessionId)
+    success.value = 'Toma marcada como revisada, sin ajuste.'
+    createForm.sessionId = ''
+    await cargarSesiones()
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : 'No se pudo descartar el ajuste.'
+  } finally {
+    discarding.value = false
   }
 }
 
@@ -215,11 +490,15 @@ async function openAdjustment(adjustmentId: string) {
 
 async function saveLine(lineId: string) {
   if (!current.value) return
+  const edited = lineEdit[lineId]
+  if (!Number.isInteger(edited.adjustedDifference)) {
+    error.value = 'El ajuste debe ser un número entero (sin decimales).'
+    return
+  }
   savingLine.value = true
   error.value = null
   success.value = null
   try {
-    const edited = lineEdit[lineId]
     await scnexusInventoryApi.updateAdjustmentLine(current.value.adjustmentId, lineId, {
       adjustedDifference: edited.adjustedDifference,
       auditorNotes: edited.auditorNotes || null,
@@ -231,6 +510,27 @@ async function saveLine(lineId: string) {
     error.value = err instanceof Error ? err.message : 'No se pudo guardar la línea.'
   } finally {
     savingLine.value = false
+  }
+}
+
+async function saveValuation() {
+  if (!current.value) return
+  savingValuation.value = true
+  error.value = null
+  success.value = null
+  try {
+    current.value = await scnexusInventoryApi.setAdjustmentValuation(
+      current.value.adjustmentId,
+      valuationForm.mode,
+      valuationForm.mode === 'PvpWithDiscount' ? valuationForm.discountPercentage : null
+    )
+    hydrateLineEdit(current.value)
+    success.value = 'Valorización actualizada.'
+    await loadAdjustments()
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : 'No se pudo guardar la valorización.'
+  } finally {
+    savingValuation.value = false
   }
 }
 
@@ -286,6 +586,7 @@ async function descargarInforme() {
 }
 
 loadAdjustments()
+cargarSesiones()
 </script>
 
 <style scoped>
@@ -294,6 +595,9 @@ loadAdjustments()
 }
 .input {
   @apply mt-1 w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-gray-100;
+}
+.search-input {
+  @apply rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500;
 }
 .btn-primary {
   @apply inline-flex items-center rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50;

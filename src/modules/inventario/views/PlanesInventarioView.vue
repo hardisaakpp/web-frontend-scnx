@@ -13,9 +13,12 @@
           <ArrowPathIcon class="w-4 h-4 mr-1" :class="{ 'animate-spin': loading }" />
           Actualizar
         </button>
-        <router-link to="/inventario/planificaciones" class="btn-secondary">
+        <router-link to="/inventario/consultar-stock" class="btn-secondary">
           <MagnifyingGlassIcon class="w-4 h-4 mr-1" />
           Consultar Stock
+        </router-link>
+        <router-link to="/inventario/planes/historial" class="btn-secondary">
+          Ver historial
         </router-link>
         <button type="button" class="btn-primary" @click="mostrarModal = true">
           <PlusIcon class="w-4 h-4 mr-1" />
@@ -26,6 +29,15 @@
 
     <div v-if="error" class="mb-4 alert-error">{{ error }}</div>
     <div v-if="exito" class="mb-4 alert-success">{{ exito }}</div>
+
+    <div class="mb-4 flex items-center gap-3">
+      <input
+        v-model="search"
+        type="search"
+        placeholder="Buscar bodega, descripción..."
+        class="search-input w-64"
+      />
+    </div>
 
     <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
       <div v-if="loading && planes.length === 0" class="py-16 text-center text-sm text-gray-500 dark:text-gray-400">
@@ -38,18 +50,18 @@
         <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
           <thead class="bg-gray-50 dark:bg-gray-900/60">
             <tr>
-              <th class="th">Bodega</th>
-              <th class="th">Descripción</th>
-              <th class="th">Apertura</th>
-              <th class="th">Cierre</th>
+              <th class="th cursor-pointer select-none" @click="toggleSort('warehouseCode')">Bodega{{ sortIndicator('warehouseCode') }}</th>
+              <th class="th cursor-pointer select-none" @click="toggleSort('description')">Descripción{{ sortIndicator('description') }}</th>
+              <th class="th cursor-pointer select-none" @click="toggleSort('plannedOpenDate')">Apertura{{ sortIndicator('plannedOpenDate') }}</th>
+              <th class="th cursor-pointer select-none" @click="toggleSort('plannedCloseDate')">Cierre{{ sortIndicator('plannedCloseDate') }}</th>
               <th class="th">Filtros</th>
-              <th class="th">Creado</th>
+              <th class="th cursor-pointer select-none" @click="toggleSort('createdAt')">Creado{{ sortIndicator('createdAt') }}</th>
               <th class="th text-right">Acciones</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
             <tr
-              v-for="plan in planes"
+              v-for="plan in sortedPlanes"
               :key="plan.planId"
               :class="estaVencido(plan) ? 'bg-red-50 dark:bg-red-950/30' : ''"
             >
@@ -140,7 +152,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { Dialog, DialogPanel, DialogTitle, TransitionRoot, TransitionChild } from '@headlessui/vue'
 import { ArrowPathIcon, PlusIcon, MagnifyingGlassIcon } from '@heroicons/vue/24/outline'
 import { inventarioPlanesService } from '../services/inventarioPlanesApi'
@@ -156,6 +168,44 @@ const mostrarModal = ref(false)
 const ejecutando = ref<string | null>(null)
 const eliminando = ref<string | null>(null)
 const planAEliminar = ref<InventoryPlanDto | null>(null)
+const search = ref('')
+
+type PlanSortKey = 'warehouseCode' | 'description' | 'plannedOpenDate' | 'plannedCloseDate' | 'createdAt'
+const sortKey = ref<PlanSortKey>('plannedOpenDate')
+const sortDir = ref<'asc' | 'desc'>('asc')
+
+function toggleSort(key: PlanSortKey) {
+  if (sortKey.value === key) {
+    sortDir.value = sortDir.value === 'asc' ? 'desc' : 'asc'
+  } else {
+    sortKey.value = key
+    sortDir.value = 'asc'
+  }
+}
+
+function sortIndicator(key: PlanSortKey) {
+  if (sortKey.value !== key) return ''
+  return sortDir.value === 'asc' ? ' ▲' : ' ▼'
+}
+
+const filteredPlanes = computed(() => {
+  const q = search.value.trim().toLowerCase()
+  if (!q) return planes.value
+  return planes.value.filter(p =>
+    p.warehouseCode.toLowerCase().includes(q) ||
+    (p.description ?? '').toLowerCase().includes(q)
+  )
+})
+
+const sortedPlanes = computed(() => {
+  const dir = sortDir.value === 'asc' ? 1 : -1
+  const key = sortKey.value
+  return [...filteredPlanes.value].sort((a, b) => {
+    const av = a[key] ?? ''
+    const bv = b[key] ?? ''
+    return String(av).localeCompare(String(bv)) * dir
+  })
+})
 
 const today = new Date().toISOString().slice(0, 10)
 
@@ -234,6 +284,7 @@ onMounted(cargar)
 <style scoped>
 .label { @apply text-sm font-medium text-gray-700 dark:text-gray-300; }
 .th { @apply px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400; }
+.search-input { @apply rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-1.5 text-sm text-gray-700 dark:text-gray-200 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500; }
 .td { @apply px-4 py-3 text-sm text-gray-700 dark:text-gray-300 align-middle; }
 .btn-primary { @apply inline-flex items-center rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed; }
 .btn-secondary { @apply inline-flex items-center rounded-lg border border-gray-300 dark:border-gray-600 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-60 disabled:cursor-not-allowed; }

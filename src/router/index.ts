@@ -21,8 +21,12 @@ import promocionSobresRoutes from '../modules/promocion-sobres/router'
 import transaccionesRoutes from '../modules/transacciones/router'
 import reposicionesRoutes from '../modules/reposiciones/router'
 import recepcionMercaderiaRoutes from '../modules/recepcion-mercaderia/router'
+import recepcionProveedoresRoutes from '../modules/recepcion-proveedores/router'
 import ruletaRoutes from '../modules/ruleta/router'
 import transferenciasDirectasRoutes from '../modules/transferencias-directas/router'
+import integracionesRoutes from '../modules/integraciones/router'
+import cediRoutes from '../modules/cedi/router'
+import demandaOtbRoutes from '../modules/demanda-otb/router'
 
 console.log('🔍 DEBUG usuariosRoutes:', usuariosRoutes)
 console.log('🔍 DEBUG cajaChicaRoutes:', cajaChicaRoutes)
@@ -80,7 +84,11 @@ const router = createRouter({
         ...transferenciasDirectasRoutes,
         ...reposicionesRoutes,
         ...recepcionMercaderiaRoutes,
+        ...recepcionProveedoresRoutes,
         ...ruletaRoutes,
+        ...integracionesRoutes,
+        ...cediRoutes,
+        ...demandaOtbRoutes,
         {
           path: 'forbidden',
           name: 'forbidden',

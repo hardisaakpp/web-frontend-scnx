@@ -1,0 +1,96 @@
+<template>
+  <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md border border-gray-200 dark:border-gray-700 overflow-hidden">
+    <!-- Barra de pestañas -->
+    <div v-if="tabs.length > 0" class="flex border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50">
+      <button
+        v-for="tab in tabs"
+        :key="tab.id"
+        type="button"
+        :disabled="disabled"
+        :class="[getTabClass(tab), 'px-5 py-3 text-sm font-medium flex items-center gap-2 min-w-0']"
+        @click="selectTab(tab.id)"
+      >
+        <span class="truncate">{{ tab.label }}</span>
+        <span
+          v-if="tab.badge != null && Number(tab.badge) > 0"
+          :class="[getBadgeClass(tab), 'ml-1 px-2 py-0.5 rounded-full text-xs font-semibold']"
+        >
+          {{ tab.badge }}
+        </span>
+      </button>
+    </div>
+    <!-- Contenido de las pestañas -->
+    <div class="p-6">
+      <slot :name="`tab-${activeTab}`" :tab="activeTab">
+        <div class="text-center py-12 text-gray-500 dark:text-gray-400">
+          No hay contenido disponible
+        </div>
+      </slot>
+    </div>
+  </div>
+</template>
+
+<script setup lang="ts">
+import { ref, watch } from 'vue'
+
+export interface Tab {
+  id: string
+  label: string
+  badge?: number | string
+  color?: 'violet' | 'emerald' | 'rose' | string
+}
+
+const props = withDefaults(defineProps<{
+  tabs: Tab[]
+  defaultTab?: string
+  disabled?: boolean
+}>(), {
+  defaultTab: undefined,
+  disabled: false
+})
+
+const emit = defineEmits<{
+  'tab-changed': [tabId: string]
+}>()
+
+const activeTab = ref<string>(props.defaultTab || props.tabs[0]?.id || '')
+
+function selectTab(tabId: string) {
+  if (props.disabled) {
+    return
+  }
+  activeTab.value = tabId
+  emit('tab-changed', tabId)
+}
+
+watch(() => props.defaultTab, (newTab: string | undefined) => {
+  if (newTab && newTab !== activeTab.value) {
+    activeTab.value = newTab
+  }
+})
+
+const colorClasses: Record<string, string> = {
+  violet: 'bg-violet-100 dark:bg-violet-900/50 text-violet-700 dark:text-violet-300 border-l-4 border-violet-500 dark:border-violet-400',
+  emerald: 'bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300 border-l-4 border-emerald-500 dark:border-emerald-400',
+  rose: 'bg-rose-100 dark:bg-rose-900/50 text-rose-700 dark:text-rose-300 border-l-4 border-rose-500 dark:border-rose-400',
+  default: 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 border-l-4 border-gray-500 dark:border-gray-400'
+}
+
+const badgeColorClasses: Record<string, string> = {
+  violet: 'bg-violet-200 dark:bg-violet-800 text-violet-700 dark:text-violet-300 border border-violet-300 dark:border-violet-600',
+  emerald: 'bg-emerald-200 dark:bg-emerald-800 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-600',
+  rose: 'bg-rose-200 dark:bg-rose-800 text-rose-700 dark:text-rose-300 border border-rose-300 dark:border-rose-600',
+  default: 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600'
+}
+
+function getTabClass(tab: Tab): string {
+  if (activeTab.value === tab.id) {
+    return `${colorClasses[tab.color || 'default']} rounded-t-lg`
+  }
+  return 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-200'
+}
+
+function getBadgeClass(tab: Tab): string {
+  return badgeColorClasses[tab.color || 'default']!
+}
+</script>

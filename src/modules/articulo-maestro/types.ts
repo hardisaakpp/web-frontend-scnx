@@ -143,6 +143,18 @@ export interface ArticuloControlSap {
     intentos: number
     usuario_sincroniza: string | null
     fecha_ultimo_intento: string | null
+    // Traducción de negocio de mensaje_sap (ver app.core.sap_error_catalog
+    // en el backend): solo presente cuando estado === 'ERROR'. El usuario
+    // de negocio no tiene acceso a SAP, así que mensaje_sap por sí solo
+    // (a veces texto crudo del Service Layer, incluso en inglés) no le
+    // dice qué hacer — mensaje_sap_amigable/accion_sugerida sí.
+    mensaje_sap_amigable?: string | null
+    accion_sugerida?: string | null
+    // true cuando estado === 'ERROR' pero NO fue un rechazo de negocio de
+    // SAP, sino que la operación no confirmó a tiempo (SAP tardó en
+    // responder). Distingue "no hay nada que corregir, solo espera" de "hay
+    // un dato que corregir" — ver app.core.sap_error_catalog.es_timeout.
+    es_timeout_sap?: boolean
 }
 
 export interface ArticuloFilters {
@@ -159,6 +171,18 @@ export interface ArticuloPagination {
     totalPages: number
 }
 
+// Payload de creación (POST /articulos): uIxxMarca (Negocio) es
+// estrictamente obligatorio -- RF-001, define la letra del ItemCode
+// (GeneradorCodigosService.obtener_codigo_negocio, backend) y NUNCA admite
+// fallback a uMarca. uMarca (Marca Comercial) es texto libre opcional,
+// 100% desacoplado de la generación del código.
+export type ArticuloCreatePayload = Partial<
+    Omit<Articulo, 'id' | 'activo' | 'controlSap' | 'isStructuralLocked' | 'imagenes' | 'uIxxMarca' | 'uMarca'>
+> & {
+    uIxxMarca: string
+    uMarca?: string | null
+}
+
 // Campos que el backend bloquea en PATCH /articulos/{itemCode}:
 // - Estructurales de por vida (ArticuloUpdate.bloquear_campos_estructurales,
 //   ver CAMPOS_ESTRUCTURALES_BLOQUEADOS en app/schemas/articulo.py): rechaza
@@ -173,7 +197,6 @@ export type ArticuloPatchPayload = Partial<
         | 'id'
         | 'itemCode'
         | 'codigoAlterno'
-        | 'uMarca'
         | 'uIxxMarca'
         | 'uNv1'
         | 'uGen'
