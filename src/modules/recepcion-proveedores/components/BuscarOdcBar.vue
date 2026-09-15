@@ -2,6 +2,7 @@
 import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import LoadingSpinner from '@/components/LoadingSpinner.vue'
+import { useDelayedFlag } from '@/composables/useDelayedFlag'
 
 const props = withDefaults(
   defineProps<{
@@ -40,6 +41,11 @@ watch(
 )
 
 const cargando = computed(() => buscando.value || props.loading)
+
+// Recien despues de 10s (el umbral en el que el middleware decide encolar la consulta a SAP,
+// ver JobQueue:QueueAfterSeconds del middleware) se avisa que la espera se alargo, en vez de
+// dejar el mensaje generico igual a los 2s que a los 35s.
+const tardandoMasDeLoUsual = useDelayedFlag(() => cargando.value, 10000)
 
 async function buscar(): Promise<void> {
   const valor = Number(docNum.value)
@@ -91,7 +97,10 @@ async function buscar(): Promise<void> {
         Logs
       </RouterLink>
     </form>
-    <p v-if="cargando" class="mt-2 text-sm text-gray-500 dark:text-gray-400">
+    <p v-if="cargando && tardandoMasDeLoUsual" class="mt-2 text-sm text-amber-600 dark:text-amber-400">
+      SAP está respondiendo más lento de lo usual — seguimos esperando, esto puede tardar hasta 40 segundos.
+    </p>
+    <p v-else-if="cargando" class="mt-2 text-sm text-gray-500 dark:text-gray-400">
       Buscando ODC {{ docNum }}... esto puede tardar unos segundos si se consulta directamente a SAP.
     </p>
     <p v-else-if="error" class="mt-2 text-sm text-red-600 dark:text-red-400">{{ error }}</p>
