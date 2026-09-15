@@ -142,9 +142,35 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="flex flex-col lg:flex-row gap-4 items-start">
+  <div class="space-y-4">
+    <!-- Filtros -->
+    <div class="bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700 shadow-sm p-4">
+      <div class="flex flex-col sm:flex-row items-stretch sm:items-end gap-3">
+        <div class="flex-1">
+          <label for="niveles-filtro-nivel1" class="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider ml-1 mb-3">Nivel 1</label>
+          <div class="mt-1">
+            <FilterDropdown id="niveles-filtro-nivel1" v-model="nivel1" :options="nivel1Options" :placeholder="loadingTree ? 'Cargando...' : 'Todos'" />
+          </div>
+        </div>
+
+        <div class="flex-1">
+          <label for="niveles-filtro-nivel2" class="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider ml-1">Nivel 2</label>
+          <div class="mt-1">
+            <FilterDropdown id="niveles-filtro-nivel2" v-model="nivel2" :options="nivel2Options" placeholder="Todos" />
+          </div>
+        </div>
+
+        <div class="flex-1">
+          <label for="niveles-filtro-nivel3" class="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider ml-1">Nivel 3</label>
+          <div class="mt-1">
+            <FilterDropdown id="niveles-filtro-nivel3" v-model="nivel3" :options="nivel3Options" placeholder="Todos" />
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Resultados -->
-    <div class="flex-1 min-w-0 w-full space-y-4">
+    <div class="space-y-4">
       <div v-if="errorTree" class="bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 text-sm rounded p-3">
         {{ errorTree }}
       </div>
@@ -220,34 +246,8 @@ onMounted(async () => {
         </div>
         <p class="text-sm font-medium text-gray-600 dark:text-gray-300">Ningún nivel seleccionado</p>
         <p class="text-xs text-gray-400 dark:text-gray-500 mt-1 max-w-xs">
-          Elige un Nivel 1, 2 o 3 en el panel para ver la demanda agregada de ese grupo de productos.
+          Elige un Nivel 1, 2 o 3 arriba para ver la demanda agregada de ese grupo de productos.
         </p>
-      </div>
-    </div>
-
-    <!-- Selector de niveles -->
-    <div class="flex-shrink-0 w-full lg:w-80">
-      <div class="bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700 shadow-sm p-4 space-y-4">
-        <div>
-          <label for="niveles-filtro-nivel1" class="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider ml-1">Nivel 1</label>
-          <div class="mt-1">
-            <FilterDropdown id="niveles-filtro-nivel1" v-model="nivel1" :options="nivel1Options" :placeholder="loadingTree ? 'Cargando...' : 'Todos'" />
-          </div>
-        </div>
-
-        <div>
-          <label for="niveles-filtro-nivel2" class="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider ml-1">Nivel 2</label>
-          <div class="mt-1">
-            <FilterDropdown id="niveles-filtro-nivel2" v-model="nivel2" :options="nivel2Options" placeholder="Todos" />
-          </div>
-        </div>
-
-        <div>
-          <label for="niveles-filtro-nivel3" class="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider ml-1">Nivel 3</label>
-          <div class="mt-1">
-            <FilterDropdown id="niveles-filtro-nivel3" v-model="nivel3" :options="nivel3Options" placeholder="Todos" />
-          </div>
-        </div>
       </div>
     </div>
   </div>

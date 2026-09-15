@@ -50,21 +50,21 @@
               :class="active ? 'bg-blue-600 text-white' : 'text-gray-900 dark:text-gray-200'"
             >
               <span
-                class="flex items-center gap-1 truncate"
+                class="flex items-start gap-1"
                 :class="{ 'font-medium': selected, 'font-normal': !selected }"
                 :title="item.tieneProyeccion ? 'Con proyección' : 'Sin proyección'"
               >
                 <CheckBadgeIcon
                   v-if="item.tieneProyeccion"
-                  class="h-4 w-4 flex-shrink-0"
+                  class="h-4 w-4 flex-shrink-0 mt-0.5"
                   :class="active ? 'text-white' : 'text-emerald-500 dark:text-emerald-400'"
                 />
                 <ExclamationTriangleIcon
                   v-else
-                  class="h-4 w-4 flex-shrink-0"
+                  class="h-4 w-4 flex-shrink-0 mt-0.5"
                   :class="active ? 'text-white' : 'text-amber-500 dark:text-amber-400'"
                 />
-                <span class="truncate">
+                <span class="whitespace-normal break-words">
                   <span
                     class="font-bold"
                     :class="active ? 'text-white' : (item.tieneProyeccion ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400')"

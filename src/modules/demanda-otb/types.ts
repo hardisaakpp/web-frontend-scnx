@@ -169,7 +169,12 @@ export interface NodoFila {
   stockInicial: number | null
   stockDia: number | null
   transito: number | null
-  sugerenciaCompra: number | null
+  /** Inv. Final Planificado y OTB con la Cobertura Deseada por defecto de BI (`otbParams.target`,
+   *  modo Regular) — el backend ahora los calcula y los manda listos. El cliente los usa tal cual
+   *  mientras no se edite Cobertura Deseada ni se cambie a modo Pico; en cuanto se edita algo, el
+   *  cliente recalcula con la misma fórmula (ver invFinalPlanificado()/otbUnidades() en OtbView.vue). */
+  invFinalPlanificado: number | null
+  otb: number | null
   tendenciaRatio: number | null
   tendencia: string | null
   semaforo: string | null
@@ -183,6 +188,8 @@ export interface NodoFila {
   lyUds: number | null
   nivelMes: number | null
   crec12M: number | null
+  /** = ceil(max(otb, 0)) con el OTB de arriba — golden-tested contra los 727 nodos de ROLAND
+   *  (2026-09-14), 0 discrepancias. El cliente lo recalcula igual si otb cambia (ver pedidoValue()). */
   pedido: number | null
 }
 
@@ -237,6 +244,11 @@ export interface OtbFiltros {
  *  género) y tipoMes, ya que el Excel se genera server-side con todos los nodos+SKUs. */
 export interface OtbExportRequest extends OtbFiltros {
   tipoMes?: 'regular' | 'pico'
+  /** Confirmado contra el swagger real (2026-09-14, ExportarOtbRequest): es GLOBAL para todo el
+   *  export, no por fila — a diferencia de Pedido en `nivel3Multiple`, que sí es por fila. Todavía
+   *  no hay un control en la UI que arme este valor (Cobertura Deseada solo se edita por fila en
+   *  la tabla) — pendiente de definir con el usuario. Omitido = el backend usa su propio default. */
+  coberturaDeseada?: number
   nivel1?: string
   nivel2?: string
   nivel3?: string
@@ -248,10 +260,17 @@ export interface OtbExportRequest extends OtbFiltros {
 }
 
 /** Un ítem de `OtbExportRequest.nivel3Multiple` — una fila (Nivel3+Género) marcada para
- *  exportar, con su Pedido editado. `genero` se omite si la fila no tiene género (null). */
+ *  exportar, con su Pedido editado. `genero` se omite si la fila no tiene género (null).
+ *  Confirmado contra el swagger real (Nivel3PedidoDto, 2026-09-14): a esa fecha NO llevaba
+ *  coberturaDeseada por fila — ese campo era global, ver `OtbExportRequest.coberturaDeseada`.
+ *  `coberturaDeseada` de abajo es un pedido de cambio (2026-09-15, ver
+ *  docs/NEXUS_OTB_REQUEST_EXPORT_NIVEL3_MULTIPLE.md §6) — el backend todavía NO lo soporta;
+ *  se manda ya por si acaso, pero no tiene efecto hasta que lo implementen. */
 export interface OtbExportNivel3Item {
   nivel3: string
   genero?: string
+  /** Pendiente de soporte en backend (§6 del doc de arriba) — se manda igual, sin efecto todavía. */
+  coberturaDeseada?: number
   pedido: number
 }
 
@@ -266,7 +285,6 @@ export interface OtbSkuItem {
   coberturaDias: number | null
   coberturaTotalDias: number | null
   decisionOtb: string | null
-  sugerenciaCompra: number | null
   pedido: number | null
 }
 

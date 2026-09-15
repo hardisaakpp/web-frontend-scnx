@@ -31,7 +31,7 @@
         leaveTo="opacity-0"
         @after-leave="query = ''"
       >
-        <ComboboxOptions class="absolute z-50 mt-1 max-h-60 w-full overflow-auto rounded-md bg-white dark:bg-gray-800 py-1 text-sm shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
+        <ComboboxOptions class="absolute z-50 mt-1 max-h-60 min-w-full w-max max-w-xs overflow-auto rounded-md bg-white dark:bg-gray-800 py-1 text-sm shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
           <div v-if="filteredOptions.length === 0" class="relative cursor-default select-none py-2 px-4 text-gray-500 dark:text-gray-400">
             No se encontraron resultados.
           </div>
@@ -41,7 +41,7 @@
               class="relative cursor-default select-none py-2 pl-10 pr-4 transition-colors"
               :class="active ? 'bg-blue-600 text-white' : 'text-gray-900 dark:text-gray-200'"
             >
-              <span class="block truncate" :class="{ 'font-medium': isSelected, 'font-normal': !isSelected }">{{ opt }}</span>
+              <span class="block whitespace-normal break-words" :class="{ 'font-medium': isSelected, 'font-normal': !isSelected }">{{ opt }}</span>
               <span v-if="isSelected" class="absolute inset-y-0 left-0 flex items-center pl-3" :class="active ? 'text-white' : 'text-blue-600'">
                 <CheckIcon class="h-5 w-5" aria-hidden="true" />
               </span>

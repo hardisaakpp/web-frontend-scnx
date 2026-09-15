@@ -1,46 +1,16 @@
 <script setup lang="ts">
-import { ref, reactive, computed, watch, watchEffect, onMounted, onUnmounted } from 'vue'
+import { ref, computed, watch, watchEffect, onMounted, onUnmounted } from 'vue'
 import { useRoute } from 'vue-router'
-import { MagnifyingGlassIcon, ArrowPathIcon, ArrowDownTrayIcon, ChevronRightIcon, ChevronDownIcon, ArrowTrendingUpIcon, ArrowTrendingDownIcon, MinusIcon } from '@heroicons/vue/24/outline'
+import { MagnifyingGlassIcon, ArrowPathIcon, ArrowDownTrayIcon } from '@heroicons/vue/24/outline'
 import { XMarkIcon } from '@heroicons/vue/20/solid'
 import FilterDropdown from '../components/FilterDropdown.vue'
-import { getOtb, getOtbSkus, exportOtb } from '../services/demandaOtbApi'
-import type { NodoFila, OtbExportNivel3Item, OtbResponse, OtbSkuItem } from '../types'
+import OtbRow from '../components/OtbRow.vue'
+import { getOtb, exportOtb } from '../services/demandaOtbApi'
+import { useOtbCalculations, rowKey, semaforoColor, semaforoDot } from '../composables/useOtbCalculations'
+import type { NodoFila, OtbExportNivel3Item, OtbResponse } from '../types'
 
 const route = useRoute()
 const negocio = computed(() => route.params.negocio as string)
-
-const SEMAFORO_COLOR: Record<string, string> = {
-  OK: 'text-emerald-600 dark:text-emerald-400',
-  BAJO: 'text-amber-600 dark:text-amber-400',
-  CRITICO: 'text-red-600 dark:text-red-400',
-  SOBRESTOCK: 'text-blue-600 dark:text-blue-400',
-  MARGINAL: 'text-gray-500 dark:text-gray-400',
-  'SIN DEMANDA': 'text-gray-500 dark:text-gray-400',
-}
-const SEMAFORO_DOT: Record<string, string> = {
-  OK: 'bg-emerald-500',
-  BAJO: 'bg-amber-500',
-  CRITICO: 'bg-red-500',
-  SOBRESTOCK: 'bg-blue-500',
-  MARGINAL: 'bg-gray-400',
-  'SIN DEMANDA': 'bg-gray-400',
-}
-function semaforoColor(v: string | null) {
-  return v ? SEMAFORO_COLOR[v.toUpperCase()] ?? 'text-gray-900 dark:text-white' : 'text-gray-400'
-}
-function semaforoDot(v: string | null) {
-  return v ? SEMAFORO_DOT[v.toUpperCase()] ?? 'bg-gray-400' : 'bg-gray-300 dark:bg-gray-600'
-}
-
-const TENDENCIA_COLOR: Record<string, string> = {
-  ACELERANDO: 'text-emerald-600 dark:text-emerald-400',
-  ESTABLE: 'text-gray-500 dark:text-gray-400',
-  DESACELERANDO: 'text-red-600 dark:text-red-400',
-}
-function tendenciaColor(v: string | null) {
-  return v ? TENDENCIA_COLOR[v.toUpperCase()] ?? 'text-gray-500 dark:text-gray-400' : 'text-gray-400'
-}
 
 // ── Filtros de arriba (van al backend) ──────────────────────────────────────
 const fecha = ref('')
@@ -55,6 +25,18 @@ const skuBusqueda = ref('')
 const otb = ref<OtbResponse | null>(null)
 const loadingOtb = ref(false)
 const errorOtb = ref<string | null>(null)
+
+// ── Cobertura Deseada + Tipo de mes: ambas 100% cliente, no pegan al backend ──
+// (mismo criterio que NEXUS_OTB_ENDPOINT_OTB.md §5: "Tipo de mes" solo re-pinta la tabla
+// ya cargada con otra fórmula de Inventario Final, sin llamada nueva a la API).
+const tipoMes = ref<'regular' | 'pico'>('regular')
+const otbCalc = useOtbCalculations(otb, tipoMes)
+const { coberturaDeseadaValue, pedidoValue, exportSelectedRows, toggleExportRow } = otbCalc
+
+// Cambia en cada recarga de datos — forma parte del :key de cada OtbRow para forzar que Vue
+// destruya/recree las filas (colapsa expand y limpia la caché de SKUs de golpe), igual que
+// antes hacían los .clear() manuales de los Maps globales de drill-down.
+const loadGen = ref(0)
 
 async function cargarOtb() {
   loadingOtb.value = true
@@ -73,11 +55,7 @@ async function cargarOtb() {
     // El backend puede devolver otra fecha "más cercana" si no se pidió una explícita —
     // se sincroniza el selector con lo que realmente se está mostrando.
     fecha.value = otb.value.fecha
-    // Los nodos cambiaron: el drill-down expandido y su caché ya no son válidos.
-    expandedKeys.clear()
-    skusCache.clear()
-    skusLoading.clear()
-    skusError.clear()
+    loadGen.value++
   } catch (e) {
     otb.value = null
     errorOtb.value = e instanceof Error ? e.message : 'Error consultando el OTB.'
@@ -140,28 +118,6 @@ const colGeneroOptions = computed(() => {
   return [...new Set(scope.map(r => r.genero).filter((v): v is string => !!v))].sort()
 })
 
-// ── Selección de filas para el Excel ("Nivel 3 → Excel") — checkbox por fila
-// (Nivel3+Género), independiente de los filtros de columna, no toca la tabla en pantalla.
-// Vacío = exporta todo (comportamiento actual, sin cambios).
-const exportSelectedRows = reactive(new Set<string>())
-function toggleExportRow(row: NodoFila) {
-  const key = rowKey(row)
-  if (exportSelectedRows.has(key)) exportSelectedRows.delete(key)
-  else exportSelectedRows.add(key)
-}
-
-// Pedido es editable — mismo patrón que Cobertura Deseada: un Map reactivo por fila en vez
-// de mutar el NodoFila original, con el valor de BI como default hasta que se edite.
-const pedidoEditado = reactive(new Map<string, number>())
-function pedidoValue(row: NodoFila) {
-  const key = rowKey(row)
-  if (!pedidoEditado.has(key)) pedidoEditado.set(key, row.pedido ?? 0)
-  return pedidoEditado.get(key)!
-}
-function setPedido(row: NodoFila, value: number) {
-  pedidoEditado.set(rowKey(row), value)
-}
-
 function buildNivel3MultipleForExport(): OtbExportNivel3Item[] | undefined {
   if (exportSelectedRows.size === 0) return undefined
   const items: OtbExportNivel3Item[] = []
@@ -170,6 +126,7 @@ function buildNivel3MultipleForExport(): OtbExportNivel3Item[] | undefined {
     items.push({
       nivel3: row.nivel3,
       ...(row.genero ? { genero: row.genero } : {}),
+      coberturaDeseada: coberturaDeseadaValue(row),
       pedido: pedidoValue(row),
     })
   }
@@ -182,7 +139,7 @@ watch(colNivel2, () => { colNivel3.value = '' })
 // ── Orden por columna (clic en el encabezado, como el "▲" del dashboard original) ──
 type SortField = 'nivel1' | 'nivel2' | 'nivel3' | 'genero' | 'skus' | 'stockInicial'
   | 'stockDia' | 'transito' | 'min80' | 'ventasPlanificada' | 'max80' | 'catNuevo'
-  | 'ventasTotal' | 'coberturaDias' | 'sugerenciaCompra'
+  | 'ventasTotal' | 'coberturaDias'
 const sortField = ref<SortField>('nivel1')
 const sortDir = ref<'asc' | 'desc'>('asc')
 function toggleSort(field: SortField) {
@@ -251,7 +208,6 @@ const totales = computed(() => {
     ventasTotal: sum(r => r.ventasTotal),
     invFinalPlanificado: null,
     otb: null,
-    sugerenciaCompra: sum(r => r.sugerenciaCompra),
     semaforos,
   }
 })
@@ -276,105 +232,6 @@ const selectAllExportEl = ref<HTMLInputElement | null>(null)
 watchEffect(() => {
   if (selectAllExportEl.value) selectAllExportEl.value.indeterminate = someExportChecked.value
 })
-
-// ── Drill-down [+] por Nivel1×Nivel2×Nivel3 (sin Género — así lo expone el backend) ──
-function nodeKey(row: NodoFila) {
-  return `${row.nivel1}|${row.nivel2}|${row.nivel3}`
-}
-
-const expandedKeys = reactive(new Set<string>())
-const skusCache = reactive(new Map<string, OtbSkuItem[]>())
-const skusLoading = reactive(new Set<string>())
-const skusError = reactive(new Map<string, string>())
-
-async function toggleExpand(row: NodoFila) {
-  const key = nodeKey(row)
-  if (expandedKeys.has(key)) {
-    expandedKeys.delete(key)
-    return
-  }
-  expandedKeys.add(key)
-  if (skusCache.has(key) || skusLoading.has(key)) return
-
-  skusLoading.add(key)
-  skusError.delete(key)
-  try {
-    const resultado = await getOtbSkus(negocio.value, row.nivel1 ?? '', row.nivel2 ?? '', row.nivel3 ?? '', otb.value!.fecha)
-    skusCache.set(key, resultado.skus)
-  } catch (e) {
-    skusError.set(key, e instanceof Error ? e.message : 'Error consultando los SKUs de este nodo.')
-  } finally {
-    skusLoading.delete(key)
-  }
-}
-
-// ── Cobertura Deseada + Tipo de mes: ambas 100% cliente, no pegan al backend ──
-// (mismo criterio que NEXUS_OTB_ENDPOINT_OTB.md §5: "Tipo de mes" solo re-pinta la tabla
-// ya cargada con otra fórmula de Inventario Final, sin llamada nueva a la API).
-const tipoMes = ref<'regular' | 'pico'>('regular')
-
-const coberturaDeseada = reactive(new Map<string, number>())
-function rowKey(row: NodoFila) {
-  return nodeKey(row) + '|' + row.genero
-}
-function coberturaDeseadaValue(row: NodoFila) {
-  const key = rowKey(row)
-  if (!coberturaDeseada.has(key)) {
-    coberturaDeseada.set(key, otb.value?.otbParams.target ?? 90)
-  }
-  return coberturaDeseada.get(key)!
-}
-function setCoberturaDeseada(row: NodoFila, value: number) {
-  coberturaDeseada.set(rowKey(row), value)
-}
-
-// Fórmula literal de NEXUS_OTB_ENDPOINT_OTB.md §5 (otbInvFinal): Inventario Final Planificado
-// para la Cobertura Deseada editada, usando el ritmo de venta diario (Total Nivel = ventas +
-// catálogo nuevo — NUNCA entra a este cálculo, es una estimación de productos que
-// todavía no existen: solo informativa, no participa en inventario/compra, ver
-// NEXUS_OTB_BUG_INVFINAL.md). En modo "pico" el ritmo diario se calcula sobre 1/3 del
-// mes (demanda concentrada), no sobre el mes completo.
-function invFinalPlanificado(row: NodoFila) {
-  const ventas = row.ventasPlanificada ?? 0
-  const cobertura = coberturaDeseadaValue(row)
-  const ritmoDiario = tipoMes.value === 'pico' ? (ventas / 3) / 30 : ventas / 30
-  return cobertura * ritmoDiario
-}
-
-// OTB = Inv. Final Planificado + Ventas Planificada − Stock Inicial − Tránsito
-// (NEXUS_OTB_BUG_INVFINAL.md §4-5, otbCalc() del original).
-function otbUnidades(row: NodoFila) {
-  const ventas = row.ventasPlanificada ?? 0
-  const stock = row.stockInicial ?? 0
-  const transito = row.transito ?? 0
-  return invFinalPlanificado(row) + ventas - stock - transito
-}
-
-// ── Mismo cálculo, a nivel de SKU individual (filas del drill-down) — Cobertura Deseada
-// propia por SKU, igual que en el dashboard original. `/otb/skus` no trae Tránsito por SKU
-// (solo a nivel de nodo), así que el OTB por SKU queda sin ese descuento — aproximado, no
-// idéntico al nodo padre.
-const coberturaDeseadaSku = reactive(new Map<string, number>())
-function coberturaDeseadaSkuValue(sku: OtbSkuItem) {
-  if (!coberturaDeseadaSku.has(sku.codigo)) {
-    coberturaDeseadaSku.set(sku.codigo, otb.value?.otbParams.target ?? 90)
-  }
-  return coberturaDeseadaSku.get(sku.codigo)!
-}
-function setCoberturaDeseadaSku(sku: OtbSkuItem, value: number) {
-  coberturaDeseadaSku.set(sku.codigo, value)
-}
-function invFinalPlanificadoSku(sku: OtbSkuItem) {
-  const ventas = sku.predUnidades ?? 0
-  const cobertura = coberturaDeseadaSkuValue(sku)
-  const ritmoDiario = tipoMes.value === 'pico' ? (ventas / 3) / 30 : ventas / 30
-  return cobertura * ritmoDiario
-}
-function otbUnidadesSku(sku: OtbSkuItem) {
-  const ventas = sku.predUnidades ?? 0
-  const stock = sku.stockInicial ?? 0
-  return invFinalPlanificadoSku(sku) + ventas - stock
-}
 
 // ── Exportar a Excel: ahora lo genera el backend (agrupación nativa + drill-down de
 // TODOS los nodos filtrados, no solo los expandidos en pantalla) — ver
@@ -441,57 +298,57 @@ onUnmounted(() => {
   <div class="space-y-4">
     <!-- Filtros -->
     <div class="bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700 shadow-sm p-4">
-      <div class="flex flex-wrap items-end gap-3">
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <div>
           <label for="otb-filtro-mes" class="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider ml-1">Mes objetivo</label>
-          <div class="mt-1 w-36">
+          <div class="mt-1">
             <FilterDropdown id="otb-filtro-mes" v-model="fecha" :options="otb?.fechasDisponibles ?? []" :placeholder="loadingOtb ? 'Cargando...' : '—'" />
           </div>
         </div>
 
         <div>
           <label for="otb-filtro-coleccion" class="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider ml-1">Colección</label>
-          <div class="mt-1 w-40">
+          <div class="mt-1">
             <FilterDropdown id="otb-filtro-coleccion" v-model="coleccion" :options="otb?.colecciones ?? []" placeholder="Todas" />
           </div>
         </div>
 
         <div>
           <label for="otb-filtro-marca-proveedor" class="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider ml-1">Marca proveedor</label>
-          <div class="mt-1 w-40">
+          <div class="mt-1">
             <FilterDropdown id="otb-filtro-marca-proveedor" v-model="marcaProveedor" :options="otb?.marcasProveedor ?? []" placeholder="Todas" />
           </div>
         </div>
 
         <div>
           <label for="otb-filtro-origen" class="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider ml-1">Origen</label>
-          <div class="mt-1 w-32">
+          <div class="mt-1">
             <FilterDropdown id="otb-filtro-origen" v-model="origen" :options="otb?.origenes ?? []" placeholder="Todos" />
           </div>
         </div>
 
         <div>
           <label for="otb-filtro-descontinuado" class="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider ml-1">Descontinuado</label>
-          <div class="mt-1 w-28">
+          <div class="mt-1">
             <FilterDropdown id="otb-filtro-descontinuado" v-model="descontinuado" :options="otb?.descontinuados ?? []" placeholder="Todos" />
           </div>
         </div>
 
         <div>
           <label for="otb-filtro-reposicion" class="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider ml-1">Reposición</label>
-          <div class="mt-1 w-32">
+          <div class="mt-1">
             <FilterDropdown id="otb-filtro-reposicion" v-model="repocision" :options="otb?.repociones ?? []" placeholder="Todas" />
           </div>
         </div>
 
         <div>
           <label for="otb-filtro-inactivo" class="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider ml-1">Inactivo</label>
-          <div class="mt-1 w-24">
+          <div class="mt-1">
             <FilterDropdown id="otb-filtro-inactivo" v-model="inactivo" :options="otb?.inactivos ?? []" placeholder="Todos" />
           </div>
         </div>
 
-        <div class="flex-1 min-w-[200px]">
+        <div>
           <label for="otb-buscar-sku" class="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider ml-1">Buscar SKU</label>
           <div class="relative mt-1">
             <MagnifyingGlassIcon class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
@@ -590,7 +447,6 @@ onUnmounted(() => {
               <th scope="col" class="px-3 py-2 min-w-[150px] text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer select-none hover:text-gray-700 dark:hover:text-gray-200" @click="toggleSort('nivel3')">Nivel 3 {{ sortIndicator('nivel3') }}</th>
               <th scope="col" class="px-3 py-2 min-w-[130px] text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer select-none hover:text-gray-700 dark:hover:text-gray-200" @click="toggleSort('genero')">Género {{ sortIndicator('genero') }}</th>
               <th scope="col" class="px-3 py-2 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-right cursor-pointer select-none hover:text-gray-700 dark:hover:text-gray-200" @click="toggleSort('skus')">SKUs {{ sortIndicator('skus') }}</th>
-              <th scope="col" class="px-3 py-2 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-right" title="Editable — recalcula Inv. Final Planificado; no recalcula Semáforo/Decisión, ver nota abajo">Cobertura deseada</th>
               <th scope="col" class="px-3 py-2 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-right cursor-pointer select-none hover:text-gray-700 dark:hover:text-gray-200" @click="toggleSort('stockInicial')">Stock inicial {{ sortIndicator('stockInicial') }}</th>
               <th scope="col" class="px-3 py-2 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-right cursor-pointer select-none hover:text-gray-700 dark:hover:text-gray-200" @click="toggleSort('stockDia')">Stock día <span v-if="otb?.diaEjecucionBi"> {{ otb.diaEjecucionBi }}</span> {{ sortIndicator('stockDia') }}</th>
               <th scope="col" class="px-3 py-2 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-right cursor-pointer select-none hover:text-gray-700 dark:hover:text-gray-200" @click="toggleSort('transito')">Tránsito {{ sortIndicator('transito') }}</th>
@@ -599,13 +455,13 @@ onUnmounted(() => {
               <th scope="col" class="px-3 py-2 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-right cursor-pointer select-none hover:text-gray-700 dark:hover:text-gray-200" @click="toggleSort('max80')">Máx 80% {{ sortIndicator('max80') }}</th>
               <th scope="col" class="px-3 py-2 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-right cursor-pointer select-none hover:text-gray-700 dark:hover:text-gray-200" @click="toggleSort('catNuevo')">Catálogo nuevo {{ sortIndicator('catNuevo') }}</th>
               <th scope="col" class="px-3 py-2 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-right cursor-pointer select-none hover:text-gray-700 dark:hover:text-gray-200" @click="toggleSort('ventasTotal')">Total nivel {{ sortIndicator('ventasTotal') }}</th>
+              <th scope="col" class="px-3 py-2 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-right" title="Editable — recalcula Inv. Final Planificado; no recalcula Semáforo/Decisión, ver nota abajo">Cobertura deseada</th>
               <th scope="col" class="px-3 py-2 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-right" title="Calculado en el cliente — ver nota abajo">Inv. Final Planificado</th>
-              <th scope="col" class="px-3 py-2 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-right" title="Calculado en el cliente — ver nota abajo">OTB</th>
               <th scope="col" class="px-3 py-2 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Semáforo</th>
               <th scope="col" class="px-3 py-2 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-right cursor-pointer select-none hover:text-gray-700 dark:hover:text-gray-200" @click="toggleSort('coberturaDias')">Cobertura (días) {{ sortIndicator('coberturaDias') }}</th>
               <th scope="col" class="px-3 py-2 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Tendencia</th>
               <th scope="col" class="px-3 py-2 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Decisión</th>
-              <th scope="col" class="px-3 py-2 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-right cursor-pointer select-none hover:text-gray-700 dark:hover:text-gray-200" @click="toggleSort('sugerenciaCompra')">Sugerencia {{ sortIndicator('sugerenciaCompra') }}</th>
+              <th scope="col" class="px-3 py-2 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-right" title="Calculado en el cliente — ver nota abajo">OTB</th>
               <th scope="col" class="px-3 py-2 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-right">Pedido</th>
               <th scope="col" class="px-3 py-2 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-center" title="Marca filas puntuales (Nivel3+Género) para exportar solo esas al Excel, con su Pedido editado">
                 <div class="flex items-center justify-center gap-1.5">
@@ -626,148 +482,31 @@ onUnmounted(() => {
               <th scope="col" class="px-2 pb-2"><FilterDropdown v-model="colNivel2" :options="colNivel2Options" placeholder="Todos" /></th>
               <th scope="col" class="px-2 pb-2"><FilterDropdown v-model="colNivel3" :options="colNivel3Options" placeholder="Todos" /></th>
               <th scope="col" class="px-2 pb-2"><FilterDropdown v-model="colGenero" :options="colGeneroOptions" placeholder="Todos" /></th>
-              <th scope="col" colspan="19"></th>
+              <th scope="col" colspan="18"></th>
             </tr>
           </thead>
           <tbody class="divide-y divide-gray-100 dark:divide-gray-700/60">
             <tr v-if="loadingOtb">
-              <td colspan="22" class="px-4 py-10 text-center text-sm text-gray-400">Cargando OTB...</td>
+              <td colspan="23" class="px-4 py-10 text-center text-sm text-gray-400">Cargando OTB...</td>
             </tr>
             <tr v-else-if="filteredRows.length === 0">
-              <td colspan="22" class="px-4 py-10 text-center text-sm text-gray-400">Sin resultados para estos filtros</td>
+              <td colspan="23" class="px-4 py-10 text-center text-sm text-gray-400">Sin resultados para estos filtros</td>
             </tr>
-            <template v-else v-for="row in filteredRows" :key="rowKey(row)">
-              <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
-                <td class="pl-3">
-                  <button
-                    v-if="row.nivel1 && row.nivel2 && row.nivel3"
-                    type="button"
-                    class="p-0.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
-                    @click="toggleExpand(row)"
-                  >
-                    <ChevronDownIcon v-if="expandedKeys.has(nodeKey(row))" class="w-4 h-4" />
-                    <ChevronRightIcon v-else class="w-4 h-4" />
-                  </button>
-                </td>
-                <td class="px-3 py-2 text-gray-900 dark:text-white">{{ row.nivel1 ?? '—' }}</td>
-                <td class="px-3 py-2 text-gray-700 dark:text-gray-300">{{ row.nivel2 ?? '—' }}</td>
-                <td class="px-3 py-2 text-gray-700 dark:text-gray-300">{{ row.nivel3 ?? '—' }}</td>
-                <td class="px-3 py-2 text-gray-500 dark:text-gray-400">{{ row.genero ?? '—' }}</td>
-                <td class="px-3 py-2 text-right text-gray-900 dark:text-white font-medium">{{ row.skus ?? '—' }}</td>
-                <td class="px-3 py-2 text-right">
-                  <input
-                    type="number"
-                    min="0"
-                    class="w-16 text-right rounded border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-white text-sm py-1 px-1.5 focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-900/20 focus:border-blue-500 border"
-                    :value="coberturaDeseadaValue(row)"
-                    @change="setCoberturaDeseada(row, Number(($event.target as HTMLInputElement).value))"
-                  />
-                </td>
-                <td class="px-3 py-2 text-right text-gray-700 dark:text-gray-300">{{ row.stockInicial ?? '—' }}</td>
-                <td class="px-3 py-2 text-right text-gray-700 dark:text-gray-300">{{ row.stockDia ?? '—' }}</td>
-                <td class="px-3 py-2 text-right text-gray-700 dark:text-gray-300">{{ row.transito ?? '—' }}</td>
-                <td class="px-3 py-2 text-right text-gray-700 dark:text-gray-300">{{ row.min80 ?? '—' }}</td>
-                <td class="px-3 py-2 text-right text-gray-700 dark:text-gray-300">{{ row.ventasPlanificada ?? '—' }}</td>
-                <td class="px-3 py-2 text-right text-gray-700 dark:text-gray-300">{{ row.max80 ?? '—' }}</td>
-                <td class="px-3 py-2 text-right text-gray-700 dark:text-gray-300">{{ row.catNuevo ?? '—' }}</td>
-                <td class="px-3 py-2 text-right font-medium text-gray-900 dark:text-white">{{ row.ventasTotal ?? '—' }}</td>
-                <td class="px-3 py-2 text-right font-medium text-gray-900 dark:text-white">{{ invFinalPlanificado(row).toFixed(1) }}</td>
-                <td class="px-3 py-2 text-right font-medium text-gray-900 dark:text-white">{{ otbUnidades(row).toFixed(1) }}</td>
-                <td class="px-3 py-2">
-                  <span class="flex items-center gap-1.5 font-medium" :class="semaforoColor(row.semaforo)">
-                    <span class="w-2 h-2 rounded-full flex-shrink-0" :class="semaforoDot(row.semaforo)"></span>
-                    {{ row.semaforo || '—' }}
-                  </span>
-                </td>
-                <td class="px-3 py-2 text-right text-gray-700 dark:text-gray-300">{{ row.coberturaDias ?? '—' }}</td>
-                <td class="px-3 py-2">
-                  <span v-if="row.tendencia" class="flex items-center gap-1" :class="tendenciaColor(row.tendencia)">
-                    <ArrowTrendingUpIcon v-if="row.tendencia.toUpperCase() === 'ACELERANDO'" class="w-3.5 h-3.5" />
-                    <ArrowTrendingDownIcon v-else-if="row.tendencia.toUpperCase() === 'DESACELERANDO'" class="w-3.5 h-3.5" />
-                    <MinusIcon v-else class="w-3.5 h-3.5" />
-                    {{ row.tendencia }}
-                  </span>
-                  <span v-else class="text-gray-400">—</span>
-                </td>
-                <td class="px-3 py-2 text-gray-500 dark:text-gray-400 max-w-[220px] truncate" :title="row.decisionOtb ?? ''">{{ row.decisionOtb || '—' }}</td>
-                <td class="px-3 py-2 text-right text-gray-700 dark:text-gray-300">{{ row.sugerenciaCompra ?? '—' }}</td>
-                <td class="px-3 py-2 text-right">
-                  <input
-                    type="number"
-                    min="0"
-                    class="w-16 text-right rounded border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-white text-sm py-1 px-1.5 focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-900/20 focus:border-blue-500 border"
-                    :value="pedidoValue(row)"
-                    @change="setPedido(row, Number(($event.target as HTMLInputElement).value))"
-                  />
-                </td>
-                <td class="px-3 py-2 text-center">
-                  <input
-                    v-if="row.nivel3"
-                    type="checkbox"
-                    :checked="exportSelectedRows.has(rowKey(row))"
-                    @change="toggleExportRow(row)"
-                  />
-                </td>
-              </tr>
-
-              <tr v-if="expandedKeys.has(nodeKey(row)) && skusLoading.has(nodeKey(row))">
-                <td></td>
-                <td colspan="23" class="px-4 py-2 text-xs text-gray-400">Cargando SKUs...</td>
-              </tr>
-              <tr v-if="expandedKeys.has(nodeKey(row)) && skusError.has(nodeKey(row))">
-                <td></td>
-                <td colspan="23" class="px-4 py-2 text-xs text-red-600 dark:text-red-400">{{ skusError.get(nodeKey(row)) }}</td>
-              </tr>
-              <tr
-                v-for="sku in (expandedKeys.has(nodeKey(row)) ? skusCache.get(nodeKey(row)) ?? [] : [])"
-                :key="sku.codigo"
-                class="bg-blue-50/40 dark:bg-blue-900/10 hover:bg-blue-50/70 dark:hover:bg-blue-900/20 transition-colors"
-              >
-                <td></td>
-                <td colspan="4" class="px-3 py-2 text-blue-700 dark:text-blue-400 font-medium">
-                  {{ sku.codigo }} — {{ sku.nombre }} <span class="text-gray-400 dark:text-gray-500 font-normal">[{{ negocio }}]</span>
-                </td>
-                <td class="px-3 py-2 text-right text-blue-700 dark:text-blue-400">1</td>
-                <td class="px-3 py-2 text-right">
-                  <input
-                    type="number"
-                    min="0"
-                    class="w-16 text-right rounded border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-white text-sm py-1 px-1.5 focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-900/20 focus:border-blue-500 border"
-                    :value="coberturaDeseadaSkuValue(sku)"
-                    @change="setCoberturaDeseadaSku(sku, Number(($event.target as HTMLInputElement).value))"
-                  />
-                </td>
-                <td class="px-3 py-2 text-right text-blue-700 dark:text-blue-400">{{ sku.stockInicial ?? '—' }}</td>
-                <td class="px-3 py-2 text-right text-gray-400" title="No disponible por SKU en /otb/skus">—</td>
-                <td class="px-3 py-2 text-right text-gray-400" title="No disponible por SKU en /otb/skus">—</td>
-                <td class="px-3 py-2 text-right text-gray-400" title="No disponible por SKU en /otb/skus">—</td>
-                <td class="px-3 py-2 text-right text-blue-700 dark:text-blue-400">{{ sku.predUnidades ?? '—' }}</td>
-                <td class="px-3 py-2 text-right text-gray-400" title="No disponible por SKU en /otb/skus">—</td>
-                <td class="px-3 py-2 text-right text-gray-400" title="No disponible por SKU en /otb/skus">—</td>
-                <td class="px-3 py-2 text-right text-gray-400" title="No disponible por SKU en /otb/skus">—</td>
-                <td class="px-3 py-2 text-right font-medium text-blue-700 dark:text-blue-400" title="Estimado sin Tránsito por SKU">{{ invFinalPlanificadoSku(sku).toFixed(1) }}</td>
-                <td class="px-3 py-2 text-right font-medium text-blue-700 dark:text-blue-400" title="Estimado sin Tránsito por SKU">{{ otbUnidadesSku(sku).toFixed(1) }}</td>
-                <td class="px-3 py-2">
-                  <span class="flex items-center gap-1.5" :class="semaforoColor(sku.semaforo)">
-                    <span class="w-1.5 h-1.5 rounded-full flex-shrink-0" :class="semaforoDot(sku.semaforo)"></span>
-                    {{ sku.semaforo ?? '—' }}
-                  </span>
-                </td>
-                <td class="px-3 py-2 text-right text-blue-700 dark:text-blue-400">{{ sku.coberturaDias ?? '—' }}</td>
-                <td class="px-3 py-2 text-gray-400">—</td>
-                <td class="px-3 py-2 text-gray-500 dark:text-gray-400 max-w-[220px] truncate" :title="sku.decisionOtb ?? ''">{{ sku.decisionOtb || '—' }}</td>
-                <td class="px-3 py-2 text-right text-blue-700 dark:text-blue-400">{{ sku.sugerenciaCompra ?? '—' }}</td>
-                <td class="px-3 py-2 text-right text-blue-700 dark:text-blue-400">{{ sku.pedido ?? '—' }}</td>
-                <td></td>
-              </tr>
-            </template>
+            <OtbRow
+              v-else
+              v-for="row in filteredRows"
+              :key="rowKey(row) + '|' + loadGen"
+              :row="row"
+              :negocio="negocio"
+              :fecha="otb?.fecha ?? ''"
+              :calc="otbCalc"
+            />
           </tbody>
           <tfoot v-if="filteredRows.length > 0" class="sticky bottom-0">
             <tr class="bg-gray-100 dark:bg-gray-900 border-t-2 border-gray-300 dark:border-gray-600 font-bold text-gray-900 dark:text-white">
               <td></td>
               <td colspan="4" class="px-3 py-2">TOTAL ({{ totales.nodos }} nodo{{ totales.nodos === 1 ? '' : 's' }})</td>
               <td class="px-3 py-2 text-right">{{ totales.skus }}</td>
-              <td></td>
               <td class="px-3 py-2 text-right">{{ totales.stockInicial }}</td>
               <td class="px-3 py-2 text-right">{{ totales.stockDia }}</td>
               <td class="px-3 py-2 text-right">{{ totales.transito }}</td>
@@ -776,7 +515,7 @@ onUnmounted(() => {
               <td class="px-3 py-2 text-right text-gray-400" title="No se suma linealmente (cuadratura)">—</td>
               <td class="px-3 py-2 text-right">{{ totales.catNuevo }}</td>
               <td class="px-3 py-2 text-right">{{ totales.ventasTotal }}</td>
-              <td class="px-3 py-2 text-right text-gray-400" title="Fórmula de agregación no confirmada">—</td>
+              <td></td>
               <td class="px-3 py-2 text-right text-gray-400" title="Fórmula de agregación no confirmada">—</td>
               <td class="px-3 py-2">
                 <span class="flex items-center gap-2">
@@ -789,7 +528,7 @@ onUnmounted(() => {
               <td></td>
               <td></td>
               <td></td>
-              <td class="px-3 py-2 text-right">{{ totales.sugerenciaCompra.toFixed(2) }}</td>
+              <td class="px-3 py-2 text-right text-gray-400" title="Fórmula de agregación no confirmada">—</td>
               <td></td>
               <td></td>
             </tr>
