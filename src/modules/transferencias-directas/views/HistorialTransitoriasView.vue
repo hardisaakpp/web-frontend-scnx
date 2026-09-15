@@ -26,7 +26,6 @@ import {
     type TransitoriaResumen,
 } from '../types'
 import transferenciasService from '../services/transferenciasService'
-import ModalConfirmacion from '../components/ModalConfirmacion.vue'
 import DetalleReversoModal from '../components/DetalleReversoModal.vue'
 import ConfirmarRegularizarModal from '../components/ConfirmarRegularizarModal.vue'
 
