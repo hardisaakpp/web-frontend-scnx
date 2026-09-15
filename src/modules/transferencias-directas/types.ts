@@ -288,6 +288,7 @@ export type  EstadoRecepcion =
 export const ESTADOS_RECEPCION_TERMINALES: EstadoRecepcion[] = [
   'Cerrada',
   'RegularizadaAutomatica',
+  'RegularizadaManual',
   'RequiereRevisionManual'
 ]
 
@@ -403,13 +404,15 @@ export interface RegularizarResponse {
 
 //GET/transitorias/{id}/reverso: 
 export interface TransitoriaReverso{
-  id: number
+  id: number   // = solicitudReversoId (para errores-sap/reenviar-sap)
+  solicitudOrigenId: number // = id de la transitoria original (mismo valor con el que se llamó a este endpoint)
   sapTransferDocNum: number | null
   sapTransferDocEntry:  number | null 
   guiaEnvio: string | null
   tiendaOrigenCodigo: string //invertida respecto de la transitoria original
   tiendaOrigen: string
   tiendaDestinoCodigo: string
+  tiendaDestino: string
   estado: EstadoTransferencia
   fechaEnvioSap: string | null
   lineas: TransitoriaLinea[]

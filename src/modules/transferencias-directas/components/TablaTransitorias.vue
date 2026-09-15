@@ -153,15 +153,17 @@ const tooltipRegularizar = (t: TransitoriaResumen) => {
                     </td>
                     <td class="px-4 py-3">
                         <button v-if="t.reversoEstado" type="button" @click="emit('verReverso', t.id)"
-                            class="hover:opacity-75 transition-opacity">
+                            class="inline-flex items-center gap-1 hover:opacity-75 transition-opacity">
                             <span v-if="t.reversoEstado === 'TransferenciaCreada'"
                                 class="inline-flex items-center px-2.5 py-1.5 rounded-full text-xs font-medium whitespace-nowrap bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">
                                 {{ t.reversoSapTransferDocNum }}
                             </span>
                             <EstadosPlantilla v-else :estado="t.reversoEstado" />
+                            <EyeIcon class="w-3.5 h-3.5 text-gray-400 dark:text-gray-500" />
                         </button>
                         <span v-else class="text-xs text-gray-400">—</span>
                     </td>
+
                     <td class="px-4 py-3">
                         <div class="flex items-center justify-end gap-1">
                             <button type="button" @click="emit('ver', t.id)" title="Ver detalle"

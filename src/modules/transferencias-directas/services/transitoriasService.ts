@@ -79,9 +79,10 @@ const transitoriasService = {
       filename: nombreArchivoDesdeHeader(resp.headers['content-disposition'], 'historialtransitorias.xlsx'),
     }
   },
-  regularizar: async (id: number): Promise<RegularizarResponse> => {
+  regularizar: async (id: number, responsable: string): Promise<RegularizarResponse> => {
     const { data } = await transferenciasDirectasApi.post<RegularizarResponse>(
-      `transitorias/${id}/regularizar`
+      `transitorias/${id}/regularizar`,
+      { responsable }
     )
     return data
   },

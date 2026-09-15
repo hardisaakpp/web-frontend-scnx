@@ -16,13 +16,19 @@ import almacenesService from '../services/almacenesServices'
 import TablaTransitorias from '../components/TablaTransitorias.vue'
 import DetalleTransitoriaModal from '../components/DetalleTransitoriaModal.vue'
 import {
+    ErrorSap,
     etiquetaEstadoRecepcion,
+    TransitoriaReverso,
     type CampoOrdenTransitoria,
     type EstadoRecepcion,
     type TiendaDestino,
     type TransitoriaDetalle,
     type TransitoriaResumen,
 } from '../types'
+import transferenciasService from '../services/transferenciasService'
+import ModalConfirmacion from '../components/ModalConfirmacion.vue'
+import DetalleReversoModal from '../components/DetalleReversoModal.vue'
+import ConfirmarRegularizarModal from '../components/ConfirmarRegularizarModal.vue'
 
 const authStore = useAuthStore()
 const { accesses, isTienda } = useWarehouseAccessType()
@@ -123,7 +129,7 @@ onMounted(async () => {
     await cargar()
     try {
         almacenes.value = await almacenesService.listar('Destino')
-    } catch {  }
+    } catch { }
 })
 
 const buscar = () => { pagina.value = 1; cargar() }
@@ -196,6 +202,99 @@ const sincronizar = async (id: number) => {
         else error.value = texto
     } finally {
         sincronizandoId.value = null
+    }
+}
+
+// ── Regularizar (reverso manual) ─────────────────────────────────────────────
+const regularizandoId = ref<number | null>(null)
+const confirmRegularizarAbierto = ref(false)
+const idARegularizar = ref<number | null>(null)
+const detalleRegularizar = ref<TransitoriaDetalle | null>(null)
+const cargandoDetalleRegularizar = ref(false)
+const errorRegularizar = ref('')
+
+const pedirRegularizar = async (id: number) => {
+    idARegularizar.value = id
+    errorRegularizar.value = ''
+    detalleRegularizar.value = null
+    confirmRegularizarAbierto.value = true
+    cargandoDetalleRegularizar.value = true
+    try {
+        detalleRegularizar.value = await transitoriasService.obtenerDetalle(id)
+    } catch {
+        errorRegularizar.value = 'No se pudo cargar el detalle de la transitoria.'
+    } finally {
+        cargandoDetalleRegularizar.value = false
+    }
+}
+const cancelarRegularizar = () => {
+    if (regularizandoId.value !== null) return
+    confirmRegularizarAbierto.value = false
+    idARegularizar.value = null
+    detalleRegularizar.value = null
+}
+
+const confirmarRegularizar = async (responsable: string) => {
+    if (idARegularizar.value == null) return
+    const id = idARegularizar.value
+    regularizandoId.value = id
+    errorRegularizar.value = ''
+    try {
+        const res = await transitoriasService.regularizar(id, responsable)
+        confirmRegularizarAbierto.value = false
+        idARegularizar.value = null
+        detalleRegularizar.value = null
+        error.value = res.mensaje
+        await cargar()
+    } catch (e: any) {
+        errorRegularizar.value = e?.response?.data?.error ?? 'No se pudo regularizar la transitoria.'
+    } finally {
+        regularizandoId.value = null
+    }
+}
+//- VER REVEROS (DETALLE DE LA REGULARIZACIÓN) ------------
+const reversoAbierto = ref(false)
+const reversoActual = ref<TransitoriaReverso | null>(null)
+const cargandoReverso = ref(false)
+const reversoErrorSap = ref<ErrorSap[]>([])
+const cargandoErrorSap = ref(false)
+const reintentandoReverso = ref(false)
+
+const verReverso = async (idTransitoria: number) => {
+    reversoAbierto.value = true
+    reversoActual.value = null
+    reversoErrorSap.value = []
+    cargandoReverso.value = true
+    try {
+        const reverso = await transitoriasService.obtenerReverso(idTransitoria)
+        reversoActual.value = reverso
+        if (reverso.estado === 'ErrorEnvioSap') {
+            cargandoErrorSap.value = true
+            try {
+                reversoErrorSap.value = await transferenciasService.obtenerErroresSap(reverso.id)
+            } finally {
+                cargandoErrorSap.value = false
+            }
+        }
+    } catch {
+        error.value = 'No se pudo cargar el detalle de la regularización.'
+        reversoAbierto.value = false
+    } finally {
+        cargandoReverso.value = false
+    }
+}
+const cerrarReverso = () => { reversoAbierto.value = false }
+
+const reintentarReverso = async () => {
+    const reverso = reversoActual.value
+    if (!reverso) return
+    reintentandoReverso.value = true
+    try {
+        await transferenciasService.reenviarSap(reverso.id)
+        await verReverso(reverso.solicitudOrigenId)
+        await cargar()
+    } finally {
+        reintentandoReverso.value = false
     }
 }
 
@@ -357,8 +456,9 @@ const exportarReporteXls = async (detallado = false) => {
             </div>
 
             <TablaTransitorias :transitorias="transitorias" :cargando="cargando" :ordenar-por="ordenarPor"
-                :direccion="direccion" :sincronizando-id="sincronizandoId" @ver="verDetalle" @sincronizar="sincronizar"
-                @ordenar="ordenarPorColumna" />
+                :direccion="direccion" :sincronizando-id="sincronizandoId" :regularizando-id="regularizandoId"
+                @ver="verDetalle" @sincronizar="sincronizar" @ordenar="ordenarPorColumna"
+                @regularizar="pedirRegularizar" @ver-reverso="verReverso" />
 
             <p v-if="error"
                 class="px-4 py-3 text-sm text-red-600 dark:text-red-400 border-t border-gray-200 dark:border-gray-700">
@@ -370,7 +470,7 @@ const exportarReporteXls = async (detallado = false) => {
                 <div class="flex items-center gap-6">
                     <div class="text-xs text-gray-500 dark:text-gray-400">
                         Mostrando <span class="font-medium text-gray-900 dark:text-white">{{ transitorias.length
-                        }}</span>
+                            }}</span>
                         de <span class="font-medium text-gray-900 dark:text-white">{{ totalRegistros }}</span>
                         transitorias
                     </div>
@@ -408,5 +508,13 @@ const exportarReporteXls = async (detallado = false) => {
         <DetalleTransitoriaModal :abierto="detalleAbierto" :detalle="detalleActual" :cargando="cargandoDetalle"
             :sincronizando="sincronizandoId !== null" :error="detalleError" @cerrar="cerrarDetalle"
             @sincronizar="sincronizar" />
+        <ConfirmarRegularizarModal :abierto="confirmRegularizarAbierto" :detalle="detalleRegularizar"
+    :cargando="cargandoDetalleRegularizar" :regularizando="regularizandoId !== null" :error="errorRegularizar"
+    @confirmar="confirmarRegularizar" @cancelar="cancelarRegularizar" />
+
+        <DetalleReversoModal :abierto="reversoAbierto" :reverso="reversoActual" :cargando="cargandoReverso"
+            :errores-sap="reversoErrorSap" :cargando-errores-sap="cargandoErrorSap" :reintentando="reintentandoReverso"
+            @cerrar="cerrarReverso" @reintentar="reintentarReverso" />
+
     </div>
 </template>
