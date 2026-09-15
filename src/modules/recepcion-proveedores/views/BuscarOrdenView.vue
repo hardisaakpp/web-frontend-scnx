@@ -4,12 +4,14 @@ import VolverButton from '@/components/VolverButton.vue'
 </script>
 
 <template>
-  <div class="max-w-xl mx-auto py-10 px-4">
-    <VolverButton to="/recepcion-proveedores" title="Volver" class="mb-4" />
+  <div class="max-w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+    <VolverButton to="/recepcion-proveedores" title="Volver" class="shrink-0 self-start mb-4" />
 
-    <h1 class="text-xl font-semibold text-gray-900 dark:text-white mb-1">Recepción Proveedores</h1>
-    <p class="text-sm text-gray-600 dark:text-gray-400 mb-6">Busca una orden de compra por su número (DocNum).</p>
+    <div class="max-w-xl mx-auto">
+      <h1 class="text-xl font-semibold text-gray-900 dark:text-white mb-1">Recepción Proveedores</h1>
+      <p class="text-sm text-gray-600 dark:text-gray-400 mb-6">Busca una orden de compra por su número (DocNum).</p>
 
-    <BuscarOdcBar autofocus />
+      <BuscarOdcBar autofocus />
+    </div>
   </div>
 </template>
