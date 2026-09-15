@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
 import { useSupervisorStore } from '../../stores/supervisorStore'
-import VolverButton from '@/components/VolverButton.vue'
+import VolverButton from '@/components/navegacion/VolverButton.vue'
 
 const store = useSupervisorStore()
 onMounted(() => store.cargarEnroladores())

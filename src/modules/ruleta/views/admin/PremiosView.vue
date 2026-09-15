@@ -4,7 +4,7 @@ import { useAdminStore } from '../../stores/adminStore'
 import { useToast } from '@/composables/useToast'
 import { extraerMensajeError } from '../../services/utils/errorHandler'
 import type { PremioAdmin, TipoPremio } from '../../types'
-import VolverButton from '@/components/VolverButton.vue'
+import VolverButton from '@/components/navegacion/VolverButton.vue'
 
 const store = useAdminStore()
 const toast = useToast()

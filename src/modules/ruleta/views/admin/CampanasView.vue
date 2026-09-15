@@ -5,7 +5,7 @@ import { useToast } from '@/composables/useToast'
 import { useAdminStore } from '../../stores/adminStore'
 import { extraerMensajeError } from '../../services/utils/errorHandler'
 import type { CrearCampanaDTO, EstadoCampana, EstadoOperativoCampana, SegmentoCliente, Campana } from '../../types'
-import VolverButton from '@/components/VolverButton.vue'
+import VolverButton from '@/components/navegacion/VolverButton.vue'
 import DuplicarCampanaModal from '../../components/admin/DuplicarCampanaModal.vue'
 
 const store  = useAdminStore()

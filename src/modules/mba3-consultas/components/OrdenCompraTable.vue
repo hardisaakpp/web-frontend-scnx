@@ -1,28 +1,5 @@
 <template>
   <div class="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden border border-gray-200 dark:border-gray-700 transition-colors duration-300">
-    <!-- Header con acciones -->
-    <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700 transition-colors duration-300">
-      <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <!-- Título y contador -->
-        <div class="flex items-center gap-3">
-          <h2 class="text-lg font-semibold text-gray-900 dark:text-white transition-colors duration-300">Órdenes de Compra</h2>
-        </div>
-
-        <!-- Selector de Columnas -->
-        <div>
-          <ColumnSelectorPanel
-            :columns="columnsWithVisibility"
-            :is-open="columnVisibility.isOpen.value"
-            :selector-id="columnVisibility.selectorId"
-            @toggle-open="columnVisibility.toggleOpen"
-            @toggle-column="columnVisibility.toggleColumnVisibility"
-            @select-all="() => selectAllTableColumns(availableColumns.map(c => c.key))"
-            @reset="resetTablePreferences"
-          />
-        </div>
-      </div>
-    </div>
-
     <!-- Tabla -->
     <div v-if="filteredOrdenes.length === 0" class="text-center py-12 text-gray-500 dark:text-gray-400 transition-colors duration-300">
       <svg class="mx-auto h-12 w-12 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -377,7 +354,6 @@ import { mba3ConsultasService } from '../services/mba3ConsultasApi'
 import { isTransientClientError } from '../utils/httpErrors'
 import { formatNumber, formatCurrencyWithDecimals, formatDate, formatDateTime } from '../utils/formatters'
 import LoadingSpinner from './LoadingSpinner.vue'
-import ColumnSelectorPanel from './ColumnSelectorPanel.vue'
 
 const props = defineProps<{
   ordenesCompra: OrdenCompra[]
@@ -1227,10 +1203,19 @@ onUnmounted(() => {
   // Cleanup removido - ya no hay listeners
 })
 
-// Exponer funciones para que el componente padre pueda llamarlas
+// Exponer funciones para que el componente padre pueda llamarlas, y el estado del selector de
+// columnas (el botón "Columnas" ahora lo renderiza el padre, junto al buscador -- ver
+// ProcesoCompletoView.vue -- pero el estado/composable sigue viviendo acá, sin duplicarlo).
 defineExpose({
   clearSendingState,
   clearSelection,
-  clearSendingMultipleState
+  clearSendingMultipleState,
+  columnsWithVisibility,
+  columnSelectorIsOpen: columnVisibility.isOpen,
+  columnSelectorId: columnVisibility.selectorId,
+  toggleColumnSelectorOpen: columnVisibility.toggleOpen,
+  toggleColumnVisibility: columnVisibility.toggleColumnVisibility,
+  selectAllColumns: () => selectAllTableColumns(availableColumns.map(c => c.key)),
+  resetColumnPreferences: resetTablePreferences
 })
 </script>

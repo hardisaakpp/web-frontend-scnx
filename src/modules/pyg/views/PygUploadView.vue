@@ -456,7 +456,7 @@ import { APP_LOCALE } from '@/plugins/locale'
 import { lastNotification } from '@/composables/useNotificaciones'
 import { useModuleNotifications } from '@/composables/useModuleNotifications'
 import { useAuthStore } from '@/stores/auth'
-import QuickTablePagination from '@/components/QuickTablePagination.vue'
+import QuickTablePagination from '@/components/paginacion/QuickTablePagination.vue'
 import { TableCellsIcon } from '@heroicons/vue/24/outline'
 import {
   downloadErrors,

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import LoadingSpinner from '@/components/LoadingSpinner.vue'
+import LoadingSpinner from '@/components/feedback/LoadingSpinner.vue'
 import { useDelayedFlag } from '@/composables/useDelayedFlag'
 
 const props = withDefaults(

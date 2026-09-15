@@ -223,7 +223,7 @@
 
 <script setup lang="ts">
 import { computed, type Ref } from '@vue/reactivity'
-import VolverButton from '@/components/VolverButton.vue'
+import VolverButton from '@/components/navegacion/VolverButton.vue'
 import LoadingSpinner from './LoadingSpinner.vue'
 import { useOdcSapVolver } from '../../../composables/useOdcSapVolver'
 

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import BuscarOdcBar from '../components/BuscarOdcBar.vue'
-import VolverButton from '@/components/VolverButton.vue'
+import VolverButton from '@/components/navegacion/VolverButton.vue'
 </script>
 
 <template>

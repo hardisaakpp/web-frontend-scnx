@@ -257,6 +257,18 @@
               Gestionar usuarios de picking
             </button>
 
+            <button
+              v-if="menuSesion.status === 'Recount'"
+              type="button"
+              class="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 dark:text-gray-200
+                     hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-left"
+              title="Asignar o ajustar qué usuario recuenta cada artículo"
+              @click="sesionParaReparto = menuSesion.sessionId; cerrarMenu()"
+            >
+              <ArrowsRightLeftIcon class="w-4 h-4 flex-shrink-0 text-gray-400" />
+              Repartir reconteo
+            </button>
+
             <div class="border-t border-gray-100 dark:border-gray-700 my-1" />
 
             <button
@@ -399,6 +411,7 @@ import {
   XCircleIcon,
   ExclamationTriangleIcon,
   TrashIcon,
+  ArrowsRightLeftIcon,
 } from '@heroicons/vue/24/outline'
 import { CheckBadgeIcon } from '@heroicons/vue/24/solid'
 import { inventarioSesionesService } from '../services/inventarioSesionesApi'
@@ -458,11 +471,15 @@ function cerrarMenu() {
 function toISODate(d: Date): string {
   return d.toISOString().slice(0, 10)
 }
+// Estándar de listados del proyecto: al abrir, solo los últimos 15 días. El rango viaja al servidor
+// (ver inventarioSesionesService.getSesiones): cada toma devuelta implica calcular su alcance contra
+// sc_maestros, por eso traer el histórico completo hacía que la pantalla tardara tanto en cargar.
+const DIAS_POR_DEFECTO = 15
 const hoy = new Date()
-const unMesAtras = new Date(hoy)
-unMesAtras.setMonth(unMesAtras.getMonth() - 1)
+const inicioPorDefecto = new Date(hoy)
+inicioPorDefecto.setDate(inicioPorDefecto.getDate() - DIAS_POR_DEFECTO)
 
-const fechaDesde = ref<string>(toISODate(unMesAtras))
+const fechaDesde = ref<string>(toISODate(inicioPorDefecto))
 const fechaHasta = ref<string>(toISODate(hoy))
 
 function limpiarFechas() {
@@ -553,6 +570,14 @@ const sesionesPaginadas = computed(() => {
 // Cualquier cambio de filtro/orden vuelve a la página 1 — evita quedar parado en una página vacía.
 watch([filtroEstado, fechaDesde, fechaHasta, busqueda, sortKey, sortDir], () => { paginaActual.value = 1 })
 
+// El rango de fechas se resuelve en el servidor: al cambiarlo se vuelve a consultar (con una pausa
+// corta para no disparar una consulta por cada tecla del selector de fecha).
+let recargaPendiente: ReturnType<typeof setTimeout> | null = null
+watch([fechaDesde, fechaHasta], () => {
+  if (recargaPendiente) clearTimeout(recargaPendiente)
+  recargaPendiente = setTimeout(() => { cargar() }, 400)
+})
+
 // Conteo aplica solo filtro de fecha (no el de estado) para que los chips siempre sean precisos
 const sesionesEnFecha = computed(() => {
   let result = sesiones.value
@@ -602,7 +627,10 @@ async function cargar() {
   loading.value = true
   error.value = null
   try {
-    sesiones.value = await inventarioSesionesService.getSesiones()
+    sesiones.value = await inventarioSesionesService.getSesiones({
+      since: fechaDesde.value ? `${fechaDesde.value}T00:00:00` : undefined,
+      until: fechaHasta.value ? `${fechaHasta.value}T23:59:59` : undefined,
+    })
   } catch (e: any) {
     error.value = e.message ?? 'Error al cargar sesiones.'
   } finally {
@@ -643,9 +671,9 @@ async function cerrarTomaFisica(sessionId: string) {
   }
 }
 
-function onRepartoConfirmado() {
-  exito.value = 'Reparto de reconteo confirmado.'
-  setTimeout(() => { exito.value = null }, 4000)
+function onRepartoConfirmado(resumen: string) {
+  exito.value = resumen
+  setTimeout(() => { exito.value = null }, 8000)
 }
 
 async function eliminarTomaFisica(sessionId: string) {

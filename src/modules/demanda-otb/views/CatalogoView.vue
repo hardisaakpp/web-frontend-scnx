@@ -127,9 +127,86 @@ watch(negocio, () => {
 </script>
 
 <template>
-  <div class="flex flex-col lg:flex-row gap-4 items-start">
+  <div class="space-y-4">
+    <!-- Filtros -->
+    <div class="bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700 shadow-sm p-4">
+      <div class="flex flex-wrap items-end gap-3">
+        <div class="flex-1 min-w-[220px]">
+          <label for="catalogo-filtro-producto" class="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider ml-1">
+            Producto — mostrando {{ items.length }} de {{ total.toLocaleString() }}
+          </label>
+          <div class="mt-1">
+            <ProductComboBox
+              id="catalogo-filtro-producto"
+              v-model="selectedCodigo"
+              :items="items"
+              :loading="loadingCatalogo"
+              @change="onComboChange"
+              @search="onComboSearch"
+            />
+          </div>
+        </div>
+
+        <div>
+          <label for="catalogo-filtro-nivel1" class="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider ml-1">Nivel 1</label>
+          <div class="mt-1 w-36">
+            <FilterDropdown id="catalogo-filtro-nivel1" v-model="nivel1" :options="facetas.nivel1" />
+          </div>
+        </div>
+
+        <div>
+          <label for="catalogo-filtro-nivel2" class="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider ml-1">Nivel 2</label>
+          <div class="mt-1 w-36">
+            <FilterDropdown id="catalogo-filtro-nivel2" v-model="nivel2" :options="facetas.nivel2" />
+          </div>
+        </div>
+
+        <div>
+          <label for="catalogo-filtro-nivel3" class="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider ml-1">Nivel 3</label>
+          <div class="mt-1 w-36">
+            <FilterDropdown id="catalogo-filtro-nivel3" v-model="nivel3" :options="facetas.nivel3" />
+          </div>
+        </div>
+
+        <div>
+          <label for="catalogo-filtro-genero" class="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider ml-1">Género</label>
+          <div class="mt-1 w-28">
+            <FilterDropdown id="catalogo-filtro-genero" v-model="genero" :options="facetas.genero" />
+          </div>
+        </div>
+
+        <div>
+          <label for="catalogo-filtro-marca-comercial" class="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider ml-1">Marca comercial</label>
+          <div class="mt-1 w-40">
+            <FilterDropdown id="catalogo-filtro-marca-comercial" v-model="marcaComercial" :options="facetas.marcaComercial" placeholder="Todas" />
+          </div>
+        </div>
+
+        <div>
+          <label for="catalogo-filtro-coleccion" class="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider ml-1">Colección</label>
+          <div class="mt-1 w-32">
+            <FilterDropdown id="catalogo-filtro-coleccion" v-model="coleccion" :options="facetas.coleccion" placeholder="Todas" />
+          </div>
+        </div>
+
+        <div>
+          <label for="catalogo-filtro-confianza" class="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider ml-1">Confianza</label>
+          <div class="mt-1 w-32">
+            <FilterDropdown id="catalogo-filtro-confianza" v-model="confianza" :options="facetas.confianza" placeholder="Todas" />
+          </div>
+        </div>
+      </div>
+
+      <div class="flex justify-end mt-3">
+        <button @click="handleClearFilters" class="flex items-center gap-2 px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors shadow-sm text-sm font-medium">
+          <ArrowPathIcon class="w-4 h-4" />
+          <span>Limpiar</span>
+        </button>
+      </div>
+    </div>
+
     <!-- Resultados + detalle -->
-    <div class="flex-1 min-w-0 w-full space-y-4">
+    <div class="space-y-4">
       <div v-if="errorCatalogo" class="bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 text-sm rounded p-3">
         {{ errorCatalogo }}
       </div>
@@ -151,7 +228,7 @@ watch(negocio, () => {
         <div class="w-12 h-12 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center mb-3">
           <MagnifyingGlassIcon class="w-6 h-6 text-gray-400" />
         </div>
-        <p class="text-sm font-medium text-gray-600 dark:text-gray-300">Ningún producto seleccionado</p>
+        <p class="text-sm font-medium text-gray-600 dark:text-gray-300">No se ha seleccionado un producto.</p>
         <p class="text-xs text-gray-400 dark:text-gray-500 mt-1 max-w-xs">
           Usa el buscador o los filtros del panel para encontrar un producto y ver su detalle y proyección de demanda.
         </p>
@@ -168,86 +245,7 @@ watch(negocio, () => {
         </div>
       </div>
     </div>
-
-    <!-- Filtros: siempre visibles, no afectan el rendimiento de la búsqueda -->
-    <div class="flex-shrink-0 w-full lg:w-80">
-      <div class="flex flex-col bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700 shadow-sm">
-        <div class="p-4 space-y-4">
-            <div>
-              <label for="catalogo-filtro-producto" class="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider ml-1">
-                Producto — mostrando {{ items.length }} de {{ total.toLocaleString() }}
-              </label>
-              <div class="mt-1">
-                <ProductComboBox
-                  id="catalogo-filtro-producto"
-                  v-model="selectedCodigo"
-                  :items="items"
-                  :loading="loadingCatalogo"
-                  @change="onComboChange"
-                  @search="onComboSearch"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label for="catalogo-filtro-nivel1" class="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider ml-1">Nivel 1</label>
-              <div class="mt-1">
-                <FilterDropdown id="catalogo-filtro-nivel1" v-model="nivel1" :options="facetas.nivel1" />
-              </div>
-            </div>
-
-            <div>
-              <label for="catalogo-filtro-nivel2" class="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider ml-1">Nivel 2</label>
-              <div class="mt-1">
-                <FilterDropdown id="catalogo-filtro-nivel2" v-model="nivel2" :options="facetas.nivel2" />
-              </div>
-            </div>
-
-            <div>
-              <label for="catalogo-filtro-nivel3" class="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider ml-1">Nivel 3</label>
-              <div class="mt-1">
-                <FilterDropdown id="catalogo-filtro-nivel3" v-model="nivel3" :options="facetas.nivel3" />
-              </div>
-            </div>
-
-            <div>
-              <label for="catalogo-filtro-genero" class="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider ml-1">Género</label>
-              <div class="mt-1">
-                <FilterDropdown id="catalogo-filtro-genero" v-model="genero" :options="facetas.genero" />
-              </div>
-            </div>
-
-            <div>
-              <label for="catalogo-filtro-marca-comercial" class="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider ml-1">Marca comercial</label>
-              <div class="mt-1">
-                <FilterDropdown id="catalogo-filtro-marca-comercial" v-model="marcaComercial" :options="facetas.marcaComercial" placeholder="Todas" />
-              </div>
-            </div>
-
-            <div>
-              <label for="catalogo-filtro-coleccion" class="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider ml-1">Colección</label>
-              <div class="mt-1">
-                <FilterDropdown id="catalogo-filtro-coleccion" v-model="coleccion" :options="facetas.coleccion" placeholder="Todas" />
-              </div>
-            </div>
-
-            <div>
-              <label for="catalogo-filtro-confianza" class="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider ml-1">Confianza</label>
-              <div class="mt-1">
-                <FilterDropdown id="catalogo-filtro-confianza" v-model="confianza" :options="facetas.confianza" placeholder="Todas" />
-              </div>
-            </div>
-          </div>
-
-          <div class="flex-shrink-0 border-t border-gray-200 dark:border-gray-700 p-4">
-            <button @click="handleClearFilters" class="w-full flex items-center justify-center gap-2 h-10 rounded-lg border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors shadow-sm text-sm font-medium">
-              <ArrowPathIcon class="w-4 h-4" />
-              <span>Limpiar</span>
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
+  </div>
 </template>
 
 

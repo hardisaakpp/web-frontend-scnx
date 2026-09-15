@@ -3,7 +3,7 @@ import { ref, reactive, computed, onMounted, onBeforeUnmount, watch } from 'vue'
 import { APP_LOCALE } from '@/plugins/locale'
 import { useAdminStore } from '../../stores/adminStore'
 import { ruletaService } from '../../services/ruletaApi'
-import VolverButton from '@/components/VolverButton.vue'
+import VolverButton from '@/components/navegacion/VolverButton.vue'
 import type { EstadoPremioFiltro, GiroFilters, SegmentoCliente } from '../../types'
 
 const store = useAdminStore()

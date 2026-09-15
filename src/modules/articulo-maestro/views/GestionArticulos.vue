@@ -180,9 +180,9 @@
                 <!-- Table -->
                 <div v-else class="overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-700">
                     <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700 table-fixed">
-                        <thead class="bg-gray-50 dark:bg-gray-900/50">
+                        <thead class="bg-gray-50 dark:bg-gray-900">
                             <tr>
-                                <th class="px-4 py-3 w-10 sticky left-0 bg-gray-50 dark:bg-gray-900/50 z-10">
+                                <th class="px-4 py-3 w-10 sticky left-0 bg-gray-50 dark:bg-gray-900 z-10">
                                     <input
                                         type="checkbox"
                                         aria-label="Seleccionar todos los artículos de la página"
@@ -205,7 +205,7 @@
                                         </div>
                                     </div>
                                 </th>
-                                <th class="px-4 py-3 text-right text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider w-32 sticky right-0 bg-gray-50 dark:bg-gray-900 z-10 shadow-[-4px_0_4px_rgba(0,0,0,0.05)]">Acciones</th>
+                                <th class="px-4 py-3 text-right text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider w-48 min-w-[195px] sticky right-0 bg-gray-50 dark:bg-gray-900 z-10 border-l border-transparent dark:border-gray-700/60 shadow-[-4px_0_4px_rgba(0,0,0,0.05)] dark:shadow-[-8px_0_12px_rgba(0,0,0,0.5)]">Acciones</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-gray-200 dark:divide-gray-700 bg-white dark:bg-gray-800">
@@ -222,7 +222,8 @@
                                 <td
                                     v-for="col in visibleColumns"
                                     :key="col.key"
-                                    class="px-4 py-3 text-sm text-gray-600 dark:text-gray-300 truncate"
+                                    class="px-4 py-3 text-sm text-gray-600 dark:text-gray-300 max-w-[220px] truncate"
+                                    :title="articuloValor(articulo, col.key) ? String(articuloValor(articulo, col.key)) : ''"
                                 >
                                     <template v-if="col.key === 'uPrArq' || col.key === 'price'">
                                         ${{ Number(articuloValor(articulo, col.key) ?? 0).toFixed(2) }}
@@ -255,7 +256,7 @@
                                         {{ articuloValor(articulo, col.key) ?? '-' }}
                                     </template>
                                 </td>
-                                <td class="px-4 py-3 text-sm text-right whitespace-nowrap sticky right-0 bg-white dark:bg-gray-800 group-hover:bg-gray-50 dark:group-hover:bg-gray-700/50 z-10 shadow-[-4px_0_4px_rgba(0,0,0,0.05)]">
+                                <td class="px-4 py-3 text-sm text-right whitespace-nowrap sticky right-0 bg-white dark:bg-gray-800 group-hover:bg-gray-50 dark:group-hover:bg-gray-700 z-10 w-48 min-w-[195px] border-l border-transparent dark:border-gray-700/60 shadow-[-4px_0_4px_rgba(0,0,0,0.05)] dark:shadow-[-8px_0_12px_rgba(0,0,0,0.5)]">
                                     <button
                                         class="text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300 font-medium mr-3 transition-colors text-xs inline-flex items-center gap-1"
                                         @click="openInspeccion(articulo)"
@@ -466,26 +467,46 @@ const importStore = useImportacionArticulosStore()
 
 const showKeyboardHelp = ref(false)
 const shortcuts = {
-    'Ctrl+M': {
-        description: 'Nuevo artículo',
+    'ctrl+m': {
+        description: 'Crear nuevo artículo',
         action: () => router.push('/articulo-maestro/nuevo')
     },
-    'Ctrl+F': {
-        description: 'Buscar artículo',
+    'ctrl+f': {
+        description: 'Buscar en tabla',
         action: () => {
             const input = document.querySelector('input[placeholder="Buscar..."]') as HTMLInputElement
             if (input) input.focus()
         }
     },
-    'Esc': {
-        description: 'Cerrar modal',
+    'ctrl+i': {
+        description: 'Abrir importación masiva (Excel + ZIP)',
+        action: () => { showCargaModal.value = true }
+    },
+    '?': {
+        description: 'Abrir catálogo de atajos de teclado',
+        action: () => { showKeyboardHelp.value = !showKeyboardHelp.value }
+    },
+    // Jerarquía por capa visual activa: la más superficial (ayuda) se
+    // cierra primero, la de más abajo (confirmación de borrado individual)
+    // al final -- así Esc siempre cierra "lo último que se abrió" en vez de
+    // saltarse capas intermedias.
+    'esc': {
+        description: 'Cerrar modal o cancelar acción activa',
         action: () => {
             if (showKeyboardHelp.value) {
                 showKeyboardHelp.value = false
+            } else if (modalInspeccionAbierto.value) {
+                modalInspeccionAbierto.value = false
+            } else if (confirmandoBulkDelete.value) {
+                confirmandoBulkDelete.value = false
+            } else if (bulkDeleteResult.value) {
+                bulkDeleteResult.value = null
             } else if (showCargaModal.value) {
-                closeCargaModal()
+                showCargaModal.value = false
             } else if (pendingDeleteCode.value) {
                 pendingDeleteCode.value = null
+            } else {
+                (document.activeElement as HTMLElement | null)?.blur()
             }
         }
     }

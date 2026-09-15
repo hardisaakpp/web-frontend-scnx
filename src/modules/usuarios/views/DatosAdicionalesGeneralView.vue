@@ -355,7 +355,7 @@
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { APP_LOCALE } from '@/plugins/locale'
 import api from '@/services/api'
-import VolverButton from '@/components/VolverButton.vue'
+import VolverButton from '@/components/navegacion/VolverButton.vue'
 import WarehouseSelect from '@/components/WarehouseSelect.vue'
 import type { WarehouseDto } from '@/modules/articulo-scaner/types'
 

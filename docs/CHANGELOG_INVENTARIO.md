@@ -6,6 +6,59 @@ Registro cronológico de cambios realizados al módulo `src/modules/inventario` 
 
 ---
 
+## 2026-09-08 — Piloto 2: tolerancia a fallas de red en la pantalla de conteo (rama feature/inventarios_piloto2)
+
+**Contexto.** Al verificar el punto 1 del correo de la toma OUT-CON ("el picking tolera cortes de red") se encontró que era cierto solo a medias: la cola y los errores de envío vivían en memoria, así que se perdían al refrescar, cerrar la pestaña o volver a "Mis inventarios"; el botón "Reenviar" dependía del operador; y con WiFi conectado pero sin salida cada escaneo esperaba los 30 s de timeout antes de pasar a error. Esta rama incluye todo lo de `fix/inventario-toma-fisica-outcon` más los 4 cambios siguientes en `ConteoPickingView.vue` y `inventarioSesionesApi.addCount`, y el punto 5 que sí requiere el backend de la misma rama. **Sin cambios en Core.**
+
+1. **Pendientes guardados en el dispositivo.** Cola y errores se persisten en `localStorage` por toma (`inv_picking_pendientes_v1_<sessionId>`) y se restauran al reabrir la pantalla: lo que estaba en cola o falló por red se reenvía automáticamente; lo rechazado por el servidor vuelve a mostrarse como error. La clave se borra sola cuando no queda nada pendiente.
+2. **Reenvío automático.** Al recibir el evento `online` y cada 30 s (mientras haya errores de conexión) se reencolan los registros marcados como reintentables. Los errores se clasifican: timeout / sin respuesta → reintentable; respuesta del servidor (p. ej. artículo fuera del alcance) → no reintentable, requiere al operador ("Reenviar" manual sigue disponible para ambos).
+3. **Aviso al salir con pendientes.** `onBeforeRouteLeave` pide confirmación y `beforeunload` bloquea el cierre/refresh del navegador cuando hay registros sin enviar. Nuevo badge ámbar "N pendientes" en la cabecera y texto explicativo en el bloque de errores.
+4. **Timeout de `addCount` a 8 s** (antes 30 s del default de axios). El resto de llamadas del servicio conserva su timeout.
+5. **Sin duplicados al reintentar (`clientId`).** El timeout corto hace más probable el caso "la petición sí llegó pero el front no vio la respuesta"; antes, reenviar creaba un segundo conteo. Ahora cada registro de la cola nace con un UUID (`genId` usa `crypto.randomUUID`, con fallback v4 manual para contextos http) que viaja en el body como `clientId`. El backend (`api-inventario` misma rama, columna `inventory_counts.client_id` + índice único filtrado) devuelve el conteo ya guardado si recibe la misma clave en la misma toma. Requiere desplegar el backend de `feature/inventarios_piloto2`; con el backend anterior el campo se ignora y se comporta como hoy.
+
+6. **Eliminar varios ingresos a la vez en el Resumen de Picking** (pedido del piloto: el sistema anterior tenía "Seleccionar todos" + "Eliminar seleccionados" sobre los últimos 50 códigos). En "Últimos 30 ingresos" cada fila borrable tiene casilla; arriba, "Seleccionar todos (N)" (con estado indeterminado) y el botón rojo "Eliminar seleccionados (N)", que pide confirmación indicando cuántos ingresos y unidades se van. Llama a `POST /counts/delete-batch` (backend misma rama); los que el servidor no pudo borrar quedan visibles y se muestra un aviso ámbar con el motivo (p. ej. ingreso de otro operador). El tacho individual sigue funcionando igual.
+
+7. **Gestión de Scans: eliminar de cualquier usuario, también en lote.** La pantalla de administración mostraba "—" en Acciones para usuarios sin acceso global a bodegas aunque tuvieran el permiso de la pantalla. El backend ahora concede el borrado con el permiso `inventario.gestion_scans` (el mismo que abre la ruta), así que quien entra ve "Eliminar" en todas las filas de la ronda vigente. Se agregó columna de casillas con "seleccionar todos" en el encabezado (aplica a los registros filtrados, no solo a la página visible) y botón "Eliminar seleccionados (N)" con diálogo que indica escaneos, unidades y usuarios afectados. Los que el servidor no pudo borrar se informan con el motivo. El subtítulo aclara que cada borrado queda en el log de auditoría (tabla nueva en api-inventario).
+
+11. **Solo usuarios de AD al agregar pickers o participantes.** Los dos campos de "agregar usuario" (Gestionar usuarios de picking y paso 1 del reparto) aceptaban texto libre; un login mal escrito quedaba guardado y ese operador nunca veía su toma ni su lista. Ahora el front verifica el usuario en el Core con `GET /Users/info/{login}` (`findCoreUser` en `src/utils/resolveUserNames.ts`) y, si no existe, muestra "El usuario X no existe en SCNexus / Directorio Activo"; si existe, guarda el login tal como está registrado. **Requiere Core** rama `feature/inventarios_piloto2` (PR a test): `info/{id}` ahora también resuelve por nombre de usuario, no solo por GUID. Con un Core anterior el campo rechaza todo login que no sea GUID.
+
+10. **Cada operador sabe qué le toca recontar.** Antes nadie veía su parte: el reparto era una columna informativa en Conteo de Artículos y el escáner aceptaba cualquier artículo. Ahora, en tomas en Reconteo: (a) la pantalla de picking muestra arriba el panel **"Tu reconteo: N pendientes de M"** con la lista de artículos (código, descripción, código de barras, Nivel 2) y su estado Pendiente/Recontado, que se actualiza al escanear; si no hay reparto el panel dice "Reconteo abierto" y lista todo lo pendiente; (b) con reparto, escanear o teclear un artículo que no está en la lista se rechaza al instante ("no está en tu lista de reconteo") sin llegar al servidor, y el backend lo rechaza igual si alguien lo intenta por otra vía; (c) Conteo de Artículos gana el filtro **Reconteo: Mis artículos (N) / Todos**, por defecto en "Mis artículos" para quien tiene asignaciones; (d) el cierre desde Conteo de Artículos explica que el reconteo queda abierto a todos y cómo repartirlo después.
+
+9. **Reparto de reconteo en dos pasos.** Pedido del piloto: primero preguntar quiénes recontarán. **Paso 1** lista los candidatos (quienes escanearon en ronda 1, los ya asignados y los usuarios de picking de la toma) con etiquetas "Escaneó N / Asignado N / Picking", casilla para dejarlos fuera y campo para agregar otro usuario de red; el agregado se registra como picker al confirmar para que pueda entrar a recontar, y quitar la marca solo lo saca del reparto sin tocar su acceso. Con 0 participantes el botón pasa a "Enviar sin reparto" (aviso: cualquier usuario con acceso a la toma podrá recontar todo; si había reparto guardado, se borra). **Paso 2** pide al backend la distribución balanceada solo entre los elegidos (`participants`) y muestra en la cabecera, siempre visible, los chips "Usuario · N art." más el total; abajo el detalle editable por Nivel 2 y "← Cambiar participantes". Al guardar, la pantalla de tomas muestra el resumen "Reparto de reconteo guardado: Juan (45), María (49)".
+
+8. **Modal "Reparto de reconteo" ya no se pierde.** Al cerrar una toma con diferencias aparecía el modal, y un clic fuera (o Escape) lo cerraba descartando todo sin aviso; la toma quedaba en Reconteo sin reparto y no había forma de volver a abrirlo. Ahora: (a) clic fuera y Escape no cierran; (b) Cancelar y la X piden confirmación explicando qué queda ("la toma queda en Reconteo sin reparto: cualquier usuario podrá recontar cualquier artículo", o "se descartan los cambios, el reparto anterior se mantiene"); (c) nueva acción **"Repartir reconteo"** en el menú de cada toma en estado Reconteo, que abre el mismo modal precargado con el reparto guardado (`currentUserId` del backend) y botón "Guardar cambios". Además, si la toma se cerró en cero (nadie contó) los selects salían vacíos: el backend ahora incluye a los usuarios de picking como candidatos, y el modal avisa cuando no hay candidatos (con la ruta para asignarlos) o cuando quedan artículos "Sin asignar", deshabilitando Confirmar hasta resolverlo.
+
+**Estado:** commits en `feature/inventarios_piloto2` (web-scnexus y api-inventario). Verificado con `vue-tsc` y compilación en Vite; la idempotencia se probó contra la API local apuntando a pruebas (3 POST con el mismo `clientId` → 1 fila). Falta prueba funcional en dispositivo real con corte de red (piloto).
+
+---
+
+## 2026-09-07 — Observaciones de la toma física OUT-CON (nombres, "No contados", código de barras, carga de la lista)
+
+Rama `fix/inventario-toma-fisica-outcon` (desde `test`), contraparte en `api-inventario` (misma rama).
+
+- **Nombres de usuario en vez de GUID/login/correo.** `src/utils/resolveUserNames.ts` (compartido con
+  caja-chica) ya no usa `GET /Users` del Core, que es solo Admin y a un supervisor le fallaba en silencio
+  dejando los ids crudos; ahora resuelve cada id con `GET /Users/info/{id}` (solo autenticado, con caché)
+  y muestra nombre completo → usuario → correo → id. Con eso el **Detalle de la toma** (resumen y detalle
+  de scans y sus descargas), Gestión de scans, reasignación de reconteo e historial de planes muestran el
+  nombre. En el **Resumen supervisor** el nombre resuelto tiene prioridad sobre el texto que guarda el
+  backend (`userName`, que para usuarios AD es el correo), tanto en "Creado por" como en "Conteo por
+  usuario" y en el Excel. Sin cambios en Core.
+- **"No contados" deja de ser categoría** (`DetalleTomaFisicaView`): quedan Cerrados / Diferencias / Otros
+  códigos; una referencia con stock que nadie contó es una **Diferencia** (faltante completo) y la fila
+  lleva la marca "Sin conteo" (columna `SinConteo` en el Excel). El informe de ajuste ya las incluía como
+  faltante (`BuildSessionResults` recorre stock ∪ conteos), así que solo cambió la presentación.
+  Tipos: `SessionDetailLineDto.notCounted`, `SessionDetailStatsDto` sin `notCounted`.
+- **Código de barras en el listado de eliminación** (`ResumenPickingView`, "Últimos 30 ingresos", móvil):
+  nueva línea "Cód. barras" por ingreso (`RecentCountItemDto.barcode`, del backend) y el operador ahora
+  se muestra por nombre en vez del id.
+- **Lista de tomas más rápida** (`SesionesInventarioView`): el rango de fechas viaja al servidor
+  (`getSesiones({ since, until })`) en vez de traer el histórico completo y filtrar en el navegador; abre
+  con los últimos 15 días (estándar) y recarga al cambiar el rango. El backend calcula el alcance de cada
+  toma devuelta contra sc_maestros, por eso el volumen de tomas históricas era lo que hacía lenta la pantalla.
+- Estado: **sin commitear** al momento de escribir esto. Requiere desplegar `api-inventario` de la misma
+  rama (filtros del listado, `barcode` en picking-summary, clasificación sin `NotCounted`).
+
 ## 2026-09-02 — Fix: "Conteo por usuario" del resumen supervisor mostraba GUIDs
 
 - **`SessionUserStatDto.userName`** (types.ts): el backend (`api-inventario` rama `fix/leak`) ahora

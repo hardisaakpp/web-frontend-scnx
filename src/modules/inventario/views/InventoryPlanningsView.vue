@@ -203,7 +203,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref, watch } from 'vue'
-import VolverButton from '@/components/VolverButton.vue'
+import VolverButton from '@/components/navegacion/VolverButton.vue'
 import { inventarioService } from '../services/inventarioApi'
 import { useInventarioPermissions } from '../composables/useInventarioPermissions'
 import type { CatalogDataDto, InventoryPlanningSummaryDto, SaveInventoryPlanningRequest } from '../types'

@@ -7,6 +7,21 @@ import type { HistoryRow } from '../types'
 import { triggerBlobDownload } from '../utils/downloadBlob'
 import PageJumpInput from '../components/PageJumpInput.vue'
 import HistoryDetailModal from '../components/HistoryDetailModal.vue'
+import { APP_LOCALE } from '@/plugins/locale'
+
+// Backend sends materializedAtUtc as ISO-8601 UTC (with Z suffix) and intentionally does not
+// format it — the client owns locale/timezone. Parse as UTC, convert to the browser's local
+// time, and drop the sub-second precision.
+function formatMaterializedAt(value: string): string {
+  return new Date(value).toLocaleString(APP_LOCALE, {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: true,
+  })
+}
 
 const store = useHistoryStore()
 const authStore = useAuthStore()
@@ -390,7 +405,7 @@ async function handleExportCsv(): Promise<void> {
                 <td class="px-4 py-3 text-sm text-right" :class="row.differencesCount > 0 ? 'text-amber-600 dark:text-amber-400 font-semibold' : 'text-gray-600 dark:text-gray-300'">
                   {{ row.differencesCount }}
                 </td>
-                <td v-if="mode === 'all'" class="px-4 py-3 text-sm text-gray-600 dark:text-gray-300">{{ row.materializedAtUtc }}</td>
+                <td v-if="mode === 'all'" class="px-4 py-3 text-sm text-gray-600 dark:text-gray-300">{{ formatMaterializedAt(row.materializedAtUtc) }}</td>
                 <td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-300">{{ row.originWarehouseCode ?? '—' }} → {{ row.transitWarehouseCode ?? row.destinationWarehouseCode ?? row.warehouseCode }}</td>
                 <td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-300">{{ row.responsibleName || '—' }}</td>
                 <td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-300">{{ row.courierWaybillNumber || '—' }}</td>

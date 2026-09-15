@@ -72,9 +72,9 @@
 
         <!-- Tabla de productos procesados -->
         <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md border border-gray-200 dark:border-gray-700 p-6">
-          <div class="flex items-center justify-between mb-4">
+          <div class="flex items-center flex-wrap justify-between gap-3 mb-4">
             <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Productos Procesados</h2>
-            <div class="flex items-center gap-2">
+            <div class="flex items-center flex-wrap gap-2">
               <label class="text-sm text-gray-600 dark:text-gray-400">Filtrar:</label>
               <select
                 v-model="filtroEstado"

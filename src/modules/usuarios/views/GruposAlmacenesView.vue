@@ -439,7 +439,7 @@ import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { APP_LOCALE } from '@/plugins/locale'
 import api from '@/services/api'
 import { randomUUID } from '@/utils/uuid'
-import VolverButton from '@/components/VolverButton.vue'
+import VolverButton from '@/components/navegacion/VolverButton.vue'
 
 
 interface GrupoAlmacenForm {

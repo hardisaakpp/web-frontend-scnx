@@ -161,3 +161,22 @@ export const ESTADOS_QUE_REQUIEREN_ACCION_REDISTRIBUCION = [
 export function requiereAccionPedidoRedistribucion(estado: string): boolean {
   return (ESTADOS_QUE_REQUIEREN_ACCION_REDISTRIBUCION as readonly string[]).includes(estado)
 }
+
+/**
+ * Estados que requieren acción del usuario produccion-elrayo.view en el listado de Pedidos en modo
+ * Producción (PedidosListView.vue vía ruta /mba3-consultas/produccion/pedidos): el backend restringe
+ * ese listado a NUEVO_PEDIDO/GESTIONAR_PEDIDO (ver ESTADOS_PRODUCCION_EL_RAYO_IDS en
+ * pedido_estados.py), pero de esos dos solo NUEVO_PEDIDO es el que todavía no ha sido "tomado" por
+ * Producción -- GESTIONAR_PEDIDO ya se abrió/gestionó. Distinto de ESTADOS_QUE_REQUIEREN_ACCION_PEDIDOS
+ * (propio del modo normal de este mismo listado, para odcsap.view) -- no comparten array a propósito,
+ * igual que los otros 2 listados arriba.
+ */
+export const ESTADOS_QUE_REQUIEREN_ACCION_PRODUCCION = [
+  'NUEVO PEDIDO',
+  'NUEVO_PEDIDO'
+] as const
+
+/** true si el estado es el que requiere acción del usuario produccion-elrayo.view (Nuevo Pedido). */
+export function requiereAccionPedidoProduccion(estado: string): boolean {
+  return (ESTADOS_QUE_REQUIEREN_ACCION_PRODUCCION as readonly string[]).includes(estado)
+}

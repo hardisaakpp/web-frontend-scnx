@@ -20,7 +20,7 @@
         leaveFrom="opacity-100"
         leaveTo="opacity-0"
       >
-        <ComboboxOptions class="absolute z-50 mt-1 max-h-60 w-72 overflow-auto rounded-md bg-white dark:bg-gray-800 py-1 text-sm shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
+        <ComboboxOptions class="absolute z-50 mt-1 max-h-60 w-72 max-w-[calc(100vw-2rem)] overflow-auto rounded-md bg-white dark:bg-gray-800 py-1 text-sm shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
           <div v-if="!buscando && resultados.length === 0" class="px-4 py-2 text-gray-500 dark:text-gray-400">
             {{ query ? 'No se encontraron tiendas.' : 'Escriba para buscar una tienda...' }}
           </div>

@@ -43,6 +43,13 @@
           <option v-if="hasItemsWithoutLevel2" :value="OTROS_SENTINEL">OTROS CÓDIGOS</option>
         </select>
       </div>
+      <div v-if="isRecount && hayReparto" class="min-w-[180px]">
+        <label for="filterAsignado" class="block text-xs font-medium text-gray-500 mb-1">Reconteo</label>
+        <select id="filterAsignado" v-model="filterAsignado" class="select-input w-full">
+          <option value="mios">Mis artículos ({{ misAsignados }})</option>
+          <option value="todos">Todos ({{ lines.length }})</option>
+        </select>
+      </div>
       <div class="flex-[2] min-w-[220px]">
         <label for="search" class="block text-xs font-medium text-gray-500 mb-1">Buscar artículo</label>
         <div class="flex gap-2">
@@ -165,7 +172,8 @@
             Esta toma está en <strong>Reconteo</strong>. Al cerrarla se generará el snapshot inmutable y quedará definitivamente <strong>Cerrada</strong>, independientemente de las diferencias.
           </template>
           <template v-else>
-            Si todos los artículos cuadran, la toma pasará a <strong>Cerrada</strong>. Si hay diferencias, pasará a estado <strong>Reconteo</strong> para una segunda vuelta.
+            Si todos los artículos cuadran, la toma pasará a <strong>Cerrada</strong>. Si hay diferencias, pasará a estado <strong>Reconteo</strong> para una segunda vuelta,
+            abierta a todos los usuarios de la toma. Si quieres dividir el reconteo entre personas, hazlo después desde el menú de la toma con "Repartir reconteo".
           </template>
         </p>
 
@@ -211,6 +219,7 @@ import {
 import { inventarioSesionesService } from '../services/inventarioSesionesApi'
 import type { ArticleCountLineDto } from '../services/inventarioSesionesApi'
 import { useWarehouseAccessType } from '../composables/useWarehouseAccessType'
+import { useAuthStore } from '@/stores/auth'
 import { resolveUserNames } from '@/utils/resolveUserNames'
 import ScannerPanel from '../components/ScannerPanel.vue'
 
@@ -219,6 +228,19 @@ const route = useRoute()
 const sessionId = route.params.sessionId as string
 
 const { isTienda } = useWarehouseAccessType()
+const authStore = useAuthStore()
+
+// ─── Reconteo: "mis artículos" vs todos ──────────────────────────────────────
+/** Ids con los que puede aparecer el usuario actual en un reparto (GUID de CORE o usuario de red). */
+const misIds = computed(() => [authStore.userData?.id, authStore.userData?.userName, authStore.userName]
+  .filter((v): v is string => !!v)
+  .map(v => v.toLowerCase()))
+function esMio(userId: string | null | undefined): boolean {
+  return !!userId && misIds.value.includes(userId.toLowerCase())
+}
+const filterAsignado = ref<'mios' | 'todos'>('todos')
+const hayReparto = computed(() => lines.value.some(l => !!l.assignedUserId))
+const misAsignados = computed(() => lines.value.filter(l => esMio(l.assignedUserId)).length)
 
 const lines = ref<ArticleCountLineDto[]>([])
 const loading = ref(false)
@@ -273,6 +295,10 @@ const filteredLines = computed(() => {
     result = result.filter(l => !l.level2)
   } else if (filterLevel2.value) {
     result = result.filter(l => l.level2 === filterLevel2.value)
+  }
+  if (isRecount.value && filterAsignado.value === 'mios') {
+    // Lo mío más lo que nadie tiene asignado (abierto a todos).
+    result = result.filter(l => !l.assignedUserId || esMio(l.assignedUserId))
   }
   if (search.value.trim()) {
     const q = search.value.trim().toLowerCase()
@@ -411,6 +437,8 @@ async function cargar() {
       if (assignedIds.length > 0) {
         userNames.value = await resolveUserNames(assignedIds)
       }
+      // Con reparto, el operador arranca viendo solo lo suyo; quien no tiene nada asignado ve la lista completa.
+      filterAsignado.value = misAsignados.value > 0 ? 'mios' : 'todos'
     }
     // Clear pending manual edits on reload
     pendingManual.value.clear()
@@ -450,7 +478,7 @@ async function cerrarToma() {
     confirmandoCierre.value = false
     showMsg(
       result.status === 'Recount'
-        ? 'Se encontraron diferencias — la toma pasó a Reconteo.'
+        ? 'Se encontraron diferencias — la toma pasó a Reconteo. Sin reparto: todos los usuarios de la toma ven todos los artículos a recontar. Para dividirlo, usa "Repartir reconteo" en el menú de la toma.'
         : 'Toma cerrada. Snapshot inmutable generado.'
     )
     await cargar()

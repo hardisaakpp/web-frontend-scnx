@@ -24,7 +24,7 @@ Este documento no reemplaza guías específicas; las referencia y las organiza.
 ### 2.1 Base global
 
 - Store/composable base: `src/composables/useToast.ts`
-- Contenedor global visual: `src/components/ToastContainer.vue`
+- Contenedor global visual: `src/components/feedback/ToastContainer.vue`
 - Montaje global: `src/layouts/MainLayout.vue`
 
 Implicación: cualquier módulo puede emitir toasts sin montar nada extra en su vista.
@@ -223,6 +223,110 @@ comportamiento observable — aunque parezca una mejora.
    específicamente cambios de color, posición, texto o comportamiento no solicitados.
 6. `npx vue-tsc --noEmit` limpio sobre todo el proyecto al final.
 7. Un bloque de refactor cohesivo por commit.
+
+### 8.6 Ubicación y organización de `src/components/`
+
+`src/components/` es la única ubicación de componentes compartidos entre módulos (ver
+`docs/MODULOS.md`). Esta subsección formaliza **cómo** se organiza y **cuándo** algo va ahí,
+después de auditar el estado real del repo (2026-09): el mecanismo ya existía y tenía
+adopción real (`VolverButton`, `QuickTablePagination`), pero convivía sin convención escrita
+con copias locales en módulos que ya habían empezado a divergir en silencio (ver 8.7).
+
+**Regla de ubicación:** un componente va en `src/components/` solo si es UI genérica y
+agnóstica de dominio (presentación pura, sin lógica de negocio ni de permisos — ver 8.3) Y
+no depende de un composable/servicio que viva dentro de un módulo específico. Si un
+componente "compartido" necesita lógica de un módulo puntual, esa lógica también debe
+volverse compartida (`src/composables/`) antes de que el componente pueda vivir en la raíz
+— no al revés. Todo lo demás va en `src/modules/<módulo>/components/`.
+
+**Organización por subcarpeta** (sin prefijo `Base*`/`App*` — se evaluó pero se descartó por
+el costo de renombrar ~30 imports de `VolverButton` sin beneficio real sobre agrupar por
+carpeta):
+
+| Subcarpeta | Contiene | Ejemplos actuales |
+|---|---|---|
+| `navegacion/` | Navegación entre pantallas | `VolverButton.vue` |
+| `paginacion/` | Controles de paginación de tablas/listados | `QuickTablePagination.vue`, `PageJumpInput.vue` |
+| `feedback/` | Estados de carga y notificación | `LoadingSpinner.vue`, `SkeletonTable.vue`, `ToastContainer.vue` |
+| `modales/` | Diálogos genéricos (confirmar/error/éxito) | `ConfirmModal.vue`, `ErrorModal.vue`, `SuccessModal.vue` |
+| `datos/` | Presentación de datos (tabs, gráficos) | `FolderTabs.vue`, `BarChart.vue`, `DoughnutChart.vue` |
+| *(raíz, sin subcarpeta)* | Casos con acoplamiento de dominio pendiente de resolver — ver 8.7 | `WarehouseSelect.vue`, `ScannerPanel.vue` |
+| `assistant/` | Feature del widget asistente (mIA), no es design-system genérico | `AssistantWidget.vue`, `CoolTurito.vue` |
+
+**Contrato mínimo para un componente nuevo en `src/components/<categoría>/`:**
+
+- Comentario de cabecera (TSDoc-like) explicando propósito y contrato de props/eventos —
+  igual que ya hacen `RequiereAccionToggleButton.vue` o `DebouncedSearchField.vue` en
+  mba3-consultas, aunque esos sean componentes de módulo.
+- Soporte de dark mode (`dark:*`) desde el primer commit — ver `docs/DARK_MODE_GUIDE.md`. No
+  es opcional para algo que se ofrece a cualquier módulo.
+- `defineEmits<{ evento: [payload] }>()` (sintaxis de tupla). No usar la sintaxis de firma de
+  función (`defineEmits<(e: 'x') => void>()`) en componentes nuevos — ambas conviven hoy en
+  el repo pero la de tupla es la que predomina.
+- Antes de crear uno nuevo: revisar si ya existe algo equivalente en `src/components/` o como
+  copia local en algún módulo (ver 8.7) — no crear una tercera implementación del mismo
+  concepto sin antes revisar ese backlog.
+
+### 8.7 Backlog de deduplicación conocido (no resuelto en esta pasada)
+
+Auditoría 2026-09 sobre `src/components/` vs. `src/modules/*/components/`. Documentado para
+que cada equipo de módulo lo resuelva cuando le toque — no se migró ningún consumidor de
+módulo en esta pasada, solo se reorganizó `src/components/` (ver 8.6).
+
+**Tier 1 — copias idénticas o casi idénticas (mecánico, bajo riesgo):**
+
+| Componente compartido | Copia local | Módulo |
+|---|---|---|
+| `components/modales/ConfirmModal.vue` | `ConfirmDialog.vue` | `recepcion-mercaderia` |
+| `components/modales/ErrorModal.vue` | `ErrorDialog.vue` | `recepcion-mercaderia` |
+| `components/paginacion/PageJumpInput.vue` | `PageJumpInput.vue` (mismo nombre) | `recepcion-mercaderia` |
+| `components/feedback/SkeletonTable.vue` | `SkeletonTable.vue` (mismo nombre) | `mba3-consultas` |
+
+**Tier 2 — casi idénticas pero la copia compartida ya corrigió algo que la copia local no
+tiene (migrar aquí también arregla un bug silencioso, no solo deduplica):**
+
+| Componente compartido | Copia local | Diferencia real detectada |
+|---|---|---|
+| `components/feedback/LoadingSpinner.vue` | `LoadingSpinner.vue` | mba3-consultas — difiere en `<output>` (raíz) vs `<div role="status">` (local) y en el import de `computed` (`vue` vs `@vue/reactivity`) |
+| `components/datos/BarChart.vue` | `BarChart.vue` | mba3-consultas — la copia compartida ya tiene soporte dark mode, la local no |
+| `components/datos/DoughnutChart.vue` | `DoughnutChart.vue` | mba3-consultas — mismo caso: falta dark mode en la copia local |
+| `components/datos/FolderTabs.vue` | `FolderTabs.vue` | mba3-consultas — la copia local tiene además funciones muertas sin uso |
+
+**Tier 3 — acoplamiento de arquitectura sin resolver, requiere decisión de diseño antes de
+tocar código (no es solo deduplicar):**
+
+- `src/components/ScannerPanel.vue` (pensado como compartido) importa
+  `useBarcodeScanner` desde `src/modules/articulo-scaner/composables/`, es decir depende de
+  un módulo de negocio específico — viola la regla de 8.6. Al mismo tiempo,
+  `src/modules/inventario/` mantiene su propia copia tanto del componente como del
+  composable. Antes de mover nada hay que decidir: ¿el composable de escaneo se vuelve
+  compartido (`src/composables/useBarcodeScanner.ts`) y ambos módulos consumen de ahí?
+  ¿Es dueño `articulo-scaner` y `inventario`/la raíz deben consumir su versión? Afecta a 2
+  módulos de negocio ajenos entre sí — no resolver unilateralmente sin sus dueños.
+- `src/components/WarehouseSelect.vue`: patrón de UI genérico (combobox con búsqueda) pero
+  atado al dominio "almacén/tienda" en su implementación actual. Evaluar si conviene
+  generalizarlo (recibir la fuente de datos por prop) o dejarlo explícitamente como
+  componente de dominio fuera de `src/components/`.
+
+**Tier 4 — mismo concepto, implementaciones independientes (no es copy-paste, requiere
+diseñar una API común antes de unificar — seguir el proceso de 8.2/8.5):**
+
+- **Modal de confirmación**: al menos 5 implementaciones conviven — `ConfirmModal.vue` (raíz,
+  Teleport manual), `ConfirmDialog.vue` (`recepcion-mercaderia`, copia de la anterior),
+  `ConfirmActionModal.vue` (`cedi`, `@headlessui/vue` + variante de countdown),
+  `SimpleConfirmModal.vue` (`mba3-consultas`, en realidad es de "éxito" pese al nombre),
+  `ModalConfirmacion.vue` (`transferencias-directas`, variantes `primary`/`peligro` + slot de
+  error de stock). No unificar sin antes decidir cuál set de variantes debe cubrir la pieza
+  compartida.
+- **Badges de estado/notificación**: `AccionPendienteBadge.vue` (`mba3-consultas`, contador de
+  notificación) vs. `EstadoBadge.vue` (`integraciones`, badge semántico de 5 tonos) son
+  conceptos de "badge" distintos, no duplicados entre sí, pero ninguno de los dos tiene
+  equivalente en `src/components/` — evaluar si conviene una pieza `Badge` genérica de la que
+  ambos hereden variantes.
+- **Input de búsqueda con debounce**: `DebouncedSearchField.vue` (`mba3-consultas`) ya
+  deduplicó 8 copias dentro del propio módulo, pero `demanda-otb`, `gestion-usuarios`,
+  `reposiciones` y `recepcion-mercaderia` implementan debounce a mano en sus vistas sin
+  reusar ese componente ni tener uno propio equivalente.
 
 ---
 

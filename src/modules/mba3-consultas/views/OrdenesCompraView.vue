@@ -6,8 +6,8 @@
         <h1 class="text-3xl font-bold text-gray-900 dark:text-white">Historial de Órdenes de Compra</h1>
         <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Consulta y visualiza el historial completo de órdenes de compra</p>
       </div>
-      <div class="flex items-center gap-3">
-        <select 
+      <div class="flex items-center flex-wrap gap-3">
+        <select
           v-model="estadoFilter" 
           @change="handleFilterChange"
           class="px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
@@ -126,7 +126,7 @@ import { useExport } from '../composables/useExport'
 import { mba3ConsultasService } from '../services/mba3ConsultasApi'
 import HistorialOrdenesTable from '../components/HistorialOrdenesTable.vue'
 import SkeletonTable from '../components/SkeletonTable.vue'
-import QuickTablePagination from '@/components/QuickTablePagination.vue'
+import QuickTablePagination from '@/components/paginacion/QuickTablePagination.vue'
 import LoadingSpinner from '../components/LoadingSpinner.vue'
 import type { OrdenCompraLog } from '../types'
 

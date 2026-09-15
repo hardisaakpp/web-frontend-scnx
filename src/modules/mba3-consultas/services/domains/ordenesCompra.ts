@@ -58,6 +58,9 @@ export const ordenesCompraService = {
     if (numeroSap) {
       params.numero_oc_sap = numeroSap
     }
+    if (filters?.solo_pendiente_reintento) {
+      params.solo_pendiente_reintento = 'true'
+    }
 
     const url = buildUrlWithParams('/ordenes-compra', params)
     const response = await mba3Api.get<OrdenCompraResponse>(url, { signal })

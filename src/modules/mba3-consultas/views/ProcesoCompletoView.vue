@@ -92,8 +92,9 @@
           <div class="flex flex-col gap-4 p-6 rounded-xl border border-white/30 dark:border-gray-600/30 backdrop-blur-xl transition-all duration-300 relative overflow-hidden shadow-2xl"
             :class="getProcesoCardClass('procesar-oc')">
             <div class="absolute inset-0 bg-gradient-to-br from-white/20 dark:from-gray-700/20 via-transparent to-transparent pointer-events-none"></div>
-            <div class="flex items-center gap-4 relative z-10 flex-1 min-w-0">
-              <div 
+            <div class="flex items-center justify-between flex-wrap gap-4 relative z-10 flex-1 min-w-0">
+              <div class="flex items-center gap-4 min-w-0">
+              <div
                 class="w-14 h-14 rounded-full flex items-center justify-center shadow-xl backdrop-blur-md transition-all duration-300 border-2 relative overflow-hidden"
               :class="getProcesoIconClass('procesar-oc')"
             >
@@ -122,6 +123,23 @@
               <div class="relative z-10">
                 <h3 class="text-lg font-semibold mb-1 transition-colors duration-300">{{ getStepTitle('procesar-oc') }}</h3>
                 <p class="text-sm text-gray-600 dark:text-gray-300 transition-colors duration-300">{{ getStepDescription('procesar-oc') }}</p>
+              </div>
+              </div>
+              <div class="relative z-10 w-full sm:w-auto sm:min-w-[260px] sm:max-w-sm">
+                <div class="relative">
+                  <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <svg class="h-5 w-5 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                  </div>
+                  <input
+                    id="search-procesar-oc"
+                    v-model.trim="searchProcesarOC"
+                    type="search"
+                    placeholder="Buscar por número de pedido, ODC SAP, estado..."
+                    class="block w-full pl-10 pr-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:focus:ring-blue-400 dark:focus:border-blue-400 transition-colors"
+                  />
+                </div>
               </div>
             </div>
           </div>
@@ -182,15 +200,29 @@
           <div class="bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl rounded-xl shadow-2xl border border-white/30 dark:border-gray-600/30 relative overflow-hidden transition-colors duration-300">
             <div class="absolute inset-0 bg-gradient-to-br from-white/20 dark:from-gray-700/20 via-transparent to-transparent pointer-events-none"></div>
 
-            <!-- Buscador de pedidos/ODC -->
+            <!-- Filtro rápido + selector de columnas (el buscador vive en el banner "Procesar ODC" de arriba) -->
             <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700 transition-colors duration-300">
-              <input
-                id="search-procesar-oc"
-                v-model.trim="searchProcesarOC"
-                type="search"
-                placeholder="Buscar por número de pedido, ODC SAP, estado..."
-                class="block w-full pl-10 pr-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:focus:ring-blue-400 dark:focus:border-blue-400 transition-colors"
-              />
+              <div class="flex flex-wrap items-center gap-3">
+                <RequiereAccionToggleButton
+                  class="!mt-0"
+                  :contador="contadorPendientesReintentoOC"
+                  :activo="soloPendienteReintentoOC"
+                  sufijo="con reintento pendiente"
+                  titulo-inactivo="Filtrar para ver solo ODCs con 'Reintentar' o 'Reintentar ST' disponible"
+                  @toggle="soloPendienteReintentoOC = !soloPendienteReintentoOC"
+                />
+                <div v-if="ordenCompraTableRef" class="ml-auto">
+                  <ColumnSelectorPanel
+                    :columns="ordenCompraTableRef.columnsWithVisibility"
+                    :is-open="ordenCompraTableRef.columnSelectorIsOpen"
+                    :selector-id="ordenCompraTableRef.columnSelectorId"
+                    @toggle-open="ordenCompraTableRef.toggleColumnSelectorOpen"
+                    @toggle-column="ordenCompraTableRef.toggleColumnVisibility"
+                    @select-all="ordenCompraTableRef.selectAllColumns"
+                    @reset="ordenCompraTableRef.resetColumnPreferences"
+                  />
+                </div>
+              </div>
             </div>
 
             <div class="p-6">
@@ -219,13 +251,16 @@
             <div v-if="totalPagesOC > 1 && !ordenesCompraStore.loading" class="mt-4 flex items-center justify-between flex-wrap gap-4">
               <div class="text-sm text-gray-700 dark:text-gray-300 transition-colors duration-300">
                 Mostrando {{ ocRangeStart }}–{{ ocRangeEnd }} de {{ ordenesCompraStore.total }} órdenes
-                (página {{ currentPageOC }} de {{ totalPagesOC }}{{ searchProcesarOC ? ' — búsqueda en servidor' : '' }})
+                (página {{ currentPageOC }} de {{ totalPagesOC }}{{ searchProcesarOC ? ' — búsqueda en servidor' : '' }}{{ soloPendienteReintentoOC ? ' — solo pendientes de reintento' : '' }})
               </div>
               <QuickTablePagination
                 v-model="currentPageOC"
                 :total-pages="totalPagesOC"
+                :page-size="pageSizeOC"
+                :page-size-options="PAGE_SIZE_OPTIONS"
                 :disabled="ordenesCompraStore.loading || (procesoStore.loading && procesoStore.currentStep === 'migrar')"
                 aria-label="Paginación de órdenes de compra"
+                @update:page-size="handlePageSizeChangeOC"
               />
             </div>
             </div>
@@ -276,15 +311,20 @@ import { useOrdenesCompraStore } from '../stores/ordenesCompraStore'
 import { useToast } from '@/composables/useToast'
 import { APP_LOCALE } from '@/plugins/locale'
 import { mba3ConsultasService } from '../services/mba3ConsultasApi'
-import type { Despacho, OrdenCompra, PedidoCompleto, AjusteDetalle, IntegracionSAPDetalle, ProcesoCompletoSAPDetalleODC, ProcesoCompletoSAPResponse, SolicitudesTransferencia } from '../types'
+import type { Despacho, OrdenCompra, PedidoCompleto, AjusteDetalle, IntegracionSAPDetalle, ProcesoCompletoSAPDetalleODC, ProcesoCompletoSAPResponse, SolicitudesTransferencia, OrdenesCompraListFilters } from '../types'
 import DespachosTable from '../components/DespachosTable.vue'
 import OrdenCompraTable from '../components/OrdenCompraTable.vue'
 import SkeletonTable from '../components/SkeletonTable.vue'
 import LoadingSpinner from '../components/LoadingSpinner.vue'
 import IntegracionSAPModal from '../components/IntegracionSAPModal.vue'
-import VolverButton from '@/components/VolverButton.vue'
+import VolverButton from '@/components/navegacion/VolverButton.vue'
 import { useOdcSapVolver } from '../../../composables/useOdcSapVolver'
-import QuickTablePagination from '@/components/QuickTablePagination.vue'
+import QuickTablePagination from '@/components/paginacion/QuickTablePagination.vue'
+import RequiereAccionToggleButton from '../components/RequiereAccionToggleButton.vue'
+import ColumnSelectorPanel from '../components/ColumnSelectorPanel.vue'
+import type { ColumnVisibilityOption } from '../composables/useColumnVisibilityToggle'
+import { PAGE_SIZE_OPTIONS } from '../config/pagination'
+import { usePageSizePreference } from '../composables/usePageSizePreference'
 import { ejecutarProcesoCompletoSap } from '../composables/ejecutarProcesoCompletoSap'
 import { useListadoAutoRefresh } from '../composables/useListadoAutoRefresh'
 import { isTransientClientError, SAP_MAY_STILL_PROCESSING_MESSAGE } from '../utils/httpErrors'
@@ -516,13 +556,13 @@ const nextRefreshTime = ref<Date | null>(null)
 const timeAgoDisplay = ref<string>('')
 
 // Paginación de órdenes de compra (servidor)
-// Paginación ODC en /proceso: tamaño fijo (no configurable desde preferencias ni API)
-const OC_LIST_PAGE_SIZE = 10
 const SEARCH_DEBOUNCE_MS = 400
 const currentPageOC = ref(1)
-const pageSizeOC = OC_LIST_PAGE_SIZE
+const { pageSize: pageSizeOC, guardar: guardarPageSizeOC } = usePageSizePreference('proceso-completo-oc', 10)
 const totalPagesOCServer = ref(1)
 const searchProcesarOC = ref('')
+/** Filtro "solo pendientes de reintento": ODCs donde aplica "Reintentar" o "Reintentar ST". */
+const soloPendienteReintentoOC = ref(false)
 let searchDebounceTimer: ReturnType<typeof setTimeout> | null = null
 let ocRequestController: AbortController | null = null
 
@@ -560,10 +600,17 @@ const almacenesDisponibles = ref([
 ])
 
 // Referencia al componente de tabla de órdenes de compra
-const ordenCompraTableRef = ref<{ 
+const ordenCompraTableRef = ref<{
   clearSendingState?: () => void
   clearSelection?: () => void
   clearSendingMultipleState?: () => void
+  columnsWithVisibility: ColumnVisibilityOption[]
+  columnSelectorIsOpen: boolean
+  columnSelectorId: string
+  toggleColumnSelectorOpen: () => void
+  toggleColumnVisibility: (key: string) => void
+  selectAllColumns: () => void
+  resetColumnPreferences: () => void
 } | null>(null)
 
 // Referencia al componente de tabla de despachos
@@ -592,6 +639,13 @@ const filteredPedidosConfirmados = computed(() => {
     return numero.includes(term) || proveedor.includes(term) || estado.includes(term)
   })
 })
+
+// Total real (todas las páginas) de ODCs con "Reintentar"/"Reintentar ST" disponible.
+// A diferencia de contadorPedidosPendientes en PedidosListView.vue (que cuenta solo la
+// página cargada), acá usamos el total que ya calcula fetchEstadisticas() vía el filtro
+// de servidor solo_pendiente_reintento -- si no, el botón aparecía/desaparecía según qué
+// página estuviera visible en vez de reflejar el listado completo.
+const contadorPendientesReintentoOC = computed(() => ordenesCompraStore.totalPendientesReintento)
 
 // Computed para verificar si hay órdenes de compra disponibles
 const hayOrdenesCompra = computed(() => {
@@ -796,9 +850,11 @@ function nextPageDespachos() {
 async function refrescarDatosOrdenesCompra(maxRetries: number = 1, delayMs: number = 500) {
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
-      await ordenesCompraStore.fetchEstadisticas()
-      await cargarOrdenesCompraPendientes()
-      
+      await Promise.all([
+        ordenesCompraStore.fetchEstadisticas(),
+        cargarOrdenesCompraPendientes(),
+      ])
+
       // Asegurar que Vue detecte los cambios reactivos
       await nextTick()
       
@@ -827,18 +883,21 @@ async function cargarOrdenesCompraPendientes() {
   ordenesCompraStore.loading = true
   try {
     const search = searchProcesarOC.value.trim()
+    const filtros: OrdenesCompraListFilters = {}
+    if (search) filtros.search = search
+    if (soloPendienteReintentoOC.value) filtros.solo_pendiente_reintento = true
     const response = await mba3ConsultasService.getOrdenesCompra(
       undefined,
       currentPageOC.value,
-      OC_LIST_PAGE_SIZE,
-      search ? { search } : undefined,
+      pageSizeOC.value,
+      Object.keys(filtros).length > 0 ? filtros : undefined,
       controller.signal
     )
 
     // Petición superada por una búsqueda/página más reciente: no pisar datos más nuevos con una respuesta tardía.
     if (controller.signal.aborted) return
 
-    const rows = (response.data ?? []).slice(0, OC_LIST_PAGE_SIZE)
+    const rows = (response.data ?? []).slice(0, pageSizeOC.value)
     ordenesCompraStore.ordenesCompra = rows.map((oc) => ({ ...oc }))
     const total =
       response.total ??
@@ -849,7 +908,7 @@ async function cargarOrdenesCompraPendientes() {
     ordenesCompraStore.estadoFilter = undefined
     ordenesCompraStore.currentPage = currentPageOC.value
 
-    totalPagesOCServer.value = Math.max(1, Math.ceil(total / OC_LIST_PAGE_SIZE))
+    totalPagesOCServer.value = Math.max(1, Math.ceil(total / pageSizeOC.value))
 
     if (currentPageOC.value > totalPagesOCServer.value && totalPagesOCServer.value >= 1) {
       currentPageOC.value = totalPagesOCServer.value
@@ -876,19 +935,30 @@ const totalPagesOC = computed(() => totalPagesOCServer.value)
 
 const ocRangeStart = computed(() => {
   if (ordenesCompraStore.total === 0) return 0
-  return (currentPageOC.value - 1) * OC_LIST_PAGE_SIZE + 1
+  return (currentPageOC.value - 1) * pageSizeOC.value + 1
 })
 
 const ocRangeEnd = computed(() => {
   if (ordenesCompraStore.total === 0) return 0
-  return Math.min(currentPageOC.value * OC_LIST_PAGE_SIZE, ordenesCompraStore.total)
+  return Math.min(currentPageOC.value * pageSizeOC.value, ordenesCompraStore.total)
 })
 
 watch(currentPageOC, (page, prev) => {
   if (page !== prev) {
-    void cargarOrdenesCompraPendientes()
+    cargarOrdenesCompraPendientes()
   }
 })
+
+/** Para `@update:page-size` de QuickTablePagination: persiste la preferencia, vuelve a la
+ * página 1 y refresca (si ya estaba en la página 1, el watch de currentPageOC no dispara solo). */
+function handlePageSizeChangeOC(nuevoTamano: number) {
+  guardarPageSizeOC(nuevoTamano)
+  if (currentPageOC.value === 1) {
+    cargarOrdenesCompraPendientes()
+  } else {
+    currentPageOC.value = 1
+  }
+}
 
 watch(searchProcesarOC, () => {
   if (searchDebounceTimer) clearTimeout(searchDebounceTimer)
@@ -897,9 +967,17 @@ watch(searchProcesarOC, () => {
     if (currentPageOC.value !== 1) {
       currentPageOC.value = 1
     } else {
-      void cargarOrdenesCompraPendientes()
+      cargarOrdenesCompraPendientes()
     }
   }, SEARCH_DEBOUNCE_MS)
+})
+
+watch(soloPendienteReintentoOC, () => {
+  if (currentPageOC.value !== 1) {
+    currentPageOC.value = 1
+  } else {
+    cargarOrdenesCompraPendientes()
+  }
 })
 
 async function refreshDatosTrasTimeoutProcesoLegado() {
@@ -1195,8 +1273,10 @@ async function handleGenerarODCDesdePedido(numeroPedido: string) {
     const ocStatus = response?.metadata?.oc_status
     if (ocStatus?.status === 'completed') {
       toast.success('ODC generada', 'La orden de compra se ha generado exitosamente')
-      await ordenesCompraStore.fetchEstadisticas()
-      await cargarOrdenesCompraPendientes()
+      await Promise.all([
+        ordenesCompraStore.fetchEstadisticas(),
+        cargarOrdenesCompraPendientes(),
+      ])
     } else if (ocStatus?.status === 'processing') {
       toast.info('ODC en proceso', 'La orden de compra se está generando. Revisa el estado en "Procesar ODC"')
       await cargarPedidosConfirmados()
@@ -1248,8 +1328,10 @@ async function handleGenerarODCIndividual(despachoId: string) {
     
     // Cambiar de pestaña solo si el proceso fue exitoso y completo
     if (result.shouldChangeTab) {
-      await ordenesCompraStore.fetchEstadisticas()
-      await cargarOrdenesCompraPendientes()
+      await Promise.all([
+        ordenesCompraStore.fetchEstadisticas(),
+        cargarOrdenesCompraPendientes(),
+      ])
     }
     
     // Limpiar estado del botón individual
@@ -1309,8 +1391,10 @@ async function handleGenerarODCMultiples(despachoIds: string[]) {
     
     // Cambiar de pestaña solo si el proceso fue exitoso y completo
     if (result.shouldChangeTab) {
-      await ordenesCompraStore.fetchEstadisticas()
-      await cargarOrdenesCompraPendientes()
+      await Promise.all([
+        ordenesCompraStore.fetchEstadisticas(),
+        cargarOrdenesCompraPendientes(),
+      ])
     }
     
     // Limpiar estado de envío múltiple
@@ -2038,8 +2122,10 @@ async function handleEliminarOC(ocIds: string[]) {
     toast.success('Órdenes eliminadas', `${ocIds.length} orden(es) de compra eliminada(s) exitosamente`)
     
     // Actualizar datos
-    await ordenesCompraStore.fetchEstadisticas()
-    await cargarOrdenesCompraPendientes()
+    await Promise.all([
+      ordenesCompraStore.fetchEstadisticas(),
+      cargarOrdenesCompraPendientes(),
+    ])
 
     // Limpiar la selección después de eliminar exitosamente
     if (ordenCompraTableRef.value?.clearSelection) {
@@ -2066,8 +2152,10 @@ onUnmounted(() => {
 
 // Cargar estadísticas al montar el componente
 onMounted(async () => {
-  await ordenesCompraStore.fetchEstadisticas()
-  await cargarOrdenesCompraPendientes()
+  await Promise.all([
+    ordenesCompraStore.fetchEstadisticas(),
+    cargarOrdenesCompraPendientes(),
+  ])
   await nextTick()
   
   // ⭐ NUEVO: Verificar si hay resultados pendientes de envío SAP para mostrar modal

@@ -177,7 +177,7 @@ import { useToast } from '@/composables/useToast'
 import { formatDateTime } from '../utils/formatters'
 import SkeletonTable from '../components/SkeletonTable.vue'
 import LoadingSpinner from '../components/LoadingSpinner.vue'
-import QuickTablePagination from '@/components/QuickTablePagination.vue'
+import QuickTablePagination from '@/components/paginacion/QuickTablePagination.vue'
 import CorregirSkuModal from '../components/CorregirSkuModal.vue'
 import type { OrdenCompra } from '../types'
 
