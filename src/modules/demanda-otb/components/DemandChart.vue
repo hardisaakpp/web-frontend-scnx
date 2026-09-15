@@ -37,7 +37,7 @@ const seriesConfig = computed<ChartSeriesItem[]>(() => {
     color: '#3b82f6', // blue-500
     strokeWidth: 3,
     dashArray: 0,
-    markerSize: 0,
+    markerSize: 4,
   })
 
   // Historia Comparable (si viene en la respuesta)
@@ -49,7 +49,7 @@ const seriesConfig = computed<ChartSeriesItem[]>(() => {
       color: '#06b6d4', // cyan-500
       strokeWidth: 2,
       dashArray: 4,
-      markerSize: 0,
+      markerSize: 3,
     })
   }
 

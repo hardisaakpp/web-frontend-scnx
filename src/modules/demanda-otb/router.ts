@@ -9,6 +9,7 @@ const routes: RouteRecordRaw[] = [
       requiresAuth: true,
       title: 'Demanda OTB',
       icon: 'ChartBarIcon',
+      permissions: ['demanda-otb.view'],
     },
   },
   {
@@ -18,6 +19,7 @@ const routes: RouteRecordRaw[] = [
     meta: {
       requiresAuth: true,
       title: 'Demanda OTB — Ejemplo',
+      permissions: ['demanda-otb.view'],
     },
   },
   {
@@ -26,6 +28,7 @@ const routes: RouteRecordRaw[] = [
     meta: {
       requiresAuth: true,
       title: 'Demanda OTB',
+      permissions: ['demanda-otb.view'],
     },
     children: [
       { path: '', redirect: to => ({ name: 'demanda-otb-catalogo', params: to.params }) },
@@ -33,25 +36,25 @@ const routes: RouteRecordRaw[] = [
         path: 'catalogo',
         name: 'demanda-otb-catalogo',
         component: () => import('./views/CatalogoView.vue'),
-        meta: { requiresAuth: true, title: 'Demanda OTB — Catálogo' },
+        meta: { requiresAuth: true, title: 'Demanda OTB — Catálogo', permissions: ['demanda-otb.view'] },
       },
       {
         path: 'niveles',
         name: 'demanda-otb-niveles',
         component: () => import('./views/NivelesView.vue'),
-        meta: { requiresAuth: true, title: 'Demanda OTB — Niveles' },
+        meta: { requiresAuth: true, title: 'Demanda OTB — Niveles', permissions: ['demanda-otb.view'] },
       },
       {
         path: 'promociones',
         name: 'demanda-otb-promociones',
         component: () => import('./views/PromocionesView.vue'),
-        meta: { requiresAuth: true, title: 'Demanda OTB — Promociones' },
+        meta: { requiresAuth: true, title: 'Demanda OTB — Promociones', permissions: ['demanda-otb.view'] },
       },
       {
         path: 'otb',
         name: 'demanda-otb-otb',
         component: () => import('./views/OtbView.vue'),
-        meta: { requiresAuth: true, title: 'Demanda OTB — OTB' },
+        meta: { requiresAuth: true, title: 'Demanda OTB — OTB', permissions: ['demanda-otb.view'] },
       },
     ],
   },
