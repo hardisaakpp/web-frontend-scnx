@@ -305,7 +305,7 @@
             <div
               class="absolute inset-0 bg-gradient-to-r from-blue-600/20 to-sky-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
             </div>
-            <Forklift class="h-5 w-5 flex-shrink-0 relative z-10"
+            <TruckIcon class="h-5 w-5 flex-shrink-0 relative z-10"
               :class="{ 'scale-110': $route.path.startsWith('/transferencias-stock') }" />
             <span v-show="!effectiveSidebarCollapsed" class="relative z-10 font-medium">Transferencias de Stock</span>
           </router-link>
