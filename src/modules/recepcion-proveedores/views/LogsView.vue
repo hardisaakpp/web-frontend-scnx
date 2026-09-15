@@ -19,7 +19,7 @@ const docNumOrigen = computed(() => {
   return typeof docNum === 'string' && docNum ? docNum : null
 })
 const volverA = computed(() =>
-  docNumOrigen.value != null ? `/recepcion-proveedores/ordenes-compra/${docNumOrigen.value}` : '/recepcion-proveedores'
+  docNumOrigen.value != null ? `/recepcion-proveedores/ordenes-compra/${docNumOrigen.value}` : '/recepcion-proveedores/buscar'
 )
 const volverATitulo = computed(() => (docNumOrigen.value != null ? `Volver a la ODC ${docNumOrigen.value}` : 'Volver a la búsqueda'))
 

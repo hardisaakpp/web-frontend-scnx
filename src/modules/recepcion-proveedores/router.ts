@@ -18,9 +18,12 @@ function route(
 }
 
 const routes: RouteRecordRaw[] = [
-  route('/recepcion-proveedores', 'recepcion-proveedores-buscar', () => import('./views/BuscarOrdenView.vue'), {
+  route('/recepcion-proveedores', 'recepcion-proveedores-dashboard', () => import('./views/DashboardView.vue'), {
     title: 'Recepción Proveedores',
     icon: 'MagnifyingGlassIcon',
+  }),
+  route('/recepcion-proveedores/buscar', 'recepcion-proveedores-buscar', () => import('./views/BuscarOrdenView.vue'), {
+    title: 'Buscar Orden de Compra',
   }),
   route(
     '/recepcion-proveedores/ordenes-compra/:docNum',
