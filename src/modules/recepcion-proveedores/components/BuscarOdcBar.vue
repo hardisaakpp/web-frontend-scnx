@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { useRouter } from 'vue-router'
 import LoadingSpinner from '@/components/LoadingSpinner.vue'
 import { useDelayedFlag } from '@/composables/useDelayedFlag'
 
@@ -15,16 +15,14 @@ const props = withDefaults(
   { autofocus: false, initialDocNum: null, loading: false }
 )
 
-const route = useRoute()
 const router = useRouter()
 const docNum = ref<string>(props.initialDocNum != null ? String(props.initialDocNum) : '')
 const buscando = ref(false)
 const error = ref<string | null>(null)
 
-const enLogs = computed(() => route.name === 'recepcion-proveedores-logs')
-
-// Si esta barra vive en el detalle de una ODC, "Logs" lleva la referencia de esa ODC en la
-// query para que el boton "Volver" de LogsView regrese ahi en vez de a la busqueda generica.
+// El boton "Logs" solo se muestra cuando esta barra vive en el detalle de una ODC: ahi lleva su
+// referencia en la query para que "Volver" en LogsView regrese a esa ODC en vez de al dashboard.
+// En /buscar y en /logs mismos ya no aporta nada (el dashboard ya ofrece "Historial").
 const logsTo = computed(() => ({
   path: '/recepcion-proveedores/logs',
   query: props.initialDocNum != null ? { volverA: String(props.initialDocNum) } : {},
@@ -87,12 +85,12 @@ async function buscar(): Promise<void> {
         {{ cargando ? 'Buscando...' : 'Buscar' }}
       </button>
       <RouterLink
+        v-if="initialDocNum != null"
         :to="logsTo"
         class="px-5 py-2.5 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors font-medium"
-        :class="{ 'opacity-50 pointer-events-none cursor-not-allowed': cargando || enLogs }"
-        :tabindex="cargando || enLogs ? -1 : undefined"
-        :aria-disabled="cargando || enLogs"
-        :title="enLogs ? 'Ya estás viendo los logs' : undefined"
+        :class="{ 'opacity-50 pointer-events-none cursor-not-allowed': cargando }"
+        :tabindex="cargando ? -1 : undefined"
+        :aria-disabled="cargando"
       >
         Logs
       </RouterLink>
