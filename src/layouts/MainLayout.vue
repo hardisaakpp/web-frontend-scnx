@@ -813,9 +813,6 @@ const hasModuleAccess = (moduleName: string): boolean => {
     return hasPromocionSobresUiPermission(permissions)
   }
   if (moduleName === 'reposiciones') return true
-  // Sin permisos 'recepcion-proveedores.*' todavia en el catalogo de scnexus-core (modulo nuevo,
-  // ver router.ts): visible para cualquier autenticado por ahora, igual que reposiciones arriba.
-  if (moduleName === 'recepcionproveedores') return true
   if (moduleName === 'recepcionmercaderia') {
     const isAdmin = authStore.userRoles?.includes('Admin') || false
     return isAdmin || permissions.some((permission: string) => permission.toLowerCase().startsWith('recepcion.'))

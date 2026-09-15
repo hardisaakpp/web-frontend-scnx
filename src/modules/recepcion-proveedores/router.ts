@@ -1,8 +1,10 @@
 import type { RouteRecordRaw } from 'vue-router'
 
-// Sin meta.permissions todavia: los strings 'recepcion-proveedores.*' aun no existen en el
-// catalogo de permisos de scnexus-core. Agregarlos aqui antes de darlos de alta alla dejaria
-// al propio usuario bloqueado por el guard global. Ver plan de este modulo.
+// Permiso unico 'recepcionproveedores.view' para todo el modulo (sidebar + rutas): ver
+// MainLayout.vue hasModuleAccess, que resuelve 'recepcionproveedores' por la regla generica
+// (permission.startsWith('recepcionproveedores.')), igual que 'promocionsobres'/'inventario'.
+const MODULE_PERMISSIONS = ['recepcionproveedores.view']
+
 function route(
   path: string,
   name: string,
@@ -13,7 +15,7 @@ function route(
     path,
     name,
     component,
-    meta: { requiresAuth: true, ...meta },
+    meta: { requiresAuth: true, permissions: MODULE_PERMISSIONS, ...meta },
   } as RouteRecordRaw
 }
 
