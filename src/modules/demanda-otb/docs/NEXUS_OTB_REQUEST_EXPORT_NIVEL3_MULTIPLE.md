@@ -8,6 +8,12 @@
 > un mismo Nivel3 tiene varias filas por Género (ver ejemplo abajo, "PANTUFLA" con
 > Caballero/Dama/Niña/Niño/No aplica), cada una con su propio Pedido editable en pantalla —
 > filtrar solo por Nivel3 (string) no alcanza para saber qué Pedido va con qué Género.
+>
+> **✅ Implementado (confirmado 2026-09-15 contra el swagger real de `:8007`):** el backend
+> ya tiene `ExportarOtbRequest.CoberturaDeseada` (global, `int?`) y `Nivel3PedidoDto` con
+> `Nivel3`/`Genero`/`Pedido` — exactamente lo pedido en las secciones 1-5 de abajo. **Ver
+> sección 6, que pide un cambio adicional sobre esto** (agregar `CoberturaDeseada` también
+> dentro de cada `Nivel3PedidoDto`, no solo global).
 
 # Export OTB — filtro adicional "varios Nivel 3 + Género, con Pedido editado"
 
@@ -159,3 +165,65 @@ otras 2 de Caballero/Dama/Niña... digo, no las de Niño/No aplica que quedaron 
 el Pedido de cada una debe ser el editado (120/340/90), no el que devuelve BI originalmente.
 Verificar contra `GET /otb/ROLAND?fecha=2026-08` filtrado manualmente por Nivel3=PANTUFLA
 para confirmar que las otras 2 filas (sin marcar) efectivamente no aparecen en el Excel.
+
+---
+
+## 6. Nuevo pedido (2026-09-15) — `CoberturaDeseada` también por ítem, no solo global
+
+### El problema con el campo global actual
+
+`ExportarOtbRequest.CoberturaDeseada` ya existe (confirmado en swagger) pero es **un solo
+valor para todo el export**. En pantalla, Cobertura Deseada se edita **por fila** (Nivel3 +
+Género) — el mismo patrón que ya tiene Pedido (`coberturaDeseadaValue(row)` en
+`OtbView.vue`, con default `otbParams.target` y editable por fila). Si el usuario marca
+varias filas del mismo Nivel3 con Cobertura Deseada distinta cada una (ej. Caballero=60
+días, Dama=90 días), un único campo global no puede representar eso — igual que pasaba
+antes con Pedido cuando era un solo valor por Nivel3 en vez de por fila (sección de arriba).
+
+### Qué se pide
+
+Agregar `CoberturaDeseada` a `Nivel3PedidoDto`, igual patrón que `Pedido`:
+
+```csharp
+public record Nivel3PedidoDto(string Nivel3, string? Genero, int? CoberturaDeseada, decimal Pedido);
+```
+
+```json
+"nivel3Multiple": [
+  {"nivel3": "string", "genero": "string", "coberturaDeseada": 0, "pedido": 0}
+]
+```
+
+`CoberturaDeseada` es **opcional** dentro del ítem (`int?`) — si el frontend no lo manda en
+algún ítem, ese nodo específico usa el `CoberturaDeseada` global de `ExportarOtbRequest` (o
+el default de BI si tampoco viene el global). El campo global de la sección de arriba **no
+se elimina** — sigue siendo el default para todo lo que no esté en `nivel3Multiple` (export
+completo sin ningún checkbox marcado, o nodos fuera de la selección puntual).
+
+### Semántica al aplicarlo
+
+Para cada ítem de `nivel3Multiple` que hace match con una fila (mismo criterio de sección 3:
+`Nivel3` + `Genero` si viene):
+
+1. Si el ítem trae `CoberturaDeseada`, usarlo para esa fila en vez del global — y
+   recalcular con él lo que dependa de Cobertura Deseada para esa fila en el Excel (Inv.
+   Final Planificado, OTB, y `Pedido` si el backend lo deriva de OTB — ver nota abajo).
+2. `Pedido` del ítem sigue mandando como valor final ya editado (no cambia respecto a la
+   sección 1) — se sobrescribe igual que hoy, independientemente de si `CoberturaDeseada`
+   vino o no en ese ítem.
+
+**Nota sobre por qué Pedido y CoberturaDeseada viajan juntos aunque Pedido ya sea el valor
+final:** el frontend calcula `Pedido = ceil(max(OTB, 0))` en el cliente, y `OTB` depende de
+la Cobertura Deseada editada — o sea, `Pedido` que se manda ya refleja la Cobertura Deseada
+editada. `CoberturaDeseada` viaja además por si el Excel muestra columnas propias de
+Cobertura Deseada / Inv. Final Planificado / OTB por fila (no solo Pedido) — para que esas
+columnas en el Excel coincidan con lo que el usuario vio y editó en pantalla, no con el
+default de BI. Si el Excel de hoy NO muestra esas columnas (solo Pedido), este campo no
+tendría uso real todavía y se podría dejar pendiente — confirmar qué columnas trae el Excel
+actual antes de implementar esta sección 6.
+
+### Dónde aplicarlo
+
+Mismo lugar que la sección 3 (`OtbQueryService.FiltrarPorNivel`), en el `.Select()` que ya
+sobrescribe `Pedido` por match — agregar ahí también la sobreescritura de
+`CoberturaDeseada`/recálculo derivado si aplica.
