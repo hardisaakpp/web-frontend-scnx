@@ -22,13 +22,42 @@ const crearRuta = ({ path, name, component, title, permissions, icon }: RutaModu
 })
 
 const routes: RouteRecordRaw[] = [
+  // Dashboard principal: agrupa las tres áreas del módulo
   crearRuta({
     path: '/transferencias-stock',
     name: 'transferencias-stock-dashboard',
-    component: () => import('./views/DashboardView.vue'),
+    component: () => import('./views/DashboardPrincipalView.vue'),
     title: 'Transferencia de Stock',
-    icon: 'TruckIcon',
-    permissions: ['transferenciadirecta.view'],
+    icon: 'Forklift',
+    permissions: [
+      'transferenciadirecta.mod_transferencias',
+      'transferenciadirecta.mod_transitorias',
+      'transferenciadirecta.mod_administracion',
+    ],
+  }),
+  // Submenú: transferencias (envíos)
+  crearRuta({
+    path: '/transferencias-stock/transferencias',
+    name: 'transferencias-stock-transferencias',
+    component: () => import('./views/DashboardView.vue'),
+    title: 'Transferencias',
+    permissions: ['transferenciadirecta.mod_transferencias'],
+  }),
+  // Submenú: gestión de transitorias (recepciones)
+  crearRuta({
+    path: '/transferencias-stock/transitorias',
+    name: 'transferencias-stock-transitorias',
+    component: () => import('./views/TransitoriasDashboardView.vue'),
+    title: 'Gestión de Transitorias',
+    permissions: ['transferenciadirecta.mod_transitorias'],
+  }),
+  // Submenú: configuración
+  crearRuta({
+    path: '/transferencias-stock/configuracion',
+    name: 'transferencias-stock-configuracion',
+    component: () => import('./views/ConfiguracionDashboardView.vue'),
+    title: 'Configuración',
+    permissions: ['transferenciadirecta.mod_administracion'],
   }),
   crearRuta({
     path: '/transferencias-stock/crearsolicitud',
@@ -65,13 +94,29 @@ const routes: RouteRecordRaw[] = [
     title: 'Matriz de Aprobación',
     permissions: ['transferenciadirecta.matriz_aprobacion'],
   }),
-    crearRuta({
+  crearRuta({
     path: '/transferencias-stock/bandeja-aprobacion',
     name: 'transferencias-stock-bandeja-aprobacion',
     component: () => import('./views/BandejaAprobacionView.vue'),
     title: 'Bandeja de Aprobación',
     permissions: ['transferenciadirecta.aprobar'],
   }),
+  // Historial de transitorias (dentro del submenú de transitorias)
+  crearRuta({
+    path: '/transferencias-stock/transitorias/historial',
+    name: 'transitorias-historial',
+    component: () => import('./views/HistorialTransitoriasView.vue'),
+    title: 'Historial de Transitorias',
+    permissions: ['transferenciadirecta.transitorias'],
+  }),
+  crearRuta({
+    path: '/transferencias-stock/configuracion/dias-transitoria',
+    name: 'transferencias-stock-config-dias-transitoria',
+    component: () => import('./views/ConfiguracionDiasTransitoriaView.vue'),
+    title: 'Configuración de Transitorias',
+    permissions: ['transferenciadirecta.configuracion_transitorias'],
+  })
+
 
 ]
 

@@ -292,3 +292,165 @@ export interface ContadorPendientesResponse{
   total:number
 }
 
+//GESTION DE TRANSITORIAS
+export type  EstadoRecepcion = 
+| 'PendienteVerificar'   //creada en sap, aun no consultada
+| 'TransitoriaAbierta'   //  verificada, nada recibido
+| 'RecepcionParcial'    //se recibio parte, queda saldo
+| 'Cerrada' //recepcion completa
+| 'RegularizadaAutomatica' //el sistema devolvio el saldo a origen
+| 'RegularizadaManual' //un usuario disparo la devolucion
+| 'RequiereRevisionManual' //datos de SAP inconsistentes
+
+//Estados ya resueltos: el worker no los procesa y ya no se debe volver a sincronizar el estado
+export const ESTADOS_RECEPCION_TERMINALES: EstadoRecepcion[] = [
+  'Cerrada',
+  'RegularizadaAutomatica',
+  'RegularizadaManual',
+  'RequiereRevisionManual'
+]
+
+export const ESTADO_RECEPCION_LABELS: Record<string, string> = {
+  PendienteVerificar: 'Sin Verificar',
+  TransitoriaAbierta: 'Transitoria Abierta',
+  RecepcionParcial: 'Recepción Parcial',
+  Cerrada: 'Cerrada',
+  RegularizadaAutomatica: 'Regularizada Automática',
+  RegularizadaManual: 'Regularizada Manual',
+  RequiereRevisionManual: 'Requiere Revisión Manual',
+}
+
+export const etiquetaEstadoRecepcion = (estado: string): string =>
+  ESTADO_RECEPCION_LABELS[estado] ?? estado
+
+export type CampoOrdenTransitoria =
+| 'FechaEnvioSap'
+| 'FechaSolicitud'
+| 'FechaTransitoriaAbierta'
+| 'FechaUltimaSincronizacion'
+| 'EstadoRecepcion'
+| 'TiendaOrigen'
+| 'TiendaDestino'
+| 'TotalPendiente'
+
+export interface ListarTransitoriasQuery {
+  pagina?: number
+  tamanoPagina?: number
+  estadosRecepcion?: EstadoRecepcion[]
+  tiendaOrigen?: string
+  tiendaDestino?: string
+  fechaDesde?: string
+  fechaHasta?: string
+  docNum?: number
+  ordenarPor?: CampoOrdenTransitoria
+  direccion?: 'Asc' | 'Desc'
+}
+
+export interface FiltrosExportarTransitorias {
+  estadosRecepcion?: EstadoRecepcion[]
+  tiendaOrigen?: string
+  tiendaDestino?: string
+  fechaDesde?: string
+  fechaHasta?: string
+  docNum?: number
+  detallado?: boolean
+}
+
+export interface TransitoriaResumen {
+  id: number
+  sapTransferDocNum: number | null
+  sapTransferDocEntry: number | null
+  guiaEnvio: string | null
+  tiendaOrigenCodigo: string
+  tiendaOrigen: string
+  tiendaDestinoCodigo: string   // bodega TRANSITORIA (ej. TRL-SCA), no la real
+  tiendaDestino: string
+  estadoRecepcion: EstadoRecepcion
+  fechaEnvioSap: string | null
+  fechaTransitoriaAbierta: string | null
+  fechaUltimaSincronizacion: string | null
+  cantidadProductos: number        // ítems distintos
+  unidadesEnviadas: number         // suma de unidades
+  unidadesRecibidas: number | null // null = nunca sincronizado (≠ 0)
+  totalPendiente: number | null    // null = nunca sincronizado (≠ 0)
+  puedeReversarse: boolean
+  plazoVencido: boolean
+  diasConfigurados: number | null //null= aun nose configuran los dias que tienen plazo una transitoria
+  diasTranscurridos: number
+  //Si la transferencia creada tiene un reverso/regularizacion asociado 
+  reversoEstado: EstadoTransferencia | null //null = no tiene reverso
+  reversoSapTransferDocNum: number | null // solo cuando el reverso se creo correctamnte en sap (stock transfer)
+}
+
+export interface TransitoriaLinea {
+  itemCode: string
+  itemName: string | null
+  codeBars: string
+  cantidadSolicitada: number
+  cantidadPendiente: number | null //null = no sincronizada
+  cantidadRecibida: number | null //=solcitada-pendiente
+}
+export interface TransitoriaDetalle {
+  id: number
+  sapTransferDocNum: number | null
+  sapTransferDocEntry: number | null
+  guiaEnvio: string | null
+  tiendaOridenCodigo: string
+  tiendaOrigen: string
+  tiendaDestinoCodigo: string
+  tiendaDestino: string
+  estadoRecepcion: EstadoRecepcion
+  fechaEnvioSap: string | null
+  fechaTransitoriaAbierta: string | null
+  fechaUltimaSincronizacion: string | null
+  lineas: TransitoriaLinea[] 
+  puedeReversarse: boolean
+  plazoVencido: boolean
+  diasConfigurados: number | null
+  diasTranscurridos: number 
+}
+export interface SincronizarTransitoriaResponse {
+  id: number
+  estadoRecepcion: EstadoRecepcion
+}
+
+//Opcion de realizar una devolucion de stock a la tienda origen de manera manual
+export interface RegularizarResponse {
+  solicitudReversoId: number
+  mensaje: string
+}
+
+//GET/transitorias/{id}/reverso: 
+export interface TransitoriaReverso{
+  id: number   // = solicitudReversoId (para errores-sap/reenviar-sap)
+  solicitudOrigenId: number // = id de la transitoria original (mismo valor con el que se llamó a este endpoint)
+  sapTransferDocNum: number | null
+  sapTransferDocEntry:  number | null 
+  guiaEnvio: string | null
+  tiendaOrigenCodigo: string //invertida respecto de la transitoria original
+  tiendaOrigen: string
+  tiendaDestinoCodigo: string
+  tiendaDestino: string
+  estado: EstadoTransferencia
+  fechaEnvioSap: string | null
+  lineas: TransitoriaLinea[]
+  baseDocumento: number | null //docunum de la transitoria original
+  justificacion: string
+  usuarioSolicitante: string
+}
+
+export interface ConfiguracionDiasTransitoria {
+  id: number
+  marca: string
+  bodegaCodigo: string | null  //null = aplica a todas las tiendas de la marca 
+  dias: number
+  activo: boolean
+}
+
+export interface ConfiguracionDiasTransitoriaRequest{
+  marca: string
+  bodegaCodigo: string | null
+  dias: number
+  activo: boolean
+}
+

@@ -201,7 +201,9 @@ const cambiarCantidadDetalle = (itemCode: string, cantidad: number) => {
   const linea = productos.value.find((p) => p.itemCode === itemCode)
   if (linea) linea.cantidadSolicitada = cantidad
 }
-const rutaVolver = computed(() => (modoEdicion.value ? '/transferencias-stock/historial' : '/transferencias-stock'))
+const rutaVolver = computed(() =>
+  modoEdicion.value ? '/transferencias-stock/historial' : '/transferencias-stock/transferencias'
+)
 
 const cancelar = () => {
   router.push(rutaVolver.value)
