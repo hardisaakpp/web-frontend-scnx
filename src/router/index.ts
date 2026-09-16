@@ -113,6 +113,19 @@ const ALLOW_UNAUTHENTICATED =
   import.meta.env.DEV &&
   import.meta.env.VITE_ALLOW_UNAUTHENTICATED !== 'false'
 
+/**
+ * Centraliza el "escape hatch" de desarrollo usado por las 3 verificaciones del guard: si
+ * ALLOW_UNAUTHENTICATED está activo, registra un warning y permite continuar la navegación en
+ * vez de bloquearla. Devuelve true cuando el guard debe dejar pasar la navegación igualmente.
+ */
+function puedeSaltarRestriccion(mensajeLog: string, ...detalleLog: unknown[]): boolean {
+  if (!ALLOW_UNAUTHENTICATED) return false
+  if (import.meta.env.DEV) {
+    console.debug(mensajeLog, ...detalleLog)
+  }
+  return true
+}
+
 // Navigation guard
 router.beforeEach(async (to, from, next) => {
   const authStore = useAuthStore()
@@ -127,11 +140,7 @@ router.beforeEach(async (to, from, next) => {
 
   // Verificar autenticación
   if (requiresAuth && !authStore.isAuthenticated) {
-    if (ALLOW_UNAUTHENTICATED) {
-      // En desarrollo, permitir acceso pero registrar warning
-      if (import.meta.env.DEV) {
-        console.debug(`⚠️ [Router] Acceso sin autenticación a ruta protegida: ${to.path}`)
-      }
+    if (puedeSaltarRestriccion(`⚠️ [Router] Acceso sin autenticación a ruta protegida: ${to.path}`)) {
       next()
       return
     }
@@ -141,10 +150,7 @@ router.beforeEach(async (to, from, next) => {
 
   // Verificar rol si está definido
   if (requiredRole && !authStore.hasRole(requiredRole as string)) {
-    if (ALLOW_UNAUTHENTICATED) {
-      if (import.meta.env.DEV) {
-        console.debug(`⚠️ [Router] Acceso sin rol requerido a: ${to.path}`)
-      }
+    if (puedeSaltarRestriccion(`⚠️ [Router] Acceso sin rol requerido a: ${to.path}`)) {
       next()
       return
     }
@@ -162,21 +168,14 @@ router.beforeEach(async (to, from, next) => {
         return s === 'admin' || s === 'administrador' || s.includes('admin')
       }) ||
       false
-    
-    if (!isAdmin) {
-      const hasPermission = authStore.hasAnyPermission(requiredPermissions)
-      if (!hasPermission) {
-        if (ALLOW_UNAUTHENTICATED) {
-          // En desarrollo, permitir acceso pero registrar warning
-          if (import.meta.env.DEV) {
-            console.debug(`⚠️ [Router] Acceso sin permisos requeridos a: ${to.path}. Permisos requeridos:`, requiredPermissions)
-          }
-          next()
-          return
-        }
-        next({ name: 'forbidden' })
+
+    if (!isAdmin && !authStore.hasAnyPermission(requiredPermissions)) {
+      if (puedeSaltarRestriccion(`⚠️ [Router] Acceso sin permisos requeridos a: ${to.path}. Permisos requeridos:`, requiredPermissions)) {
+        next()
         return
       }
+      next({ name: 'forbidden' })
+      return
     }
   }
 

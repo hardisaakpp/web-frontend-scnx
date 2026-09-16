@@ -61,19 +61,24 @@
               class="w-full rounded-lg border border-slate-700 bg-slate-800 py-2 pl-9 pr-3 text-sm text-white placeholder:text-slate-500 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
             />
           </div>
-          <div role="radiogroup" aria-label="Filtro por estado" class="flex items-center gap-1 rounded-lg border border-slate-700 bg-slate-800/60 p-1">
-            <button
+          <div role="group" aria-label="Filtro por estado" class="flex items-center gap-1 rounded-lg border border-slate-700 bg-slate-800/60 p-1">
+            <label
               v-for="opcion in FILTROS_ESTADO"
               :key="opcion.value"
-              type="button"
-              role="radio"
-              :aria-checked="filtroEstado === opcion.value"
               :class="filtroEstado === opcion.value ? 'bg-indigo-600 text-white' : 'text-slate-300 hover:bg-slate-700'"
-              class="rounded-md px-2.5 py-1.5 text-xs font-semibold transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500"
-              @click="filtroEstado = opcion.value"
+              class="flex items-center rounded-md px-2.5 py-1.5 text-xs font-semibold transition-colors cursor-pointer"
             >
-              {{ opcion.label }}
-            </button>
+              <input
+                v-model="filtroEstado"
+                type="radio"
+                name="filtroEstadoCuenta"
+                :value="opcion.value"
+                class="peer sr-only"
+              />
+              <span class="rounded peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-indigo-500">
+                {{ opcion.label }}
+              </span>
+            </label>
           </div>
         </div>
 

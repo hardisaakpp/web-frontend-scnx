@@ -83,7 +83,7 @@ const props = defineProps<{
   mimeType?: string | null
 }>()
 
-const emit = defineEmits<{ (e: 'close'): void }>()
+const emit = defineEmits<(e: 'close') => void>()
 
 const tituloId = `visor-comprobante-titulo-${Math.random().toString(36).slice(2, 9)}`
 const dialogRef = ref<HTMLElement | null>(null)

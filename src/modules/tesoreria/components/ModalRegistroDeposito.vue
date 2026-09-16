@@ -61,9 +61,9 @@
               ></div>
             </li>
           </ol>
-          <p class="sr-only" role="status" aria-live="polite">
+          <output class="sr-only" aria-live="polite">
             Paso {{ pasoActual }} de 3: {{ pasosWizard[pasoActual - 1].etiqueta }}
-          </p>
+          </output>
         </nav>
 
         <div class="flex-1 overflow-y-auto px-5 py-4">
@@ -216,18 +216,15 @@
                 Comprobante bancario digitalizado <span class="text-red-500" aria-hidden="true">*</span>
               </span>
 
-              <div
+              <button
                 v-if="!archivo"
-                role="button"
-                tabindex="0"
+                type="button"
                 aria-labelledby="dropzone-label"
                 class="flex w-full flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed px-4 py-6 text-center transition-colors cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500"
                 :class="arrastrandoArchivo
                   ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/30'
                   : 'border-gray-300 dark:border-gray-600 hover:border-indigo-400 dark:hover:border-indigo-500 bg-gray-50/50 dark:bg-gray-900/30'"
                 @click="inputArchivoRef?.click()"
-                @keydown.enter.prevent="inputArchivoRef?.click()"
-                @keydown.space.prevent="inputArchivoRef?.click()"
                 @dragover.prevent="arrastrandoArchivo = true"
                 @dragleave.prevent="arrastrandoArchivo = false"
                 @drop.prevent="onDropArchivo"
@@ -237,7 +234,7 @@
                   Arrastre el archivo aquí o <span class="font-semibold text-indigo-600 dark:text-indigo-400 underline">explore en su equipo</span>
                 </p>
                 <p class="text-xs text-gray-400 dark:text-gray-500">PDF, JPG o PNG — hasta 10 MB</p>
-              </div>
+              </button>
 
               <div v-else class="flex items-center gap-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50/70 dark:bg-gray-900/50 p-3">
                 <img
