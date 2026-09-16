@@ -157,8 +157,10 @@
             <span v-show="!effectiveSidebarCollapsed" class="relative z-10 font-medium">Importador PYG</span>
           </router-link>
 
-          <!-- Mis Inventarios (usuarios con acceso tipo Tienda) -->
-          <router-link v-if="hasModuleAccess('inventario') && isTiendaAccess" to="/inventario/mis-inventarios"
+          <!-- Mis Inventarios (acceso tipo Tienda, o picker invitado a una toma sin permisos inventario.*) -->
+          <router-link
+            v-if="(hasModuleAccess('inventario') && isTiendaAccess) || (!hasModuleAccess('inventario') && hasPickerSessions)"
+            to="/inventario/mis-inventarios"
             class="group flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 relative overflow-hidden"
             :class="{
               'bg-gradient-to-r from-blue-600 to-sky-500 text-white shadow-lg shadow-blue-500/50': $route.path.startsWith('/inventario/mis-inventarios'),
