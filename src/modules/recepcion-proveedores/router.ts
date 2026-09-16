@@ -21,7 +21,7 @@ function route(
 
 const routes: RouteRecordRaw[] = [
   route('/recepcion-proveedores', 'recepcion-proveedores-dashboard', () => import('./views/DashboardView.vue'), {
-    title: 'Recepción Proveedores',
+    title: 'Recepción ODC de Proveedores',
     icon: 'MagnifyingGlassIcon',
   }),
   route('/recepcion-proveedores/buscar', 'recepcion-proveedores-buscar', () => import('./views/BuscarOrdenView.vue'), {

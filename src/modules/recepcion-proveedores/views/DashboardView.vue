@@ -5,7 +5,7 @@ import { MagnifyingGlassIcon, ClockIcon } from '@heroicons/vue/24/outline'
 <template>
   <div class="max-w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
     <div>
-      <h1 class="text-2xl font-semibold text-gray-900 dark:text-white">Recepción Proveedores</h1>
+      <h1 class="text-2xl font-semibold text-gray-900 dark:text-white">Recepción ODC de Proveedores</h1>
       <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
         Búsqueda de órdenes de compra e historial de eventos de picking
       </p>
