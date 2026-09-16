@@ -15,11 +15,9 @@ const props = withDefaults(
   { autofocus: false, initialDocNum: null, loading: false }
 )
 
-const emit = defineEmits<{
-  /** Se busca el mismo DocNum que ya está en pantalla: un router.push a la misma ruta no
-   * navega (Vue Router lo ignora), así que el padre debe volver a consultar manualmente. */
-  (e: 'buscar-mismo-docnum', docNum: number): void
-}>()
+/** Se busca el mismo DocNum que ya está en pantalla: un router.push a la misma ruta no
+ * navega (Vue Router lo ignora), así que el padre debe volver a consultar manualmente. */
+const emit = defineEmits<(e: 'buscar-mismo-docnum', docNum: number) => void>()
 
 const router = useRouter()
 const docNum = ref<string>(props.initialDocNum != null ? String(props.initialDocNum) : '')
