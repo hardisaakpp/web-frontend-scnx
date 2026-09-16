@@ -43,7 +43,7 @@
         <input
           v-model="search"
           type="search"
-          placeholder="Buscar ítem, descripción..."
+          placeholder="Buscar ítem, descripción, código de barras..."
           class="search-input w-64"
         />
         <select v-model="fLevel1" class="select-input">
@@ -74,20 +74,26 @@
               <tr>
                 <th class="th cursor-pointer select-none" @click="toggleSort('itemCode')">Ítem{{ sortIndicator('itemCode') }}</th>
                 <th class="th cursor-pointer select-none" @click="toggleSort('itemDescription')">Descripción{{ sortIndicator('itemDescription') }}</th>
+                <th class="th cursor-pointer select-none" @click="toggleSort('barcode')">Código de barras{{ sortIndicator('barcode') }}</th>
                 <th class="th cursor-pointer select-none" @click="toggleSort('level1')">Level 1{{ sortIndicator('level1') }}</th>
                 <th class="th cursor-pointer select-none" @click="toggleSort('level2')">Level 2{{ sortIndicator('level2') }}</th>
                 <th class="th cursor-pointer select-none" @click="toggleSort('level3')">Level 3{{ sortIndicator('level3') }}</th>
                 <th class="th text-right cursor-pointer select-none" @click="toggleSort('systemQuantity')">Stock{{ sortIndicator('systemQuantity') }}</th>
+                <th class="th text-right cursor-pointer select-none" @click="toggleSort('cost')">Costo{{ sortIndicator('cost') }}</th>
+                <th class="th text-right cursor-pointer select-none" @click="toggleSort('pvp')">PVP{{ sortIndicator('pvp') }}</th>
               </tr>
             </thead>
             <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
               <tr v-for="row in filasOrdenadas" :key="row.itemCode">
                 <td class="td font-mono text-xs">{{ row.itemCode }}</td>
                 <td class="td">{{ row.itemDescription || '—' }}</td>
+                <td class="td font-mono text-xs">{{ row.barcode || '—' }}</td>
                 <td class="td text-xs">{{ row.level1 || '—' }}</td>
                 <td class="td text-xs">{{ row.level2 || '—' }}</td>
                 <td class="td text-xs">{{ row.level3 || '—' }}</td>
                 <td class="td text-right font-medium">{{ row.systemQuantity.toLocaleString('es') }}</td>
+                <td class="td text-right tabular-nums">{{ formatMoney(row.cost) }}</td>
+                <td class="td text-right tabular-nums">{{ formatMoney(row.pvp) }}</td>
               </tr>
             </tbody>
           </table>
@@ -118,7 +124,8 @@ const fLevel1 = ref('')
 const fLevel2 = ref('')
 const fLevel3 = ref('')
 
-type SortKey = 'itemCode' | 'itemDescription' | 'level1' | 'level2' | 'level3' | 'systemQuantity'
+type SortKey = 'itemCode' | 'itemDescription' | 'barcode' | 'level1' | 'level2' | 'level3' | 'systemQuantity' | 'cost' | 'pvp'
+const NUMERIC_SORT_KEYS: ReadonlySet<SortKey> = new Set<SortKey>(['systemQuantity', 'cost', 'pvp'])
 const sortKey = ref<SortKey>('itemCode')
 const sortDir = ref<'asc' | 'desc'>('asc')
 
@@ -148,7 +155,7 @@ const filtroActivo = computed(() => !!(search.value.trim() || fLevel1.value || f
 const filasFiltradas = computed(() => {
   const q = search.value.trim().toLowerCase()
   return filas.value.filter(r =>
-    (!q || r.itemCode.toLowerCase().includes(q) || (r.itemDescription ?? '').toLowerCase().includes(q)) &&
+    (!q || r.itemCode.toLowerCase().includes(q) || (r.itemDescription ?? '').toLowerCase().includes(q) || (r.barcode ?? '').toLowerCase().includes(q)) &&
     (!fLevel1.value || r.level1 === fLevel1.value) &&
     (!fLevel2.value || r.level2 === fLevel2.value) &&
     (!fLevel3.value || r.level3 === fLevel3.value)
@@ -159,13 +166,26 @@ const filasOrdenadas = computed(() => {
   const dir = sortDir.value === 'asc' ? 1 : -1
   const key = sortKey.value
   return [...filasFiltradas.value].sort((a, b) => {
-    if (key === 'systemQuantity') return (a.systemQuantity - b.systemQuantity) * dir
+    if (NUMERIC_SORT_KEYS.has(key)) {
+      // Nulos (sin costo/PVP en el maestro) siempre al final, sin importar la dirección.
+      const av = a[key] as number | null | undefined
+      const bv = b[key] as number | null | undefined
+      if (av == null && bv == null) return 0
+      if (av == null) return 1
+      if (bv == null) return -1
+      return (av - bv) * dir
+    }
     return String(a[key] ?? '').localeCompare(String(b[key] ?? '')) * dir
   })
 })
 
 const totalStock = computed(() => filas.value.reduce((acc, r) => acc + r.systemQuantity, 0))
 const stockFiltrado = computed(() => filasFiltradas.value.reduce((acc, r) => acc + r.systemQuantity, 0))
+
+function formatMoney(value: number | null | undefined): string {
+  if (value == null) return '—'
+  return value.toLocaleString('es', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+}
 
 function formatDateTime(value: string): string {
   const d = new Date(value)
@@ -215,19 +235,22 @@ async function actualizarStock() {
 // Descarga lo que se ve en pantalla (respeta búsqueda y filtros de Level 1/2/3),
 // con una fila final de total.
 function descargarExcel() {
-  const header = ['Ítem', 'Descripción', 'Level 1', 'Level 2', 'Level 3', 'Stock']
-  const rows = filasOrdenadas.value.map(r => [
+  const header = ['Ítem', 'Descripción', 'Código de barras', 'Level 1', 'Level 2', 'Level 3', 'Stock', 'Costo', 'PVP']
+  const rows: (string | number)[][] = filasOrdenadas.value.map(r => [
     r.itemCode,
     r.itemDescription || '',
+    r.barcode || '',
     r.level1 || '',
     r.level2 || '',
     r.level3 || '',
-    r.systemQuantity
+    r.systemQuantity,
+    r.cost ?? '',
+    r.pvp ?? ''
   ])
-  rows.push(['', '', '', '', 'Total', stockFiltrado.value])
+  rows.push(['', '', '', '', '', 'Total', stockFiltrado.value, '', ''])
 
   const sheet = XLSX.utils.aoa_to_sheet([
-    [`Stock ${bodega.value}`, '', '', '', 'Actualizado:', lastSync.value ? formatDateTime(lastSync.value) : 'sin registro'],
+    [`Stock ${bodega.value}`, '', '', '', '', 'Actualizado:', lastSync.value ? formatDateTime(lastSync.value) : 'sin registro'],
     header,
     ...rows
   ])
