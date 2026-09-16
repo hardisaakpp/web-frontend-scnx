@@ -9,6 +9,7 @@ import ErrorModal from '@/components/modales/ErrorModal.vue'
 import VolverButton from '@/components/navegacion/VolverButton.vue'
 import BuscarOdcBar from '../components/BuscarOdcBar.vue'
 import type { EntradaMercaderiaResponse } from '../types'
+import { useDelayedFlag } from '@/composables/useDelayedFlag'
 
 const route = useRoute()
 const router = useRouter()
@@ -27,6 +28,10 @@ const whsCodesEnOrden = computed(() => {
 })
 
 const puedeIniciarPicking = computed(() => ordenesCompraStore.orden?.estado === 'Pendiente')
+
+// Mismo umbral/mensaje que BuscarOdcBar: recien despues de 10s de espera se avisa que SAP esta
+// tardando, en vez de dejar "Consultando orden de compra..." fijo hasta los ~40s posibles.
+const consultaTardandoMasDeLoUsual = useDelayedFlag(() => ordenesCompraStore.loading, 10000)
 
 watch(
   whsCodesEnOrden,
@@ -111,13 +116,24 @@ watch(docNum, cargar)
 
 <template>
   <div class="max-w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
-    <VolverButton to="/recepcion-proveedores" title="Volver a la búsqueda" class="shrink-0 self-start mb-4" />
+    <VolverButton to="/recepcion-proveedores/buscar" title="Volver a la búsqueda" class="shrink-0 self-start mb-4" />
 
     <div class="mb-6 pb-6 border-b border-gray-200 dark:border-gray-700">
-      <BuscarOdcBar :initial-doc-num="docNum" :loading="ordenesCompraStore.loading" />
+      <BuscarOdcBar
+        :initial-doc-num="docNum"
+        :loading="ordenesCompraStore.loading"
+        @buscar-mismo-docnum="cargar"
+      />
     </div>
 
-    <LoadingSpinner v-if="ordenesCompraStore.loading" message="Consultando orden de compra..." />
+    <LoadingSpinner
+      v-if="ordenesCompraStore.loading"
+      :message="
+        consultaTardandoMasDeLoUsual
+          ? 'SAP está respondiendo más lento de lo usual — seguimos esperando, esto puede tardar hasta 40 segundos.'
+          : 'Consultando orden de compra...'
+      "
+    />
 
     <template v-else-if="ordenesCompraStore.orden">
       <div class="flex flex-wrap items-start justify-between gap-4 mb-6">

@@ -325,19 +325,19 @@
             <span v-show="!effectiveSidebarCollapsed" class="relative z-10 font-medium">Recepción Mercadería</span>
           </router-link>
 
-          <!-- Recepción Proveedores -->
+          <!-- Recepción ODC de Proveedores -->
           <router-link v-if="hasModuleAccess('recepcionproveedores')" to="/recepcion-proveedores"
             class="group flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 relative overflow-hidden"
             :class="{
               'bg-gradient-to-r from-blue-600 to-sky-500 text-white shadow-lg shadow-blue-500/50': $route.path.startsWith('/recepcion-proveedores'),
               'text-slate-600 hover:bg-slate-200/70 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800/50 dark:hover:text-white': !$route.path.startsWith('/recepcion-proveedores')
-            }" :title="effectiveSidebarCollapsed ? 'Recepción Proveedores' : ''">
+            }" :title="effectiveSidebarCollapsed ? 'Recepción ODC de Proveedores' : ''">
             <div
               class="absolute inset-0 bg-gradient-to-r from-blue-600/20 to-sky-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
             </div>
             <Search class="h-5 w-5 flex-shrink-0 relative z-10"
               :class="{ 'scale-110': $route.path.startsWith('/recepcion-proveedores') }" />
-            <span v-show="!effectiveSidebarCollapsed" class="relative z-10 font-medium">Recepción Proveedores</span>
+            <span v-show="!effectiveSidebarCollapsed" class="relative z-10 font-medium">Recepción ODC de Proveedores</span>
           </router-link>
 
           <!-- Integraciones (soporte SAP / HITELL) -->
@@ -755,7 +755,7 @@ const pageTitle = computed(() => {
     '/recepcion-mercaderia/pendientes': 'Transferencias Pendientes',
     '/recepcion-mercaderia/en-curso': 'Transferencias en Curso',
     '/recepcion-mercaderia/historial': 'Historial',
-    '/recepcion-proveedores': 'Recepción Proveedores',
+    '/recepcion-proveedores': 'Recepción ODC de Proveedores',
     '/ruleta': 'Ruleta One Card',
     '/ruleta/enrolador': 'Girar Ruleta',
     '/ruleta/listado': 'Listado de Ruleta',
@@ -813,9 +813,6 @@ const hasModuleAccess = (moduleName: string): boolean => {
     return hasPromocionSobresUiPermission(permissions)
   }
   if (moduleName === 'reposiciones') return true
-  // Sin permisos 'recepcion-proveedores.*' todavia en el catalogo de scnexus-core (modulo nuevo,
-  // ver router.ts): visible para cualquier autenticado por ahora, igual que reposiciones arriba.
-  if (moduleName === 'recepcionproveedores') return true
   if (moduleName === 'recepcionmercaderia') {
     const isAdmin = authStore.userRoles?.includes('Admin') || false
     return isAdmin || permissions.some((permission: string) => permission.toLowerCase().startsWith('recepcion.'))

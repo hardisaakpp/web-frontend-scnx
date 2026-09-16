@@ -13,7 +13,7 @@ const store = useLogsStore()
 const route = useRoute()
 
 // Si se llego aqui desde el detalle de una ODC (ver BuscarOdcBar), "Volver" regresa ahi en vez
-// de a la busqueda generica.
+// de al dashboard del modulo.
 const docNumOrigen = computed(() => {
   const docNum = route.query.volverA
   return typeof docNum === 'string' && docNum ? docNum : null
@@ -21,7 +21,7 @@ const docNumOrigen = computed(() => {
 const volverA = computed(() =>
   docNumOrigen.value != null ? `/recepcion-proveedores/ordenes-compra/${docNumOrigen.value}` : '/recepcion-proveedores'
 )
-const volverATitulo = computed(() => (docNumOrigen.value != null ? `Volver a la ODC ${docNumOrigen.value}` : 'Volver a la búsqueda'))
+const volverATitulo = computed(() => (docNumOrigen.value != null ? `Volver a la ODC ${docNumOrigen.value}` : 'Volver'))
 
 // Codigos de dbo.OrdenPickingLog.Evento (ver EventosPickingLog.cs en el backend) con su etiqueta
 // en español para el filtro y la columna Evento de la tabla.

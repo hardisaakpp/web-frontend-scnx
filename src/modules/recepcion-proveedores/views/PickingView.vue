@@ -155,7 +155,7 @@ watch(sesionId, cargar)
             class="px-3 py-2 text-sm font-medium bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
             @click="alternarLogs"
           >
-            {{ mostrarLogs ? 'Ocultar logs' : 'Ver logs' }}
+            {{ mostrarLogs ? 'Ocultar logs de esta sesión' : 'Ver logs de esta sesión' }}
           </button>
           <button
             type="button"

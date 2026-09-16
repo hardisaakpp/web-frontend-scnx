@@ -9,8 +9,9 @@ function findRoute(name: string): RouteRecordRaw {
 }
 
 describe('recepcionProveedoresRoutes', () => {
-  it('defines the search, detail and picking routes', () => {
-    expect(findRoute('recepcion-proveedores-buscar').path).toBe('/recepcion-proveedores')
+  it('defines the dashboard, search, detail and picking routes', () => {
+    expect(findRoute('recepcion-proveedores-dashboard').path).toBe('/recepcion-proveedores')
+    expect(findRoute('recepcion-proveedores-buscar').path).toBe('/recepcion-proveedores/buscar')
     expect(findRoute('recepcion-proveedores-detalle').path).toBe('/recepcion-proveedores/ordenes-compra/:docNum')
     expect(findRoute('recepcion-proveedores-picking').path).toBe('/recepcion-proveedores/picking/:sesionId')
     expect(findRoute('recepcion-proveedores-logs').path).toBe('/recepcion-proveedores/logs')
