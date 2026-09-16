@@ -398,6 +398,7 @@ import { cajaChicaApi, slayerHttp as slayerApi } from '@/lib/http'
 import { useAdjuntosByDetalle } from '@/composables/useAdjuntosByDetalle'
 import { resolveUserNames } from '@/utils/resolveUserNames'
 import { extractItemsArray } from '../utils/apiPayload'
+import { buildLiquidacionSapId } from '../utils/sapIdempotencyKey'
 
 interface LiquidacionItem {
   idLiquidacion: number
@@ -1220,6 +1221,9 @@ const buildIntegracionPayload = async (
     U_ORIGEN: 'C',
     U_SER_EST: '001',
     U_SER_PE: '100',
+    // Clave de idempotencia (UDF U_sap_id): estable por liquidación, para que un reintento nunca
+    // cree una segunda factura en SAP. Ver utils/sapIdempotencyKey.ts.
+    U_sap_id: buildLiquidacionSapId(idLiquidacion),
     DocumentLines: documentLines
   }
 
@@ -1287,9 +1291,16 @@ const handleIntegracionEncolada = async (idLiquidacion: number, response: { data
 
 const handleIntegracionExitosa = async (idLiquidacion: number, response: { data: unknown }) => {
   const responseText = normalizeString((response as any)?.request?.responseText)
-  const { docEntry, docNum, mensaje } = parseIntegracionResultado(response.data, responseText)
+  const parsed = parseIntegracionResultado(response.data, responseText)
+  const { docEntry, docNum } = parsed
+  // `recovered: true` = el middleware encontró la factura ya creada por un intento anterior con la
+  // misma clave U_sap_id y la devolvió sin crear otra. Para Caja Chica es igual de válido.
+  const recovered = (response.data as { recovered?: unknown } | null)?.recovered === true
+  const mensaje = recovered
+    ? `${parsed.mensaje ? `${parsed.mensaje} ` : ''}(SAP ya tenía esta liquidación; no se creó otra)`.trim()
+    : parsed.mensaje
 
-  console.log('[Integracion][Respuesta OK]', { docEntry, docNum, mensaje })
+  console.log('[Integracion][Respuesta OK]', { docEntry, docNum, mensaje, recovered })
 
   await cajaChicaApi.post('/Integraciones/Compras', {
     idLiquidacion,
@@ -1306,7 +1317,7 @@ const handleIntegracionExitosa = async (idLiquidacion: number, response: { data:
     mensaje
   }
   const okTexto = docEntry || docNum
-    ? `Liquidacion creada. DocEntry: ${docEntry || '-'}, DocNum: ${docNum || '-'}.`
+    ? `${recovered ? 'Liquidacion ya existia en SAP (recuperada, no se duplico).' : 'Liquidacion creada.'} DocEntry: ${docEntry || '-'}, DocNum: ${docNum || '-'}.`
     : mensaje
   integrationMessages.value[idLiquidacion] = {
     tipo: 'ok',
@@ -1394,7 +1405,13 @@ const actualizarEstadoJob = async (idLiquidacion: number) => {
     const status = String(job.status || '').toUpperCase()
 
     if (status === 'COMPLETADO') {
-      const { docEntry, docNum, mensaje } = parseIntegracionResultado(job.result)
+      const parsed = parseIntegracionResultado(job.result)
+      const { docEntry, docNum } = parsed
+      // Mismo criterio que handleIntegracionExitosa: `recovered` = SAP ya la tenía, no se duplicó.
+      const recovered = (job.result as { recovered?: unknown } | null | undefined)?.recovered === true
+      const mensaje = recovered
+        ? `${parsed.mensaje ? `${parsed.mensaje} ` : ''}(SAP ya tenía esta liquidación; no se creó otra)`.trim()
+        : parsed.mensaje
       await cajaChicaApi.post('/Integraciones/Compras', {
         idLiquidacion,
         estado: 'INTEGRADO',
@@ -1406,7 +1423,7 @@ const actualizarEstadoJob = async (idLiquidacion: number) => {
       integrationMessages.value[idLiquidacion] = {
         tipo: 'ok',
         texto: docEntry || docNum
-          ? `Liquidacion creada. DocEntry: ${docEntry || '-'}, DocNum: ${docNum || '-'}.`
+          ? `${recovered ? 'Liquidacion ya existia en SAP (recuperada, no se duplico).' : 'Liquidacion creada.'} DocEntry: ${docEntry || '-'}, DocNum: ${docNum || '-'}.`
           : mensaje
       }
     } else if (status === 'ERROR') {
