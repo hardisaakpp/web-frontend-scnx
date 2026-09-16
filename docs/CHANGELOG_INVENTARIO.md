@@ -6,6 +6,14 @@ Registro cronológico de cambios realizados al módulo `src/modules/inventario` 
 
 ---
 
+## 2026-09-16 — Menú "Mis Inventarios" para pickers invitados y Consultar Stock con código de barras, costo y PVP (rama fix/inventarios-100926)
+
+2. **Consultar Stock: columnas Código de barras, Costo y PVP** en la tabla y en el Excel (pedido de operación). El backend ya devolvía costo y PVP; el código de barras se agregó al `ItemStockDto` de api-inventario en esta misma rama. Las tres columnas se ordenan por cabecera (costo/PVP numéricos, los ítems sin valor quedan al final en ambas direcciones), el buscador también filtra por código de barras, y costo/PVP se muestran con 2 decimales o "—" si el maestro no los tiene. En el Excel van como número (celda vacía cuando no hay valor) para poder sumar/filtrar; la fila Total y la cabecera se desplazaron a las nuevas posiciones. **Requiere api-inventario** de la misma rama para ver el código de barras; con el backend anterior esa columna sale "—".
+
+1. **Regresión corregida: el picker sin permisos `inventario.*` no veía el menú.** Al agregar un usuario a "Gestionar usuarios de picking" de una toma, antes le aparecía "Mis Inventarios" en el sidebar aunque no tuviera ningún permiso del módulo (la visibilidad se decide con `usePickerSessionAccess`, que consulta `/api/inventory-sessions/my`). El commit `daa04cb` (transferencias directas, 28/07/2026) reescribió el sidebar de `MainLayout.vue` y dejó la condición solo en `hasModuleAccess('inventario') && isTiendaAccess`, con lo que `hasPickerSessions` quedaba calculado pero sin usarse. Se restauró la condición original: `(hasModuleAccess('inventario') && isTiendaAccess) || (!hasModuleAccess('inventario') && hasPickerSessions)`. Las rutas `/inventario/mis-inventarios` y `/inventario/picking/:sessionId` nunca exigieron permiso RBAC, así que el operador sí podía entrar por URL; solo faltaba el acceso desde el menú. Sin cambios en backend.
+
+---
+
 ## 2026-09-10 — Novedades del piloto 2 (rama fix/inventarios-100926, desde main)
 
 1. **Cerrar toma desde Conteo de Artículos abre el reparto.** En la prueba la tienda cerró desde ese botón y el reconteo quedó abierto a todos sin preguntar. Ahora, si el cierre deja la toma en Reconteo, se abre el mismo modal de dos pasos (participantes → reparto / enviar sin reparto) que en la lista de tomas, y el texto del panel lo explica.
