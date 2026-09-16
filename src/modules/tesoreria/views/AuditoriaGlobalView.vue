@@ -61,6 +61,18 @@
           </select>
         </div>
 
+        <!-- Filtro por estado -->
+        <div class="flex flex-col gap-1">
+          <label for="estadoFiltro" class="text-xs font-semibold text-gray-700 dark:text-gray-300">Estado</label>
+          <select
+            id="estadoFiltro"
+            v-model="filtroEstado"
+            class="w-52 px-3 py-2 text-sm border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+          >
+            <option v-for="op in OPCIONES_ESTADO" :key="op.value" :value="op.value">{{ op.label }}</option>
+          </select>
+        </div>
+
         <!-- Búsqueda rápida sobre la página actual -->
         <div class="flex flex-col gap-1 flex-1 min-w-[14rem]">
           <label for="busquedaRapida" class="text-xs font-semibold text-gray-700 dark:text-gray-300">
@@ -136,43 +148,67 @@
             <th scope="col" class="px-4 py-3.5 text-left font-semibold text-gray-700 dark:text-gray-300">Fecha Depósito</th>
             <th scope="col" class="px-4 py-3.5 text-left font-semibold text-gray-700 dark:text-gray-300">N.º Comprobante</th>
             <th scope="col" class="px-4 py-3.5 text-left font-semibold text-gray-700 dark:text-gray-300">Responsable</th>
-            <th scope="col" class="px-4 py-3.5 text-right font-semibold text-gray-700 dark:text-gray-300">Monto</th>
+            <th scope="col" class="px-4 py-3.5 text-right font-semibold text-gray-700 dark:text-gray-300">Efectivo Cierre</th>
+            <th scope="col" class="px-4 py-3.5 text-right font-semibold text-gray-700 dark:text-gray-300">Monto Depositado</th>
+            <th scope="col" class="px-4 py-3.5 text-right font-semibold text-gray-700 dark:text-gray-300">Diferencia</th>
             <th scope="col" class="px-4 py-3.5 text-left font-semibold text-gray-700 dark:text-gray-300">Estado</th>
             <th scope="col" class="px-4 py-3.5 text-right font-semibold text-gray-700 dark:text-gray-300">Acciones</th>
           </tr>
         </thead>
         <tbody class="divide-y divide-gray-200 dark:divide-gray-700 bg-white dark:bg-gray-800">
           <tr v-if="loading" v-for="i in 6" :key="`sk-${i}`">
-            <td v-for="c in 8" :key="c" class="px-4 py-3.5">
-              <div class="h-4 rounded bg-gray-200 dark:bg-gray-700 animate-pulse" :class="c === 6 ? 'w-16 ml-auto' : 'w-20'"></div>
+            <td v-for="c in 10" :key="c" class="px-4 py-3.5">
+              <div class="h-4 rounded bg-gray-200 dark:bg-gray-700 animate-pulse" :class="c >= 6 && c <= 8 ? 'w-20 ml-auto' : 'w-20'"></div>
             </td>
           </tr>
           <tr v-else-if="itemsFiltrados.length === 0">
-            <td colspan="8" class="px-4 py-12 text-center text-gray-500 dark:text-gray-400">
+            <td colspan="10" class="px-4 py-12 text-center text-gray-500 dark:text-gray-400">
               No se encontraron depósitos que coincidan con los filtros seleccionados.
             </td>
           </tr>
           <tr
             v-for="item in (loading ? [] : itemsFiltrados)"
-            :key="item.id"
+            :key="item.requiereDeposito ? `falta-${item.codigoAlmacen}-${item.fechaCierreCaja}` : item.id"
             class="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
-            :class="item.creadoSAP ? 'bg-emerald-50/30 dark:bg-emerald-950/10 border-l-4 border-l-emerald-500' : ''"
+            :class="item.requiereDeposito
+              ? 'bg-amber-50/40 dark:bg-amber-950/10 border-l-4 border-l-amber-500'
+              : (item.creadoSAP ? 'bg-emerald-50/30 dark:bg-emerald-950/10 border-l-4 border-l-emerald-500' : '')"
           >
             <td class="px-4 py-3.5 font-bold text-gray-900 dark:text-white">{{ item.codigoAlmacen }}</td>
             <td class="px-4 py-3.5 text-gray-600 dark:text-gray-300">{{ formatDateOnly(item.fechaCierreCaja) }}</td>
-            <td class="px-4 py-3.5 text-gray-600 dark:text-gray-300">{{ formatDateOnly(item.fechaDepositoBanco) }}</td>
+            <td class="px-4 py-3.5 text-gray-600 dark:text-gray-300">{{ item.requiereDeposito ? '—' : formatDateOnly(item.fechaDepositoBanco) }}</td>
             <td class="px-4 py-3.5 font-semibold text-gray-900 dark:text-white">{{ item.numeroComprobante }}</td>
             <td class="px-4 py-3.5 text-gray-600 dark:text-gray-300">{{ item.responsable }}</td>
+            <td class="px-4 py-3.5 text-right font-bold text-gray-900 dark:text-white">{{ formatCurrency(item.efectivoCierre) }}</td>
             <td class="px-4 py-3.5 text-right font-bold text-gray-900 dark:text-white">{{ formatCurrency(item.montoDepositado) }}</td>
+            <td class="px-4 py-3.5 text-right">
+              <span
+                class="font-semibold"
+                :class="Math.abs(item.diferencia) < 0.01 ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'"
+              >
+                {{ formatCurrency(item.diferencia) }}
+              </span>
+            </td>
             <td class="px-4 py-3.5">
+              <span
+                v-if="item.requiereDeposito"
+                class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20"
+              >
+                <ExclamationTriangleIcon class="h-3.5 w-3.5" aria-hidden="true" />
+                Falta depósito
+              </span>
               <SemaforoEstadoBadge
+                v-else
                 :estado="item.estado"
                 :creado-s-a-p="item.creadoSAP"
                 :doc-entry-s-a-p="item.docEntrySAP"
               />
             </td>
             <td class="px-4 py-3.5">
-              <div class="flex items-center justify-end gap-1.5">
+              <div v-if="item.requiereDeposito" class="flex items-center justify-end text-xs text-gray-400 dark:text-gray-500">
+                —
+              </div>
+              <div v-else class="flex items-center justify-end gap-1.5">
                 <!-- Ver comprobante -->
                 <button
                   type="button"
@@ -215,6 +251,22 @@
             </td>
           </tr>
         </tbody>
+        <tfoot v-if="itemsFiltrados.length > 0">
+          <tr class="bg-slate-900/80 border-t-2 border-slate-700 font-semibold">
+            <td colspan="5" class="px-4 py-3 text-left text-gray-200">
+              TOTALES CONSOLIDADOS ({{ itemsFiltrados.length }} registro(s))
+            </td>
+            <td class="px-4 py-3 text-right text-white">{{ formatCurrency(totalEfectivoCierre) }}</td>
+            <td class="px-4 py-3 text-right text-white">{{ formatCurrency(totalMontoDepositado) }}</td>
+            <td
+              class="px-4 py-3 text-right"
+              :class="Math.abs(totalDiferencia) < 0.01 ? 'text-emerald-400' : 'text-amber-400'"
+            >
+              {{ formatCurrency(totalDiferencia) }}
+            </td>
+            <td colspan="2"></td>
+          </tr>
+        </tfoot>
       </table>
     </section>
 
@@ -251,7 +303,14 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
-import { ArrowDownTrayIcon, ArrowPathIcon, EyeIcon, MagnifyingGlassIcon, TrashIcon } from '@heroicons/vue/24/outline'
+import {
+  ArrowDownTrayIcon,
+  ArrowPathIcon,
+  ExclamationTriangleIcon,
+  EyeIcon,
+  MagnifyingGlassIcon,
+  TrashIcon
+} from '@heroicons/vue/24/outline'
 import { useToast } from '@/composables/useToast'
 import QuickTablePagination from '@/components/QuickTablePagination.vue'
 import VolverButton from '@/components/VolverButton.vue'
@@ -259,17 +318,26 @@ import { useAuditoriaGlobal } from '../composables/useAuditoriaGlobal'
 import { useTesoreriaAccess } from '../composables/useTesoreriaAccess'
 import { extraerMensajeError, tesoreriaService } from '../services/tesoreriaService'
 import { formatCurrency, formatDateOnly, toDateOnlyString } from '../utils/formatters'
-import { EstadoDeposito, type AuditoriaGlobalDto } from '../types/tesoreria.types'
+import { EstadoDeposito, type AuditoriaGlobalDto, type FiltroEstadoAuditoria } from '../types/tesoreria.types'
 import SemaforoEstadoBadge from '../components/SemaforoEstadoBadge.vue'
 import ModalVisorComprobante from '../components/ModalVisorComprobante.vue'
 import ModalAnularDeposito from '../components/ModalAnularDeposito.vue'
 
 const RANGO_MAXIMO_DIAS = 30
 
+const OPCIONES_ESTADO: { value: FiltroEstadoAuditoria; label: string }[] = [
+  { value: 'TODOS', label: 'Todos los estados' },
+  { value: 'FALTA_DEPOSITO', label: 'Falta depósito (Sin papeleta)' },
+  { value: 'INTEGRADO', label: 'En SAP (Integrado)' },
+  { value: 'PENDIENTE', label: 'Pendiente de envío' },
+  { value: 'RECHAZADO', label: 'Rechazado por SAP' }
+]
+
 const toast = useToast()
 const {
   items, totalCount, pageNumber, pageSize, totalPages, loading, loadingCsv, error,
-  reintentandoIds, anulandoIds,
+  reintentandoIds, anulandoIds, filtroEstado, busquedaRapida, itemsFiltrados,
+  totalEfectivoCierre, totalMontoDepositado, totalDiferencia,
   fetchAuditoria, exportarCsv, reintentarSap, anular
 } = useAuditoriaGlobal()
 
@@ -281,7 +349,6 @@ const hace7Dias = new Date(hoy.getTime() - 7 * 24 * 60 * 60 * 1000)
 const fechaDesde = ref(toDateOnlyString(hace7Dias))
 const fechaHasta = ref(toDateOnlyString(hoy))
 const codigoAlmacenFiltro = ref(tieneAccesoGlobal.value ? '' : (opcionesAlmacenes.value[0]?.codigo ?? ''))
-const busquedaRapida = ref('')
 
 const modalVisorAbierto = ref(false)
 const modalAnularAbierto = ref(false)
@@ -297,20 +364,13 @@ const errorRango = computed(() => {
   return null
 })
 
-const itemsFiltrados = computed(() => {
-  const termino = busquedaRapida.value.trim().toLowerCase()
-  if (!termino) return items.value
-  return items.value.filter(
-    i => i.numeroComprobante.toLowerCase().includes(termino) || i.responsable.toLowerCase().includes(termino)
-  )
-})
-
 async function consultar(pagina = 1): Promise<void> {
   if (errorRango.value) return
   await fetchAuditoria({
     fechaDesde: fechaDesde.value,
     fechaHasta: fechaHasta.value,
     codigoAlmacen: codigoAlmacenFiltro.value.trim().toUpperCase() || null,
+    estado: filtroEstado.value,
     pageNumber: pagina,
     pageSize: pageSize.value
   })
@@ -321,7 +381,8 @@ async function onExportarCsv(): Promise<void> {
   await exportarCsv({
     fechaDesde: fechaDesde.value,
     fechaHasta: fechaHasta.value,
-    codigoAlmacen: codigoAlmacenFiltro.value.trim().toUpperCase() || null
+    codigoAlmacen: codigoAlmacenFiltro.value.trim().toUpperCase() || null,
+    estado: filtroEstado.value
   })
 }
 

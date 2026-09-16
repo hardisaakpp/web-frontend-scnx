@@ -27,11 +27,8 @@
           </tr>
 
           <!-- Filas de datos -->
-          <tr
-            v-for="deposito in (loading ? [] : depositos)"
-            :key="deposito.id"
-            class="hover:bg-slate-800/50 transition-colors"
-          >
+          <template v-for="deposito in (loading ? [] : depositos)" :key="deposito.id">
+          <tr class="hover:bg-slate-800/50 transition-colors">
             <td class="px-3 py-3 align-top">
               <div class="min-w-0">
                 <div class="flex items-center gap-2 flex-wrap">
@@ -68,9 +65,9 @@
                   <EyeIcon class="h-4 w-4" aria-hidden="true" />
                 </button>
 
-                <!-- Enviar a SAP -->
+                <!-- Enviar a SAP / Reintentar (Pendiente o Rechazado por SAP) -->
                 <button
-                  v-if="puedeIntegrarSap && deposito.estado === EstadoDeposito.Pendiente"
+                  v-if="puedeIntegrarSap && !deposito.creadoSAP && (deposito.estado === EstadoDeposito.Pendiente || deposito.estado === EstadoDeposito.RechazadoSAP)"
                   type="button"
                   :disabled="enviandoSapIds.has(deposito.id)"
                   :aria-busy="enviandoSapIds.has(deposito.id)"
@@ -81,8 +78,11 @@
                     <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
                     <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
                   </svg>
+                  <ArrowPathIcon v-else-if="deposito.estado === EstadoDeposito.RechazadoSAP" class="h-3.5 w-3.5" aria-hidden="true" />
                   <PaperAirplaneIcon v-else class="h-3.5 w-3.5" aria-hidden="true" />
-                  <span class="sr-only sm:not-sr-only">{{ enviandoSapIds.has(deposito.id) ? 'Enviando…' : 'Enviar a SAP' }}</span>
+                  <span class="sr-only sm:not-sr-only">
+                    {{ enviandoSapIds.has(deposito.id) ? 'Enviando…' : (deposito.estado === EstadoDeposito.RechazadoSAP ? 'Reintentar en SAP' : 'Enviar a SAP') }}
+                  </span>
                 </button>
 
                 <!-- Anular papeleta (si no está integrada a SAP) -->
@@ -101,6 +101,23 @@
               </div>
             </td>
           </tr>
+
+          <!-- Alerta persistente del último rechazo de SAP para esta papeleta -->
+          <tr v-if="erroresSap?.has(deposito.id)">
+            <td colspan="4" class="px-3 pb-3 pt-0">
+              <div role="alert" class="flex items-start gap-2 rounded-lg border border-rose-700/50 bg-rose-950/40 px-3 py-2.5 text-xs text-rose-200">
+                <ExclamationTriangleIcon class="h-4 w-4 flex-shrink-0 mt-0.5 text-rose-400" aria-hidden="true" />
+                <div>
+                  <p class="font-bold text-rose-100">{{ erroresSap.get(deposito.id)?.titulo }}</p>
+                  <p class="mt-0.5">{{ erroresSap.get(deposito.id)?.mensaje }}</p>
+                  <p v-if="erroresSap.get(deposito.id)?.accionSugerida" class="mt-1 font-medium text-rose-100">
+                    {{ erroresSap.get(deposito.id)?.accionSugerida }}
+                  </p>
+                </div>
+              </div>
+            </td>
+          </tr>
+          </template>
         </tbody>
       </table>
     </div>
@@ -108,9 +125,10 @@
 </template>
 
 <script setup lang="ts">
-import { EyeIcon, PaperAirplaneIcon, TrashIcon } from '@heroicons/vue/24/outline'
+import { ArrowPathIcon, ExclamationTriangleIcon, EyeIcon, PaperAirplaneIcon, TrashIcon } from '@heroicons/vue/24/outline'
 import { formatCurrency, formatDateOnly } from '../utils/formatters'
 import { EstadoDeposito, type DepositoDto } from '../types/tesoreria.types'
+import type { SapErrorFriendly } from '../utils/tesoreriaErrorHandler'
 import SemaforoEstadoBadge from './SemaforoEstadoBadge.vue'
 
 defineProps<{
@@ -120,6 +138,7 @@ defineProps<{
   anulandoIds: Set<number>
   puedeIntegrarSap: boolean
   puedeEliminar: boolean
+  erroresSap?: Map<number, SapErrorFriendly>
 }>()
 
 defineEmits<{

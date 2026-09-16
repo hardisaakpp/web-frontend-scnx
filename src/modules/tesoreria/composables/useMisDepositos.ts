@@ -1,6 +1,7 @@
 import { computed, reactive, ref } from 'vue'
 import { useToast } from '@/composables/useToast'
 import { extraerErroresCampo, extraerMensajeError, tesoreriaService } from '../services/tesoreriaService'
+import { parsearErrorIntegracionSap, type SapErrorFriendly } from '../utils/tesoreriaErrorHandler'
 import type {
   CrearDepositoPayload,
   CuentaFinancieraDto,
@@ -26,6 +27,9 @@ const creandoDeposito = ref(false)
 /** IDs de depósito con una acción (integrar/anular) en curso — para spinner por fila */
 const enviandoSapIds = reactive(new Set<number>())
 const anulandoIds = reactive(new Set<number>())
+
+/** Último rechazo de SAP por depósito, ya traducido a mensaje amigable — para alerta persistente por fila. */
+const erroresSapPorDeposito = reactive(new Map<number, SapErrorFriendly>())
 
 const errorResumen = ref<string | null>(null)
 const errorDetalle = ref<string | null>(null)
@@ -158,6 +162,7 @@ export function useMisDepositos() {
     enviandoSapIds.add(deposito.id)
     try {
       const actualizado = await tesoreriaService.integrarSap(deposito.id)
+      erroresSapPorDeposito.delete(deposito.id)
       toast.success('Depósito integrado en SAP', `DocEntry ${actualizado.docEntrySAP ?? '—'} generado correctamente.`)
       await Promise.all([
         fetchDetalle(deposito.codigoAlmacen, deposito.fechaCierreCaja),
@@ -170,13 +175,18 @@ export function useMisDepositos() {
         // El backend ya lo integró (otra pestaña, un reintento anterior, etc.) — no es un error
         // real del usuario. Se resincroniza la lista para que la fila refleje el estado real
         // (oculta el botón "Enviar a SAP" y muestra el badge de integrado) en vez de quedar stale.
+        erroresSapPorDeposito.delete(deposito.id)
         toast.warning('Depósito ya integrado', 'Este depósito ya fue integrado en SAP. Se actualizó la lista con su estado actual.')
         await Promise.all([
           fetchDetalle(deposito.codigoAlmacen, deposito.fechaCierreCaja),
           fetchResumen(deposito.codigoAlmacen, contexto.fechaDesde, contexto.fechaHasta)
         ])
       } else {
-        toast.error('SAP rechazó la integración', extraerMensajeError(err, 'El servicio de SAP no respondió. Intente reenviar en unos minutos.'))
+        // Traduce el rechazo de SAP (cuenta inactiva, papeleta duplicada en SAP, periodo cerrado,
+        // middleware caído, etc.) a un mensaje claro y accionable, en vez de mostrar el JSON crudo.
+        const amigable = parsearErrorIntegracionSap(err)
+        erroresSapPorDeposito.set(deposito.id, amigable)
+        toast.error(amigable.titulo, [amigable.mensaje, amigable.accionSugerida].filter(Boolean).join(' '))
       }
       return false
     } finally {
@@ -192,14 +202,25 @@ export function useMisDepositos() {
     anulandoIds.add(deposito.id)
     try {
       await tesoreriaService.anularDeposito(deposito.id, motivo)
-      toast.success('Depósito anulado', `La papeleta ${deposito.numeroComprobante} fue anulada.`)
+      toast.success('Depósito anulado', `La papeleta ${deposito.numeroComprobante} fue anulada. El saldo pendiente ha sido recalculado.`)
       await Promise.all([
         fetchDetalle(deposito.codigoAlmacen, deposito.fechaCierreCaja),
         fetchResumen(deposito.codigoAlmacen, contexto.fechaDesde, contexto.fechaHasta)
       ])
       return true
     } catch (err) {
-      toast.error('No se pudo anular el depósito', extraerMensajeError(err))
+      const status = (err as { response?: { status?: number } }).response?.status
+      if (status === 409) {
+        // El backend ya lo integró a SAP (otra pestaña, un envío concurrente, etc.) — se
+        // resincroniza la lista para que la fila oculte el botón de anular y refleje el estado real.
+        toast.warning('Conflicto', 'El depósito ya fue integrado en SAP Business One y no puede ser anulado.')
+        await Promise.all([
+          fetchDetalle(deposito.codigoAlmacen, deposito.fechaCierreCaja),
+          fetchResumen(deposito.codigoAlmacen, contexto.fechaDesde, contexto.fechaHasta)
+        ])
+      } else {
+        toast.error('No se pudo anular el depósito', extraerMensajeError(err))
+      }
       return false
     } finally {
       anulandoIds.delete(deposito.id)
@@ -218,6 +239,7 @@ export function useMisDepositos() {
     creandoDeposito,
     enviandoSapIds,
     anulandoIds,
+    erroresSapPorDeposito,
     errorResumen,
     errorDetalle,
     erroresCampoDeposito,

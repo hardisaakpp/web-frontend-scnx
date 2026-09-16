@@ -82,6 +82,7 @@ export interface CuentaFinancieraDto {
 
 // ─── Auditoría global (sábana multitienda) ──────────────────────────────────────────────────
 export interface AuditoriaGlobalDto {
+  /** 0 cuando la fila es sintética ("Falta depósito"): no existe ningún DepositoTienda real detrás. */
   id: number
   empresaId: TipoEmpresa
   codigoAlmacen: string
@@ -97,7 +98,18 @@ export interface AuditoriaGlobalDto {
   adjuntoId?: number | null
   nombreArchivoOriginal?: string | null
   tieneAdjunto?: boolean
+  /** Efectivo recontado en el arqueo físico de caja (dbo.cicUs) para el (almacén, fecha) de esta fila. */
+  efectivoCierre: number
+  /** efectivoCierre - montoDepositado, a nivel de fila. */
+  diferencia: number
+  /** Etiqueta humana lista para mostrar/exportar (independiente del valor numérico de `estado`). */
+  estadoDescripcion: string
+  /** true = fila sintética: hubo arqueo de caja pero la tienda no ha registrado ninguna papeleta. */
+  requiereDeposito: boolean
 }
+
+/** Opciones del filtro de estado de la sábana de auditoría (ver GetAuditoriaGlobalQuery.Estado en el backend). */
+export type FiltroEstadoAuditoria = 'TODOS' | 'FALTA_DEPOSITO' | 'INTEGRADO' | 'PENDIENTE' | 'RECHAZADO'
 
 export interface PaginatedList<T> {
   items: T[]
@@ -151,6 +163,7 @@ export interface GetAuditoriaGlobalParams {
   fechaDesde: string
   fechaHasta: string
   codigoAlmacen?: string | null
+  estado?: FiltroEstadoAuditoria | null
   pageNumber?: number
   pageSize?: number
 }

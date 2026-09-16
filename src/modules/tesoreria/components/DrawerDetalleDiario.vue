@@ -115,6 +115,7 @@
               :anulando-ids="anulandoIds"
               :puede-integrar-sap="puedeIntegrarSap"
               :puede-eliminar="puedeEliminar"
+              :errores-sap="erroresSap"
               @integrar-sap="(deposito) => emit('integrar-sap', deposito)"
               @anular="(deposito) => emit('anular', deposito)"
               @ver-comprobante="(deposito) => emit('ver-comprobante', deposito)"
@@ -146,6 +147,7 @@ import { ExclamationTriangleIcon, PlusIcon, XMarkIcon } from '@heroicons/vue/24/
 import { useModalFocusTrap } from '../composables/useModalFocusTrap'
 import { formatCurrency, formatDateOnly } from '../utils/formatters'
 import type { DepositoDto, DetalleDiarioDto, ResumenComparativoDto } from '../types/tesoreria.types'
+import type { SapErrorFriendly } from '../utils/tesoreriaErrorHandler'
 import SemaforoDiferenciaBadge from './SemaforoDiferenciaBadge.vue'
 import TablaDetallePapeletas from './TablaDetallePapeletas.vue'
 
@@ -160,6 +162,7 @@ const props = defineProps<{
   puedeCrear: boolean
   puedeIntegrarSap: boolean
   puedeEliminar: boolean
+  erroresSap?: Map<number, SapErrorFriendly>
 }>()
 
 const emit = defineEmits<{

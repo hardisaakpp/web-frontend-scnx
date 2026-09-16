@@ -80,6 +80,10 @@ function buildAuditoriaGlobalParams(
     query.codigoAlmacen = codigoAlmacen
   }
 
+  if (params.estado && params.estado !== 'TODOS') {
+    query.estado = params.estado
+  }
+
   return query
 }
 

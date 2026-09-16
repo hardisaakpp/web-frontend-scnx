@@ -278,6 +278,7 @@
       :puede-crear="puedeCrear"
       :puede-integrar-sap="puedeIntegrarSap"
       :puede-eliminar="puedeEliminar"
+      :errores-sap="erroresSapPorDeposito"
       @close="cerrarDrawer"
       @registrar-deposito="abrirModalRegistro"
       @integrar-sap="onIntegrarSap"
@@ -349,7 +350,7 @@ const toast = useToast()
 const {
   resumen, resumenFiltrado, filtroKpiActivo, detalleActual, cuentas,
   loadingResumen, loadingDetalle, loadingCuentas, creandoDeposito,
-  enviandoSapIds, anulandoIds, errorResumen, errorDetalle, erroresCampoDeposito,
+  enviandoSapIds, anulandoIds, erroresSapPorDeposito, errorResumen, errorDetalle, erroresCampoDeposito,
   totalEfectivoPeriodo, totalDepositadoPeriodo, diferenciaPeriodo, totalPendientesSap,
   fetchResumen, fetchDetalle, fetchCuentas, crearDeposito, integrarSap, anularDeposito,
   toggleFiltroKpi, limpiarFiltroKpi
