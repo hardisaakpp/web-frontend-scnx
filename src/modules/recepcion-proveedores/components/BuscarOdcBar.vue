@@ -15,6 +15,12 @@ const props = withDefaults(
   { autofocus: false, initialDocNum: null, loading: false }
 )
 
+const emit = defineEmits<{
+  /** Se busca el mismo DocNum que ya está en pantalla: un router.push a la misma ruta no
+   * navega (Vue Router lo ignora), así que el padre debe volver a consultar manualmente. */
+  (e: 'buscar-mismo-docnum', docNum: number): void
+}>()
+
 const router = useRouter()
 const docNum = ref<string>(props.initialDocNum != null ? String(props.initialDocNum) : '')
 const buscando = ref(false)
@@ -54,7 +60,11 @@ async function buscar(): Promise<void> {
   error.value = null
   buscando.value = true
   try {
-    await router.push({ name: 'recepcion-proveedores-detalle', params: { docNum: valor } })
+    if (props.initialDocNum != null && Number(props.initialDocNum) === valor) {
+      emit('buscar-mismo-docnum', valor)
+    } else {
+      await router.push({ name: 'recepcion-proveedores-detalle', params: { docNum: valor } })
+    }
   } finally {
     buscando.value = false
   }

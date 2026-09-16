@@ -119,7 +119,11 @@ watch(docNum, cargar)
     <VolverButton to="/recepcion-proveedores/buscar" title="Volver a la búsqueda" class="shrink-0 self-start mb-4" />
 
     <div class="mb-6 pb-6 border-b border-gray-200 dark:border-gray-700">
-      <BuscarOdcBar :initial-doc-num="docNum" :loading="ordenesCompraStore.loading" />
+      <BuscarOdcBar
+        :initial-doc-num="docNum"
+        :loading="ordenesCompraStore.loading"
+        @buscar-mismo-docnum="cargar"
+      />
     </div>
 
     <LoadingSpinner
