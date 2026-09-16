@@ -1,11 +1,14 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { ArrowLeftIcon, PencilSquareIcon, PlusIcon, InboxIcon } from '@heroicons/vue/24/outline'
+import { ArrowLeftIcon, PencilSquareIcon, PlusIcon, InboxIcon, ArrowPathIcon } from '@heroicons/vue/24/outline'
 import CargandoSpinner from '../components/CargandoSpinner.vue'
 import type { ConfiguracionEnvio } from '../types'
 import transferenciasService from '../services/transferenciasService.js'
 import almacenesService from '../services/almacenesServices.js'
 import ModalConfigEnvio from '../components/ModalConfigEnvio.vue'
+import { useAuthStore } from '@/stores/auth.js'
+import { useToast } from '@/composables/useToast.js'
+import administracionService from '../services/administracionService.js'
 
 const configuraciones = ref<ConfiguracionEnvio[]>([])
 const cargando = ref(false)
@@ -14,6 +17,8 @@ const marcas = ref<string[]>([])
 const marcasOrigenUsadas = computed(() =>
     Array.from(new Set(configuraciones.value.map((c) => c.marcaOrigen)))
 )
+const authStore = useAuthStore()
+const toast = useToast()
 
 const cargar = async () => {
     cargando.value = true
@@ -100,6 +105,24 @@ const guardarConfig = async ({ marcaOrigen, destinos }: { marcaOrigen: string; d
         guardando.value = false
     }
 }
+const puedeSincronizarAlmacenes = computed(() =>
+    authStore.hasPermission('transferenciadirecta.administrador')
+)
+const sincronizandoAlmacenes = ref(false)
+
+const sincronizarAlmacenesSap = async () => {
+    sincronizandoAlmacenes.value = true
+    try {
+        const res = await administracionService.sincronizarAlmacenesSap()
+        toast.success('Sincronización completa', res.mensaje)
+    } catch (e: any) {
+        const msg = e?.response?.data?.error
+        const detail = e?.response?.data?.detail
+        toast.error('Error de sincronización', detail ? `${msg} (${detail})` : (msg ?? 'No se pudo sincronizar los almacenes.'))
+    } finally {
+        sincronizandoAlmacenes.value = false
+    }
+}
 </script>
 
 <template>
@@ -119,6 +142,21 @@ const guardarConfig = async ({ marcaOrigen, destinos }: { marcaOrigen: string; d
             <button type="button" @click="abrirNuevo"
                 class="inline-flex items-center gap-2 h-10 px-4 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded-lg transition-colors shadow-sm">
                 <PlusIcon class="w-4 h-4" /> Nuevo
+            </button>            
+        </div>
+
+        <div v-if="puedeSincronizarAlmacenes"
+            class="flex items-center justify-between gap-4 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm px-5 py-4">
+            <div>
+                <h2 class="text-sm font-semibold text-gray-900 dark:text-white">Sincronización de Almacenes SAP</h2>
+                <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                    Actualiza el catálogo de almacenes cuando se cree uno nuevo en SAP.
+                </p>
+            </div>
+            <button type="button" @click="sincronizarAlmacenesSap" :disabled="sincronizandoAlmacenes"
+                class="inline-flex items-center gap-2 h-10 px-4 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-medium rounded-lg transition-colors shadow-sm disabled:opacity-60 disabled:cursor-not-allowed">
+                <ArrowPathIcon class="w-4 h-4" :class="{ 'animate-spin': sincronizandoAlmacenes }" />
+                {{ sincronizandoAlmacenes ? 'Sincronizando...' : 'Sincronizar Almacenes SAP' }}
             </button>
         </div>
 
