@@ -35,7 +35,7 @@
               Configuración de Políticas y Días de Gracia
             </h2>
             <p class="mt-0.5 text-xs text-slate-400">
-              Candados de antigüedad para nuevos depósitos y envío a SAP
+              Candados de antigüedad para nuevos depósitos, envío a SAP y alertas por correo
             </p>
           </div>
           <button
@@ -91,23 +91,6 @@
                   <span class="text-xs text-slate-400">días desde la fecha de venta</span>
                 </div>
               </div>
-
-              <div class="flex flex-col gap-1.5 pt-2 border-t border-slate-800">
-                <label for="horaLimiteCorte" class="text-xs font-semibold text-slate-300">
-                  Hora límite de corte (día siguiente al vencimiento)
-                </label>
-                <div class="flex items-center gap-3">
-                  <input
-                    id="horaLimiteCorte"
-                    v-model="form.horaLimiteCorte"
-                    type="time"
-                    required
-                    :disabled="!form.bloqueoNuevoActivo"
-                    class="w-28 px-3 py-2 text-sm font-semibold border border-slate-700 rounded-lg bg-slate-800 text-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 disabled:opacity-50"
-                  />
-                  <span class="text-xs text-slate-400">hora de Ecuador a partir de la cual se bloquea el registro</span>
-                </div>
-              </div>
             </fieldset>
 
             <!-- Política 2: Envío a SAP -->
@@ -144,6 +127,112 @@
                   />
                   <span class="text-xs text-slate-400">días desde el depósito bancario</span>
                 </div>
+              </div>
+            </fieldset>
+
+            <!-- Política 3: Notificaciones acumulativas por correo (independiente de los candados de arriba) -->
+            <fieldset class="rounded-xl border border-slate-800 bg-slate-800/40 p-4 space-y-3">
+              <legend class="px-1 text-sm font-bold text-white">Rango de Notificaciones Acumulativas (Alertas por Correo)</legend>
+
+              <label class="flex items-start justify-between gap-4 cursor-pointer">
+                <div>
+                  <span class="font-semibold text-sm text-white">Activar despacho diario de correos por mora (14:00)</span>
+                  <p class="text-xs text-slate-400 mt-0.5">
+                    Correo acumulativo por tienda, Lunes a Viernes — independiente del candado de registro en tienda.
+                  </p>
+                </div>
+                <input
+                  v-model="form.notificacionesActivas"
+                  type="checkbox"
+                  class="mt-1 h-5 w-5 flex-shrink-0 rounded border-slate-600 bg-slate-800 text-indigo-600 focus:ring-indigo-500"
+                />
+              </label>
+
+              <div v-if="form.notificacionesActivas" class="space-y-3 pt-2 border-t border-slate-800">
+                <div class="flex flex-col gap-1.5">
+                  <span class="text-xs font-semibold text-slate-300">Modalidad del rango de evaluación</span>
+                  <fieldset class="flex items-center gap-1 rounded-lg border border-slate-700 bg-slate-800/60 p-1">
+                    <legend class="sr-only">Modalidad del rango de evaluación</legend>
+                    <label
+                      v-for="opcion in OPCIONES_MODALIDAD"
+                      :key="String(opcion.value)"
+                      class="flex-1 flex items-center justify-center rounded-md px-2.5 py-1.5 text-xs font-semibold transition-colors cursor-pointer"
+                      :class="form.usarRangoCalendarioNotificacion === opcion.value ? 'bg-indigo-600 text-white' : 'text-slate-300 hover:bg-slate-700'"
+                    >
+                      <input
+                        v-model="form.usarRangoCalendarioNotificacion"
+                        type="radio"
+                        name="modalidadRangoNotificacion"
+                        :value="opcion.value"
+                        class="peer sr-only"
+                      />
+                      <span class="rounded peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-indigo-500">
+                        {{ opcion.label }}
+                      </span>
+                    </label>
+                  </fieldset>
+                </div>
+
+                <div v-if="!form.usarRangoCalendarioNotificacion" class="flex flex-col gap-1.5">
+                  <label for="diasVentanaNotificacion" class="text-xs font-semibold text-slate-300">
+                    Días hacia atrás a evaluar (1 - 90)
+                  </label>
+                  <div class="flex items-center gap-3">
+                    <input
+                      id="diasVentanaNotificacion"
+                      v-model.number="form.diasVentanaNotificacion"
+                      type="number"
+                      min="1"
+                      max="90"
+                      class="w-28 px-3 py-2 text-sm font-semibold border border-slate-700 rounded-lg bg-slate-800 text-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                    />
+                    <span class="text-xs text-slate-400">días desde ayer</span>
+                  </div>
+                </div>
+
+                <div v-else class="grid grid-cols-2 gap-3">
+                  <div class="flex flex-col gap-1.5">
+                    <label for="fechaInicioNotificacion" class="text-xs font-semibold text-slate-300">Desde</label>
+                    <input
+                      id="fechaInicioNotificacion"
+                      v-model="form.fechaInicioNotificacion"
+                      type="date"
+                      :max="form.fechaFinNotificacion ?? undefined"
+                      class="px-3 py-2 text-sm font-semibold border border-slate-700 rounded-lg bg-slate-800 text-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                    />
+                  </div>
+                  <div class="flex flex-col gap-1.5">
+                    <label for="fechaFinNotificacion" class="text-xs font-semibold text-slate-300">Hasta</label>
+                    <input
+                      id="fechaFinNotificacion"
+                      v-model="form.fechaFinNotificacion"
+                      type="date"
+                      :min="form.fechaInicioNotificacion ?? undefined"
+                      class="px-3 py-2 text-sm font-semibold border border-slate-700 rounded-lg bg-slate-800 text-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                    />
+                  </div>
+                </div>
+
+                <p class="flex items-start gap-1.5 rounded-lg bg-slate-800/60 px-3 py-2 text-xs text-slate-400">
+                  <InformationCircleIcon class="h-4 w-4 flex-shrink-0 mt-0.5 text-indigo-400" aria-hidden="true" />
+                  <span>La tabla del correo incluirá los cierres con diferencias pendientes de:
+                    <strong class="text-slate-200">{{ resumenRangoNotificaciones }}</strong>.</span>
+                </p>
+
+                <button
+                  type="button"
+                  :disabled="enviandoPrueba"
+                  :aria-busy="enviandoPrueba"
+                  class="w-full inline-flex items-center justify-center gap-2 rounded-lg border border-slate-700 px-3 py-2 text-xs font-semibold text-slate-200 hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500"
+                  @click="enviarPruebaInmediata"
+                >
+                  <svg v-if="enviandoPrueba" class="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24" aria-hidden="true">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+                  </svg>
+                  <EnvelopeIcon v-else class="h-4 w-4" aria-hidden="true" />
+                  {{ enviandoPrueba ? 'Enviando…' : 'Probar y Enviar Notificación Inmediata' }}
+                </button>
               </div>
             </fieldset>
 
@@ -187,14 +276,21 @@
 
 <script setup lang="ts">
 import { onUnmounted, ref, toRef, watch } from 'vue'
-import { XMarkIcon } from '@heroicons/vue/24/outline'
+import { EnvelopeIcon, InformationCircleIcon, XMarkIcon } from '@heroicons/vue/24/outline'
 import { useModalFocusTrap } from '../composables/useModalFocusTrap'
 import { useConfiguracionTesoreria } from '../composables/useConfiguracionTesoreria'
+
+const OPCIONES_MODALIDAD: Array<{ value: boolean; label: string }> = [
+  { value: false, label: 'Ventana Móvil (Días)' },
+  { value: true, label: 'Rango Calendario Fijo' }
+]
 
 const props = defineProps<{ isOpen: boolean }>()
 const emit = defineEmits<{ (e: 'close'): void; (e: 'saved'): void }>()
 
-const { form, cargando, guardando, errorValidacion, guardar } = useConfiguracionTesoreria()
+const {
+  form, cargando, guardando, enviandoPrueba, errorValidacion, resumenRangoNotificaciones, guardar, enviarPruebaInmediata
+} = useConfiguracionTesoreria()
 
 const dialogRef = ref<HTMLElement | null>(null)
 const botonCerrarRef = ref<HTMLButtonElement | null>(null)

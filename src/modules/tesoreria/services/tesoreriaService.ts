@@ -1,15 +1,21 @@
 import { tesoreriaHttp } from '@/lib/http'
 import type {
+  ActualizarContactoNotificacionPayload,
   ActualizarEstadoCuentaPayload,
   AuditoriaGlobalDto,
+  CambiarEstadoContactoPayload,
   ConfiguracionTesoreriaDto,
+  ContactoNotificacionDto,
+  CrearContactoNotificacionPayload,
   CrearDepositoPayload,
   CuentaFinancieraDto,
   DepositoDto,
   DetalleDiarioDto,
+  EnviarCorreoPruebaResultadoDto,
   GetAuditoriaGlobalParams,
   GetResumenDepositosParams,
   PaginatedList,
+  ResultadoNotificacionesDto,
   ResumenComparativoDto,
   UpdateConfiguracionRequest,
   UrlComprobanteDto
@@ -144,8 +150,10 @@ export const tesoreriaService = {
     return data
   },
 
-  async anularDeposito(depositoId: number, motivo: string): Promise<DepositoDto> {
-    const { data } = await tesoreriaHttp.delete<DepositoDto>(`/depositos/${depositoId}`, { params: { motivo } })
+  async anularDeposito(depositoId: number, motivo: string, confirmacionSapReversado = false): Promise<DepositoDto> {
+    const { data } = await tesoreriaHttp.delete<DepositoDto>(`/depositos/${depositoId}`, {
+      params: { motivo, confirmacionSapReversado }
+    })
     return data
   },
 
@@ -198,6 +206,41 @@ export const tesoreriaService = {
 
   async updateConfiguracion(payload: UpdateConfiguracionRequest): Promise<ConfiguracionTesoreriaDto> {
     const { data } = await tesoreriaHttp.put<ConfiguracionTesoreriaDto>('/configuracion', payload)
+    return data
+  },
+
+  /** Fuerza una corrida inmediata del motor de notificaciones, sin esperar al cron de las 14:00. */
+  async ejecutarCorteNotificaciones(): Promise<ResultadoNotificacionesDto> {
+    const { data } = await tesoreriaHttp.post<ResultadoNotificacionesDto>('/notificaciones/ejecutar-corte')
+    return data
+  },
+
+  async getContactosNotificacion(): Promise<ContactoNotificacionDto[]> {
+    const { data } = await tesoreriaHttp.get<ContactoNotificacionDto[]>('/contactos-notificacion')
+    return data
+  },
+
+  async crearContactoNotificacion(payload: CrearContactoNotificacionPayload): Promise<ContactoNotificacionDto> {
+    const { data } = await tesoreriaHttp.post<ContactoNotificacionDto>('/contactos-notificacion', payload)
+    return data
+  },
+
+  async actualizarContactoNotificacion(id: number, payload: ActualizarContactoNotificacionPayload): Promise<ContactoNotificacionDto> {
+    const { data } = await tesoreriaHttp.put<ContactoNotificacionDto>(`/contactos-notificacion/${id}`, payload)
+    return data
+  },
+
+  async cambiarEstadoContacto(id: number, payload: CambiarEstadoContactoPayload): Promise<ContactoNotificacionDto> {
+    const { data } = await tesoreriaHttp.patch<ContactoNotificacionDto>(`/contactos-notificacion/${id}/estado`, payload)
+    return data
+  },
+
+  async eliminarContactoNotificacion(id: number): Promise<void> {
+    await tesoreriaHttp.delete(`/contactos-notificacion/${id}`)
+  },
+
+  async enviarCorreoPruebaContactos(): Promise<EnviarCorreoPruebaResultadoDto> {
+    const { data } = await tesoreriaHttp.post<EnviarCorreoPruebaResultadoDto>('/contactos-notificacion/enviar-prueba')
     return data
   }
 }

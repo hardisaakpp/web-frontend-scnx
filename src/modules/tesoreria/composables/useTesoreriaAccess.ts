@@ -150,6 +150,21 @@ export function useTesoreriaAccess() {
     )
   })
 
+  /**
+   * Exclusividad contable para anular depósitos YA integrados en SAP (a diferencia de
+   * `puedeEliminar`, que también autoriza a Supervisor sobre papeletas no integradas). Cajeros y
+   * Supervisores nunca deben poder ejecutar esta reversión — solo Admin, o Contabilidad con
+   * permiso explícito de Auditoría Global o Eliminación. Debe reflejar exactamente la regla del
+   * backend en AnularDepositoCommandHandler.
+   */
+  const puedeAnularSap = computed<boolean>(() => {
+    return (
+      esAdmin.value ||
+      authStore.hasPermission(TESORERIA_PERMISOS.AuditarGlobal) ||
+      (esContabilidad.value && authStore.hasPermission(TESORERIA_PERMISOS.Eliminar))
+    )
+  })
+
   const puedeIntegrarSap = computed<boolean>(() => {
     return (
       esAdmin.value ||
@@ -175,6 +190,7 @@ export function useTesoreriaAccess() {
     puedeConfigurar,
     puedeAutorizarSobregiro,
     puedeEliminar,
+    puedeAnularSap,
     puedeIntegrarSap
   }
 }

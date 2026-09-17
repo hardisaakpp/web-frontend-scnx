@@ -126,19 +126,24 @@ export function useAuditoriaGlobal() {
     }
   }
 
-  async function anular(item: AuditoriaGlobalDto, motivo: string): Promise<void> {
+  async function anular(item: AuditoriaGlobalDto, motivo: string, confirmacionSapReversado = false): Promise<void> {
     anulandoIds.add(item.id)
     try {
-      await tesoreriaService.anularDeposito(item.id, motivo)
+      await tesoreriaService.anularDeposito(item.id, motivo, confirmacionSapReversado)
       toast.success('Depósito anulado', `La papeleta ${item.numeroComprobante} fue anulada. El saldo pendiente ha sido recalculado.`)
       await refrescar()
     } catch (err) {
       const status = (err as { response?: { status?: number } }).response?.status
       if (status === 409) {
-        // El backend ya lo integró a SAP (otra pestaña, un envío concurrente, etc.) — se
-        // resincroniza la sábana para que la fila oculte el botón de anular y refleje el estado real.
-        toast.warning('Conflicto', 'El depósito ya fue integrado en SAP Business One y no puede ser anulado.')
+        // Depósito integrado en SAP sin la confirmación de reversión manual marcada (o el backend
+        // lo integró recién, en otra pestaña) — se resincroniza la sábana para reflejar el estado real.
+        toast.warning(
+          'Reversión SAP requerida',
+          'Este depósito está integrado en SAP. Confirme que ya fue cancelado en SAP Business One Desktop antes de anularlo localmente.'
+        )
         await refrescar()
+      } else if (status === 403) {
+        toast.error('Acceso denegado', extraerMensajeError(err))
       } else {
         toast.error('No se pudo anular el depósito', extraerMensajeError(err))
       }
