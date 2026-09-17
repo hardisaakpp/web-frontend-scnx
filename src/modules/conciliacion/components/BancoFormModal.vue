@@ -26,10 +26,11 @@
         <!-- Datos generales -->
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            <label for="banco-nombre" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               Nombre del banco <span class="text-red-500">*</span>
             </label>
             <input
+              id="banco-nombre"
               v-model="form.nombre_banco"
               type="text"
               placeholder="PRODUBANCO"
@@ -37,10 +38,11 @@
             />
           </div>
           <div>
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            <label for="banco-codigo-sap" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               Código cuenta SAP <span class="text-red-500">*</span>
             </label>
             <input
+              id="banco-codigo-sap"
               v-model="form.codigo_cuenta_sap"
               type="text"
               placeholder="1.01.01.04"
@@ -48,8 +50,9 @@
             />
           </div>
           <div>
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Nombre Excel (opcional)</label>
+            <label for="banco-nombre-excel" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Nombre Excel (opcional)</label>
             <input
+              id="banco-nombre-excel"
               v-model="form.nombre_excel"
               type="text"
               placeholder="Igual al nombre del banco si se deja vacío"
@@ -69,10 +72,11 @@
           <h4 class="text-sm font-semibold text-gray-900 dark:text-white mb-3">Lectura del archivo Excel</h4>
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              <label for="banco-formato-fecha" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 Formato de fecha <span class="text-red-500">*</span>
               </label>
               <input
+                id="banco-formato-fecha"
                 v-model="form.formato_fecha"
                 type="text"
                 placeholder="%d/%m/%Y"
@@ -81,8 +85,9 @@
               <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">Patrón Python, ej. %d/%m/%Y o %m/%d/%Y %I:%M:%S %p</p>
             </div>
             <div>
-              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Fila de encabezado</label>
+              <label for="banco-fila-header" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Fila de encabezado</label>
               <input
+                id="banco-fila-header"
                 v-model.number="form.fila_header"
                 type="number"
                 min="0"
@@ -100,10 +105,11 @@
           <p class="text-xs text-gray-400 dark:text-gray-500 mb-3">Nombre exacto de la columna en el Excel del banco (no distingue mayúsculas ni tildes).</p>
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div v-for="campo in campoColumnas" :key="campo.key">
-              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              <label :for="`banco-campo-${campo.key}`" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 {{ campo.label }} <span v-if="campo.requerido" class="text-red-500">*</span>
               </label>
               <input
+                :id="`banco-campo-${campo.key}`"
                 v-model="form.columnas[campo.key]"
                 type="text"
                 :placeholder="campo.placeholder"
