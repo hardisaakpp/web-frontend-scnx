@@ -61,7 +61,8 @@
               class="w-full rounded-lg border border-slate-700 bg-slate-800 py-2 pl-9 pr-3 text-sm text-white placeholder:text-slate-500 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
             />
           </div>
-          <div role="group" aria-label="Filtro por estado" class="flex items-center gap-1 rounded-lg border border-slate-700 bg-slate-800/60 p-1">
+          <fieldset class="flex items-center gap-1 rounded-lg border border-slate-700 bg-slate-800/60 p-1">
+            <legend class="sr-only">Filtro por estado</legend>
             <label
               v-for="opcion in FILTROS_ESTADO"
               :key="opcion.value"
@@ -79,7 +80,7 @@
                 {{ opcion.label }}
               </span>
             </label>
-          </div>
+          </fieldset>
         </div>
 
         <!-- Cuerpo desplazable -->
@@ -169,7 +170,7 @@ import { useModalFocusTrap } from '../composables/useModalFocusTrap'
 import { useCuentasFinancieras, type FiltroEstadoCuenta } from '../composables/useCuentasFinancieras'
 
 const props = defineProps<{ isOpen: boolean }>()
-const emit = defineEmits<{ (e: 'close'): void }>()
+const emit = defineEmits<(e: 'close') => void>()
 
 const {
   cuentas, cuentasFiltradas, cargando, actualizandoIds, busqueda, filtroEstado, actualizarEstado

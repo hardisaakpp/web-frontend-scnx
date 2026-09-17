@@ -1,4 +1,4 @@
-import { createRouter, createWebHistory } from 'vue-router'
+import { createRouter, createWebHistory, type NavigationGuardNext } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import MainLayout from '../layouts/MainLayout.vue'
 import LoginView from '../views/Login.vue'
@@ -126,11 +126,41 @@ function puedeSaltarRestriccion(mensajeLog: string, ...detalleLog: unknown[]): b
   return true
 }
 
+/** Tolera variantes de rol admin ('Administrador Principal', 'admin', etc.) además del flag `isAdmin`. */
+function esAdminConTolerancia(authStore: ReturnType<typeof useAuthStore>): boolean {
+  if (authStore.isAdmin) return true
+  return authStore.userRoles?.some((r) => {
+    const s = String(r).toLowerCase()
+    return s === 'admin' || s === 'administrador' || s.includes('admin')
+  }) ?? false
+}
+
+/**
+ * Aplica una verificación de acceso del guard: si `bloqueado`, redirige a `routeName` salvo que
+ * `puedeSaltarRestriccion` habilite el escape hatch de desarrollo. Devuelve true cuando ya resolvió
+ * la navegación (llamó a `next`), para que el guard principal corte la ejecución con `return`.
+ */
+function aplicarRestriccion(
+  bloqueado: boolean,
+  routeName: 'login' | 'forbidden',
+  next: NavigationGuardNext,
+  mensajeLog: string,
+  ...detalleLog: unknown[]
+): boolean {
+  if (!bloqueado) return false
+  if (puedeSaltarRestriccion(mensajeLog, ...detalleLog)) {
+    next()
+    return true
+  }
+  next({ name: routeName })
+  return true
+}
+
 // Navigation guard
 router.beforeEach(async (to, from, next) => {
   const authStore = useAuthStore()
   const requiresAuth = to.matched.some(record => record.meta.requiresAuth)
-  const requiredRole = to.matched.find(record => record.meta.role)?.meta.role
+  const requiredRole = to.matched.find(record => record.meta.role)?.meta.role as string | undefined
   const requiredPermissions = to.matched.find(record => record.meta.permissions)?.meta.permissions as string[] | undefined
 
   // Cargar user y capabilities desde GET /Auth/me cuando hay token y aún no tenemos capabilities (p. ej. tras recarga).
@@ -139,44 +169,31 @@ router.beforeEach(async (to, from, next) => {
   }
 
   // Verificar autenticación
-  if (requiresAuth && !authStore.isAuthenticated) {
-    if (puedeSaltarRestriccion(`⚠️ [Router] Acceso sin autenticación a ruta protegida: ${to.path}`)) {
-      next()
-      return
-    }
-    next({ name: 'login' })
-    return
-  }
+  if (aplicarRestriccion(
+    requiresAuth && !authStore.isAuthenticated,
+    'login',
+    next,
+    `⚠️ [Router] Acceso sin autenticación a ruta protegida: ${to.path}`
+  )) return
 
   // Verificar rol si está definido
-  if (requiredRole && !authStore.hasRole(requiredRole as string)) {
-    if (puedeSaltarRestriccion(`⚠️ [Router] Acceso sin rol requerido a: ${to.path}`)) {
-      next()
-      return
-    }
-    next({ name: 'forbidden' })
-    return
-  }
+  if (aplicarRestriccion(
+    !!requiredRole && !authStore.hasRole(requiredRole),
+    'forbidden',
+    next,
+    `⚠️ [Router] Acceso sin rol requerido a: ${to.path}`
+  )) return
 
   // Verificar permisos si están definidos (los administradores tienen acceso automático)
   if (requiredPermissions && requiredPermissions.length > 0) {
-    // Verificar si es admin con tolerancia a variantes como 'Administrador Principal', 'admin', etc.
-    const isAdmin =
-      authStore.isAdmin ||
-      authStore.userRoles?.some((r) => {
-        const s = String(r).toLowerCase()
-        return s === 'admin' || s === 'administrador' || s.includes('admin')
-      }) ||
-      false
-
-    if (!isAdmin && !authStore.hasAnyPermission(requiredPermissions)) {
-      if (puedeSaltarRestriccion(`⚠️ [Router] Acceso sin permisos requeridos a: ${to.path}. Permisos requeridos:`, requiredPermissions)) {
-        next()
-        return
-      }
-      next({ name: 'forbidden' })
-      return
-    }
+    const tienePermiso = esAdminConTolerancia(authStore) || authStore.hasAnyPermission(requiredPermissions)
+    if (aplicarRestriccion(
+      !tienePermiso,
+      'forbidden',
+      next,
+      `⚠️ [Router] Acceso sin permisos requeridos a: ${to.path}. Permisos requeridos:`,
+      requiredPermissions
+    )) return
   }
 
   next()

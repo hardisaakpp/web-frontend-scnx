@@ -1,12 +1,11 @@
 <template>
-  <span
-    role="status"
+  <output
     class="inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-semibold whitespace-nowrap shadow-2xs"
     :class="clasesTono"
   >
     <component :is="icono" class="h-3.5 w-3.5 flex-shrink-0" aria-hidden="true" />
     <span>{{ etiqueta }}</span>
-  </span>
+  </output>
 </template>
 
 <script setup lang="ts">
