@@ -222,6 +222,12 @@ export const inventarioSesionesService = {
   async getMyRecountItems(sessionId: string): Promise<MyRecountListDto> {
     const response = await invPlanesApi.get<MyRecountListDto>(`/api/inventory-sessions/${sessionId}/recount/my-items`)
     return response.data
+  },
+
+  /** Artículos del alcance de la toma, sin cantidades (para que el operador sepa QUÉ debe contar). Accesible a los pickers de la toma. */
+  async getScopeItems(sessionId: string): Promise<SessionScopeItemDto[]> {
+    const response = await invPlanesApi.get<SessionScopeItemDto[]>(`/api/inventory-sessions/${sessionId}/scope-items`)
+    return response.data
   }
 }
 
@@ -240,6 +246,15 @@ export interface MyRecountListDto {
   total: number
   pending: number
   items: MyRecountItemDto[]
+}
+
+/** Un artículo del alcance de la toma. Sin stock ni cantidades a propósito: solo identifica el artículo y si ya tiene registro en la ronda actual. */
+export interface SessionScopeItemDto {
+  itemCode: string
+  description: string | null
+  barcode: string | null
+  level2: string | null
+  counted: boolean
 }
 
 export interface ArticleCountLineDto {
