@@ -71,6 +71,111 @@
       </div>
     </div>
 
+    <!-- Alcance: qué artículos tiene la toma (solo ítems, sin cantidades) -->
+    <div v-if="!esReconteo && alcance !== null" class="px-4 pt-4">
+      <div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-4">
+        <div class="flex items-start justify-between gap-3 flex-wrap">
+          <div>
+            <h2 class="text-sm font-semibold text-gray-900 dark:text-white">
+              Artículos de la toma: {{ alcance.length }}
+              <span v-if="alcancePendientes > 0" class="text-gray-500 dark:text-gray-400 font-normal">· {{ alcancePendientes }} sin contar</span>
+            </h2>
+            <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Lo que se cargó en esta toma. Solo artículos, sin cantidades. Clic derecho sobre un artículo (en pantalla táctil, mantenerlo pulsado) → Ingresar valor.</p>
+          </div>
+          <button type="button" class="text-xs font-medium text-blue-600 dark:text-blue-400 underline" @click="mostrarAlcance = !mostrarAlcance">
+            {{ mostrarAlcance ? 'Ocultar lista' : 'Ver lista' }}
+          </button>
+        </div>
+
+        <div v-if="mostrarAlcance" class="mt-3">
+          <div class="flex items-center gap-2 flex-wrap">
+            <select v-model="alcanceNivel2" class="scan-input !w-auto !py-1.5 text-xs" aria-label="Filtrar por Nivel 2">
+              <option value="">Nivel 2 (todos)</option>
+              <option v-for="n in alcanceNiveles2" :key="n" :value="n">{{ n }}</option>
+            </select>
+            <input
+              v-model="alcanceBusqueda"
+              type="search"
+              placeholder="Buscar código, descripción o barras"
+              class="scan-input !w-56 !py-1.5 text-xs"
+            />
+            <label class="inline-flex items-center gap-1.5 text-xs text-gray-600 dark:text-gray-300 select-none">
+              <input v-model="alcanceSoloPendientes" type="checkbox" class="rounded border-gray-300 dark:border-gray-600" />
+              Solo sin contar
+            </label>
+            <span class="text-xs text-gray-400 dark:text-gray-500 ml-auto">{{ alcanceFiltrado.length }} de {{ alcance.length }}</span>
+          </div>
+
+          <div v-if="alcanceFiltrado.length === 0" class="mt-3 text-xs text-gray-500 dark:text-gray-400">Ningún artículo coincide con el filtro.</div>
+          <div v-else class="mt-3 max-h-64 overflow-y-auto divide-y divide-gray-100 dark:divide-gray-700 rounded-lg border border-gray-100 dark:border-gray-700">
+            <div
+              v-for="i in alcanceFiltrado"
+              :key="i.itemCode"
+              class="flex items-center justify-between gap-3 px-3 py-1.5 text-xs select-none"
+              :class="i.counted ? 'opacity-50' : ''"
+              title="Clic derecho (o mantener pulsado) para ingresar la cantidad"
+              @contextmenu.prevent="abrirMenuContextual($event, i)"
+              @pointerdown="iniciarPulsacionLarga($event, i)"
+              @pointerup="cancelarPulsacionLarga"
+              @pointercancel="cancelarPulsacionLarga"
+              @pointermove="cancelarPulsacionLarga"
+            >
+              <div class="min-w-0">
+                <span class="font-mono font-semibold text-gray-900 dark:text-white">{{ i.itemCode }}</span>
+                <span v-if="i.description" class="text-gray-600 dark:text-gray-300 ml-2 truncate">{{ i.description }}</span>
+                <div class="text-gray-400 dark:text-gray-500 font-mono">{{ i.barcode ?? '—' }}<span v-if="i.level2" class="font-sans ml-2">{{ i.level2 }}</span></div>
+              </div>
+              <span v-if="i.counted" class="badge badge-green flex-shrink-0">Contado</span>
+              <span v-else class="badge badge-gray flex-shrink-0">Sin contar</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Menú contextual (clic derecho sobre un artículo del alcance) -->
+    <div
+      v-if="menuContextual"
+      class="fixed z-40 min-w-[11rem] rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-lg py-1 text-sm"
+      :style="{ left: menuContextual.x + 'px', top: menuContextual.y + 'px' }"
+      @click.stop
+    >
+      <div class="px-3 py-1.5 text-xs text-gray-400 dark:text-gray-500 font-mono truncate border-b border-gray-100 dark:border-gray-700">{{ menuContextual.item.itemCode }}</div>
+      <button type="button" class="w-full text-left px-3 py-2 text-gray-800 dark:text-gray-100 hover:bg-blue-50 dark:hover:bg-blue-900/30" @click="abrirIngresoCantidad(menuContextual.item)">
+        Ingresar valor
+      </button>
+    </div>
+
+    <!-- Modal: ingresar cantidad de un artículo del alcance -->
+    <div v-if="ingresoCantidad" class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4" @click.self="cerrarIngresoCantidad">
+      <div class="w-full max-w-sm rounded-xl bg-white dark:bg-gray-800 shadow-xl p-5" role="dialog" aria-modal="true" aria-labelledby="ingreso-cantidad-titulo">
+        <h3 id="ingreso-cantidad-titulo" class="text-sm font-semibold text-gray-900 dark:text-white">Ingresar cantidad</h3>
+        <div class="mt-2 text-xs">
+          <div class="font-mono font-semibold text-gray-900 dark:text-white">{{ ingresoCantidad.item.itemCode }}</div>
+          <div v-if="ingresoCantidad.item.description" class="text-gray-600 dark:text-gray-300">{{ ingresoCantidad.item.description }}</div>
+          <div class="text-gray-400 dark:text-gray-500 font-mono">{{ ingresoCantidad.item.barcode ?? 'sin código de barras' }}</div>
+        </div>
+        <label for="ingreso-cantidad-input" class="block mt-4 text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Cantidad</label>
+        <input
+          id="ingreso-cantidad-input"
+          ref="ingresoCantidadInputRef"
+          v-model.number="ingresoCantidad.cantidad"
+          type="number"
+          inputmode="numeric"
+          min="1"
+          max="9999"
+          class="scan-input text-lg text-center"
+          @keydown.enter.prevent="confirmarIngresoCantidad"
+          @keydown.esc.prevent="cerrarIngresoCantidad"
+        />
+        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Se registra como si escanearas el código de barras una vez con esa cantidad.</p>
+        <div class="mt-4 flex justify-end gap-2">
+          <button type="button" class="btn-secondary" @click="cerrarIngresoCantidad">Cancelar</button>
+          <button type="button" class="btn-primary" :disabled="!cantidadIngresoValida" @click="confirmarIngresoCantidad">Aceptar</button>
+        </div>
+      </div>
+    </div>
+
     <!-- Content -->
     <div class="flex-1 grid grid-cols-1 lg:grid-cols-2 gap-4 p-4">
       <!-- Left: inputs -->
@@ -269,7 +374,7 @@ import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRouter, useRoute, onBeforeRouteLeave } from 'vue-router'
 import { ChevronLeftIcon, ChevronDownIcon, CameraIcon } from '@heroicons/vue/24/outline'
 import { inventarioSesionesService } from '../services/inventarioSesionesApi'
-import type { MyRecountListDto } from '../services/inventarioSesionesApi'
+import type { MyRecountListDto, SessionScopeItemDto } from '../services/inventarioSesionesApi'
 import type { InventorySessionStatus } from '../types'
 import ScannerPanel from '../components/ScannerPanel.vue'
 
@@ -372,6 +477,122 @@ function permitidoEnMiReconteo(code: string): boolean {
 }
 
 /** Tras registrar un conteo, marca el artículo como recontado en mi lista sin volver a consultar. */
+// ---- Alcance de la toma (solo ítems, sin cantidades) ----
+// null = aún no cargado o no disponible; [] = la toma no tiene artículos en su alcance.
+const alcance = ref<SessionScopeItemDto[] | null>(null)
+const mostrarAlcance = ref(false)
+const alcanceNivel2 = ref('')
+const alcanceBusqueda = ref('')
+const alcanceSoloPendientes = ref(false)
+
+const alcanceNiveles2 = computed(() =>
+  [...new Set((alcance.value ?? []).map(i => i.level2).filter((v): v is string => !!v))].sort((a, b) => a.localeCompare(b))
+)
+const alcancePendientes = computed(() => (alcance.value ?? []).filter(i => !i.counted).length)
+const alcanceFiltrado = computed(() => {
+  const q = alcanceBusqueda.value.trim().toLowerCase()
+  return (alcance.value ?? []).filter(i =>
+    (!alcanceNivel2.value || i.level2 === alcanceNivel2.value) &&
+    (!alcanceSoloPendientes.value || !i.counted) &&
+    (!q || i.itemCode.toLowerCase().includes(q) || (i.description ?? '').toLowerCase().includes(q) || (i.barcode ?? '').toLowerCase().includes(q))
+  )
+})
+
+async function cargarAlcance() {
+  if (esReconteo.value) {
+    alcance.value = null
+    return
+  }
+  try {
+    alcance.value = await inventarioSesionesService.getScopeItems(sessionId)
+  } catch {
+    // Sin la lista la pantalla sigue funcionando: es solo una ayuda para el operador.
+    alcance.value = null
+  }
+}
+
+/** Al registrar un conteo, el artículo pasa a "Contado" en la lista del alcance sin volver a consultar. */
+function marcarContadoEnAlcance(itemCode: string) {
+  const item = alcance.value?.find(i => i.itemCode.toUpperCase() === itemCode.toUpperCase())
+  if (item) item.counted = true
+}
+
+// ---- Ingresar cantidad desde la lista del alcance (toque / clic derecho → "Ingresar valor") ----
+const menuContextual = ref<{ x: number; y: number; item: SessionScopeItemDto } | null>(null)
+const ingresoCantidad = ref<{ item: SessionScopeItemDto; cantidad: number } | null>(null)
+const ingresoCantidadInputRef = ref<HTMLInputElement | null>(null)
+const cantidadIngresoValida = computed(() => {
+  const c = ingresoCantidad.value?.cantidad
+  return typeof c === 'number' && Number.isInteger(c) && c >= 1 && c <= 9999
+})
+
+// El click que el navegador dispara justo después de abrir el menú (al soltar el dedo tras la
+// pulsación larga, o el mouseup del clic derecho en algunos navegadores) no debe cerrarlo.
+let menuAbiertoEn = 0
+function abrirMenuContextual(ev: MouseEvent, item: SessionScopeItemDto) {
+  // Que el menú no se salga de la pantalla en tablets angostas.
+  const x = Math.min(ev.clientX, window.innerWidth - 200)
+  const y = Math.min(ev.clientY, window.innerHeight - 90)
+  menuContextual.value = { x, y, item }
+  menuAbiertoEn = Date.now()
+}
+function cerrarMenuContextual() {
+  menuContextual.value = null
+}
+
+// Pantallas táctiles (tablet / celular) no tienen clic derecho: mantener pulsado ~600 ms abre el
+// mismo menú. Un toque normal NO hace nada, para que no se registren cantidades por accidente.
+// Solo para punteros táctiles: con mouse ya está el clic derecho y no queremos duplicar.
+const LONG_PRESS_MS = 600
+let pulsacionLargaTimer: ReturnType<typeof setTimeout> | null = null
+function iniciarPulsacionLarga(ev: PointerEvent, item: SessionScopeItemDto) {
+  if (ev.pointerType !== 'touch') return
+  cancelarPulsacionLarga()
+  const { clientX, clientY } = ev
+  pulsacionLargaTimer = setTimeout(() => {
+    pulsacionLargaTimer = null
+    abrirMenuContextual({ clientX, clientY } as MouseEvent, item)
+  }, LONG_PRESS_MS)
+}
+function cancelarPulsacionLarga() {
+  if (pulsacionLargaTimer) {
+    clearTimeout(pulsacionLargaTimer)
+    pulsacionLargaTimer = null
+  }
+}
+
+function abrirIngresoCantidad(item: SessionScopeItemDto) {
+  cerrarMenuContextual()
+  ingresoCantidad.value = { item, cantidad: 1 }
+  nextTick(() => {
+    ingresoCantidadInputRef.value?.focus()
+    ingresoCantidadInputRef.value?.select()
+  })
+}
+function cerrarIngresoCantidad() {
+  ingresoCantidad.value = null
+  nextTick(() => barcodeInputRef.value?.focus())
+}
+/** Igual que pistolear el código de barras una vez con la cantidad indicada: entra a la cola y de ahí a Enviados. */
+function confirmarIngresoCantidad() {
+  if (!ingresoCantidad.value || !cantidadIngresoValida.value) return
+  const { item, cantidad } = ingresoCantidad.value
+  const code = item.barcode ?? item.itemCode
+  agregarACola(code, cantidad, 'Scan', code)
+  cerrarIngresoCantidad()
+}
+function onDocumentClickCerrarMenu() {
+  if (!menuContextual.value) return
+  if (Date.now() - menuAbiertoEn < 400) return
+  cerrarMenuContextual()
+}
+function onDocumentKeydown(ev: KeyboardEvent) {
+  if (ev.key === 'Escape') {
+    if (ingresoCantidad.value) cerrarIngresoCantidad()
+    else if (menuContextual.value) cerrarMenuContextual()
+  }
+}
+
 function marcarRecontado(itemCode: string, quantity: number) {
   const item = miReconteo.value?.items.find(i => i.itemCode.toUpperCase() === itemCode.toUpperCase())
   if (!item) return
@@ -625,7 +846,7 @@ async function cargarInfoSesion() {
       description: status.description,
       status: status.status as InventorySessionStatus
     }
-    await cargarMiReconteo()
+    await Promise.all([cargarMiReconteo(), cargarAlcance()])
   } catch (e: any) {
     errorCarga.value = e.message ?? 'No se pudo cargar la sesión.'
   }
@@ -662,6 +883,7 @@ async function procesarCola() {
         clientId: item.id
       })
       marcarRecontado(result.itemCode ?? item.itemCode, item.quantity)
+      marcarContadoEnAlcance(result.itemCode ?? item.itemCode)
       if (item.source === 'Scan') {
         const resolvedCode = result.itemCode
         const wasResolved = resolvedCode.toUpperCase() !== item.itemCode.toUpperCase()
@@ -744,6 +966,8 @@ onMounted(async () => {
   window.addEventListener('online', onOnline)
   window.addEventListener('offline', onOffline)
   window.addEventListener('beforeunload', onBeforeUnload)
+  document.addEventListener('click', onDocumentClickCerrarMenu)
+  document.addEventListener('keydown', onDocumentKeydown)
   reintentoTimer = setInterval(reintentarSiHayErrores, AUTO_RETRY_MS)
 
   // Lo que quedó pendiente de una sesión anterior en este dispositivo se envía primero.
@@ -758,6 +982,9 @@ onUnmounted(() => {
   window.removeEventListener('online', onOnline)
   window.removeEventListener('offline', onOffline)
   window.removeEventListener('beforeunload', onBeforeUnload)
+  document.removeEventListener('click', onDocumentClickCerrarMenu)
+  document.removeEventListener('keydown', onDocumentKeydown)
+  cancelarPulsacionLarga()
   if (reintentoTimer) clearInterval(reintentoTimer)
 })
 </script>
