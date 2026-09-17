@@ -1,5 +1,10 @@
 <script setup lang="ts">
-import { MagnifyingGlassIcon, ClockIcon } from '@heroicons/vue/24/outline'
+import { MagnifyingGlassIcon, ClockIcon, ExclamationTriangleIcon, ClipboardDocumentListIcon } from '@heroicons/vue/24/outline'
+import { useAuthStore } from '@/stores/auth'
+
+const authStore = useAuthStore()
+const esTienda = authStore.hasPermission('recepcionproveedores.tienda')
+const esSupervisor = authStore.hasPermission('recepcionproveedores.view')
 </script>
 
 <template>
@@ -7,12 +12,13 @@ import { MagnifyingGlassIcon, ClockIcon } from '@heroicons/vue/24/outline'
     <div>
       <h1 class="text-2xl font-semibold text-gray-900 dark:text-white">Recepción ODC de Proveedores</h1>
       <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-        Búsqueda de órdenes de compra e historial de eventos de picking
+        Búsqueda de órdenes de compra e historial de recepciones
       </p>
     </div>
 
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-6">
       <router-link
+        v-if="esTienda || esSupervisor"
         to="/recepcion-proveedores/buscar"
         class="bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700 p-4 hover:border-gray-300 dark:hover:border-gray-600 hover:shadow-sm transition-all text-left block"
       >
@@ -28,7 +34,39 @@ import { MagnifyingGlassIcon, ClockIcon } from '@heroicons/vue/24/outline'
       </router-link>
 
       <router-link
-        to="/recepcion-proveedores/logs"
+        v-if="esTienda || esSupervisor"
+        to="/recepcion-proveedores/recepcion-parcial"
+        class="bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700 p-4 hover:border-gray-300 dark:hover:border-gray-600 hover:shadow-sm transition-all text-left block"
+      >
+        <div class="flex items-start gap-3">
+          <div class="w-8 h-8 rounded bg-amber-50 dark:bg-amber-900/30 flex items-center justify-center flex-shrink-0">
+            <ExclamationTriangleIcon class="h-5 w-5 text-amber-600 dark:text-amber-400" />
+          </div>
+          <div class="flex-1 min-w-0">
+            <div class="font-medium text-gray-900 dark:text-white text-sm">En Curso/Picking</div>
+            <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">ODCs con picking parcial pendientes de completar</div>
+          </div>
+        </div>
+      </router-link>
+
+      <router-link
+        v-if="esSupervisor"
+        to="/recepcion-proveedores/pendientes"
+        class="bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700 p-4 hover:border-gray-300 dark:hover:border-gray-600 hover:shadow-sm transition-all text-left block"
+      >
+        <div class="flex items-start gap-3">
+          <div class="w-8 h-8 rounded bg-purple-50 dark:bg-purple-900/30 flex items-center justify-center flex-shrink-0">
+            <ClipboardDocumentListIcon class="h-5 w-5 text-purple-600 dark:text-purple-400" />
+          </div>
+          <div class="flex-1 min-w-0">
+            <div class="font-medium text-gray-900 dark:text-white text-sm">Órdenes de Compra Pendientes</div>
+            <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">ODCs abiertas en SAP pendientes de recibir, por rango de fechas</div>
+          </div>
+        </div>
+      </router-link>
+
+      <router-link
+        to="/recepcion-proveedores/historial"
         class="bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700 p-4 hover:border-gray-300 dark:hover:border-gray-600 hover:shadow-sm transition-all text-left block"
       >
         <div class="flex items-start gap-3">
@@ -37,7 +75,7 @@ import { MagnifyingGlassIcon, ClockIcon } from '@heroicons/vue/24/outline'
           </div>
           <div class="flex-1 min-w-0">
             <div class="font-medium text-gray-900 dark:text-white text-sm">Historial</div>
-            <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">Registro de eventos de picking de tus almacenes</div>
+            <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">Recepciones de ODC realizadas en tus almacenes</div>
           </div>
         </div>
       </router-link>

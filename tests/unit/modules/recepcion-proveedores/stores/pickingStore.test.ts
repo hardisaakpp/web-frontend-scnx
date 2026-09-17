@@ -13,8 +13,8 @@ vi.mock('@/modules/recepcion-proveedores/services/pickingApi', () => ({
     obtenerLogs: vi.fn(),
     escanear: vi.fn(),
     eliminarScan: vi.fn(),
-    cerrar: vi.fn(),
-    integrarSap: vi.fn(),
+    confirmarPicking: vi.fn(),
+    confirmarParcial: vi.fn(),
     verificarEstadoSap: vi.fn(),
     eliminarSesion: vi.fn(),
   },
@@ -30,6 +30,7 @@ function buildLinea(overrides: Partial<OrdenPickingLineaResponse> = {}): OrdenPi
     cantidadPedida: 10,
     cantidadPendiente: 10,
     cantidadPickeada: 0,
+    cantidadSobrante: 0,
     estadoLinea: 'Pendiente',
     ...overrides,
   }
@@ -45,6 +46,9 @@ function buildSesion(overrides: Partial<OrdenPickingSesionResponse> = {}): Orden
     sapDocEntry: null,
     sapDocNum: null,
     sapErrorMensaje: null,
+    modoConfirmacion: null,
+    proveedor: null,
+    docDueDate: null,
     lineas: [buildLinea()],
     ...overrides,
   }
@@ -156,33 +160,18 @@ describe('usePickingStore', () => {
     expect(store.scans).toEqual([])
   })
 
-  it('cerrar actualiza la sesion a Finalizada', async () => {
+  it('confirmarPicking exito sincrono deja la sesion IntegradaSap con DocEntry/DocNum', async () => {
     const sesion = buildSesion()
     vi.mocked(pickingApi.obtenerSesion).mockResolvedValue(sesion)
     vi.mocked(pickingApi.obtenerScans).mockResolvedValue([])
     const store = usePickingStore()
     await store.cargarSesion(1)
 
-    vi.mocked(pickingApi.cerrar).mockResolvedValue(buildSesion({ estado: 'Finalizada' }))
-
-    const ok = await store.cerrar()
-
-    expect(ok).toBe(true)
-    expect(store.sesion?.estado).toBe('Finalizada')
-  })
-
-  it('integrarSap exito sincrono deja la sesion IntegradaSap con DocEntry/DocNum', async () => {
-    const sesion = buildSesion({ estado: 'Finalizada' })
-    vi.mocked(pickingApi.obtenerSesion).mockResolvedValue(sesion)
-    vi.mocked(pickingApi.obtenerScans).mockResolvedValue([])
-    const store = usePickingStore()
-    await store.cargarSesion(1)
-
-    vi.mocked(pickingApi.integrarSap).mockResolvedValue(
-      buildSesion({ estado: 'IntegradaSap', sapDocEntry: 900, sapDocNum: 901 })
+    vi.mocked(pickingApi.confirmarPicking).mockResolvedValue(
+      buildSesion({ estado: 'IntegradaSap', modoConfirmacion: 'Picking', sapDocEntry: 900, sapDocNum: 901 })
     )
 
-    const ok = await store.integrarSap()
+    const ok = await store.confirmarPicking()
 
     expect(ok).toBe(true)
     expect(store.sesion?.estado).toBe('IntegradaSap')
@@ -191,37 +180,55 @@ describe('usePickingStore', () => {
     expect(store.actionError).toBeNull()
   })
 
-  it('integrarSap encolado deja la sesion en EnviandoSap', async () => {
-    const sesion = buildSesion({ estado: 'Finalizada' })
+  it('confirmarParcial exito sincrono deja la sesion IntegradaSap en modo Parcial', async () => {
+    const sesion = buildSesion()
     vi.mocked(pickingApi.obtenerSesion).mockResolvedValue(sesion)
     vi.mocked(pickingApi.obtenerScans).mockResolvedValue([])
     const store = usePickingStore()
     await store.cargarSesion(1)
 
-    vi.mocked(pickingApi.integrarSap).mockResolvedValue(buildSesion({ estado: 'EnviandoSap' }))
+    vi.mocked(pickingApi.confirmarParcial).mockResolvedValue(
+      buildSesion({ estado: 'IntegradaSap', modoConfirmacion: 'Parcial', sapDocEntry: 900, sapDocNum: 901 })
+    )
 
-    const ok = await store.integrarSap()
+    const ok = await store.confirmarParcial()
+
+    expect(ok).toBe(true)
+    expect(store.sesion?.estado).toBe('IntegradaSap')
+    expect(store.sesion?.modoConfirmacion).toBe('Parcial')
+  })
+
+  it('confirmarPicking encolado deja la sesion en EnviandoSap', async () => {
+    const sesion = buildSesion()
+    vi.mocked(pickingApi.obtenerSesion).mockResolvedValue(sesion)
+    vi.mocked(pickingApi.obtenerScans).mockResolvedValue([])
+    const store = usePickingStore()
+    await store.cargarSesion(1)
+
+    vi.mocked(pickingApi.confirmarPicking).mockResolvedValue(buildSesion({ estado: 'EnviandoSap' }))
+
+    const ok = await store.confirmarPicking()
 
     expect(ok).toBe(true)
     expect(store.sesion?.estado).toBe('EnviandoSap')
   })
 
-  it('integrarSap con error de red deja actionError y no toca la sesion', async () => {
-    const sesion = buildSesion({ estado: 'Finalizada' })
+  it('confirmarPicking con error de red deja actionError y no toca la sesion', async () => {
+    const sesion = buildSesion()
     vi.mocked(pickingApi.obtenerSesion).mockResolvedValue(sesion)
     vi.mocked(pickingApi.obtenerScans).mockResolvedValue([])
     const store = usePickingStore()
     await store.cargarSesion(1)
 
-    vi.mocked(pickingApi.integrarSap).mockRejectedValue({
+    vi.mocked(pickingApi.confirmarPicking).mockRejectedValue({
       response: { status: 409, data: { detail: 'La sesion ya esta en proceso de integracion.' } },
     })
 
-    const ok = await store.integrarSap()
+    const ok = await store.confirmarPicking()
 
     expect(ok).toBe(false)
     expect(store.actionError).toBe('La sesion ya esta en proceso de integracion.')
-    expect(store.sesion?.estado).toBe('Finalizada')
+    expect(store.sesion?.estado).toBe('EnProceso')
   })
 
   it('verificarEstadoSap resuelve EnviandoSap a IntegradaSap', async () => {
@@ -241,25 +248,25 @@ describe('usePickingStore', () => {
     expect(store.sesion?.estado).toBe('IntegradaSap')
   })
 
-  it('integrarSap descarta la respuesta si el usuario ya navego a otra sesion', async () => {
-    const sesion = buildSesion({ estado: 'Finalizada' })
+  it('confirmarPicking descarta la respuesta si el usuario ya navego a otra sesion', async () => {
+    const sesion = buildSesion()
     vi.mocked(pickingApi.obtenerSesion).mockResolvedValue(sesion)
     vi.mocked(pickingApi.obtenerScans).mockResolvedValue([])
     const store = usePickingStore()
     await store.cargarSesion(1)
 
-    let resolveIntegrar: (value: OrdenPickingSesionResponse) => void = () => {}
-    vi.mocked(pickingApi.integrarSap).mockImplementationOnce(
-      () => new Promise((resolve) => { resolveIntegrar = resolve })
+    let resolveConfirmar: (value: OrdenPickingSesionResponse) => void = () => {}
+    vi.mocked(pickingApi.confirmarPicking).mockImplementationOnce(
+      () => new Promise((resolve) => { resolveConfirmar = resolve })
     )
 
-    const integrando = store.integrarSap()
+    const confirmando = store.confirmarPicking()
     vi.mocked(pickingApi.obtenerSesion).mockResolvedValue(buildSesion({ id: 2, docNum: 2002 }))
     vi.mocked(pickingApi.obtenerScans).mockResolvedValue([])
     await store.cargarSesion(2)
 
-    resolveIntegrar(buildSesion({ estado: 'IntegradaSap', sapDocEntry: 900, sapDocNum: 901 }))
-    const ok = await integrando
+    resolveConfirmar(buildSesion({ estado: 'IntegradaSap', sapDocEntry: 900, sapDocNum: 901 }))
+    const ok = await confirmando
 
     expect(ok).toBe(false)
     expect(store.sesion?.id).toBe(2)
