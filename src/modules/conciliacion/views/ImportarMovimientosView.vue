@@ -17,25 +17,16 @@
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <!-- Panel de Upload -->
         <div class="space-y-4">
-          <!-- Selector de Banco -->
-          <div class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-5">
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Banco <span class="text-red-500">*</span>
-            </label>
-            <select
-              v-model="selectedBanco"
-              class="w-full px-3 py-2.5 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-              :disabled="uploading"
-            >
-              <option value="">Seleccione un banco</option>
-              <option v-for="banco in store.bancos" :key="banco.id_banco" :value="banco.nombre_banco">
-                {{ banco.nombre_banco }}
-              </option>
-            </select>
-          </div>
-
-          <!-- Upload Area -->
-          <div class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-5">
+          <!-- Upload Area: acepta soltar un archivo en cualquier estado (seleccionado, error o resultado), sin pasar primero por "Cambiar" -->
+          <div
+            class="rounded-lg border p-5 transition-colors"
+            :class="isDragging
+              ? 'border-blue-500 bg-blue-50/60 dark:bg-blue-900/10'
+              : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700'"
+            @dragover.prevent="!uploading && (isDragging = true)"
+            @dragleave.prevent="isDragging = false"
+            @drop.prevent="handleDrop"
+          >
             <input
               ref="fileInput"
               type="file"
@@ -45,17 +36,14 @@
               :disabled="uploading"
             />
 
-            <!-- Drop zone -->
+            <!-- Drop zone: también sirve para cargar el siguiente archivo tras un resultado -->
             <div
-              v-if="!selectedFile && !uploading && !uploadDone"
+              v-if="!selectedFile && !uploading"
               @click="fileInput?.click()"
-              @dragover.prevent="isDragging = true"
-              @dragleave.prevent="isDragging = false"
-              @drop.prevent="handleDrop"
               :class="[
                 'border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-all',
                 isDragging
-                  ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
+                  ? 'border-blue-500'
                   : 'border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500',
               ]"
             >
@@ -82,7 +70,6 @@
                 <button @click="clearFile" class="text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 px-2 py-1">Cambiar</button>
                 <button
                   @click="handleUpload"
-                  :disabled="!selectedBanco"
                   class="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white text-sm font-medium rounded-lg transition-colors disabled:cursor-not-allowed"
                 >
                   Importar
@@ -104,6 +91,9 @@
                 </svg>
                 <div class="flex-1">
                   <p class="text-sm font-medium text-emerald-800 dark:text-emerald-200">{{ store.lastImportResult.message }}</p>
+                  <p v-if="store.lastImportResult.data?.banco_detectado" class="text-xs text-emerald-700 dark:text-emerald-300 mt-1">
+                    Banco: <span class="font-semibold">{{ store.lastImportResult.data.banco_detectado }}</span>
+                  </p>
                   <div v-if="store.lastImportResult.data" class="mt-2 grid grid-cols-3 gap-2 text-xs">
                     <div class="bg-white dark:bg-gray-800 rounded p-2 text-center">
                       <p class="font-bold text-emerald-600 dark:text-emerald-400">{{ store.lastImportResult.data.registros_insertados }}</p>
@@ -118,18 +108,10 @@
                       <p class="text-gray-500 dark:text-gray-400">Errores</p>
                     </div>
                   </div>
-                  <button @click="resetUpload" class="mt-3 text-xs text-emerald-700 dark:text-emerald-300 hover:underline">Subir otro archivo</button>
                 </div>
               </div>
             </div>
 
-            <!-- Validation error -->
-            <p v-if="!selectedBanco && selectedFile" class="text-xs text-amber-600 dark:text-amber-400 mt-2 flex items-center gap-1">
-              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
-              </svg>
-              Seleccione un banco antes de importar
-            </p>
           </div>
 
           <!-- Error -->
@@ -138,72 +120,88 @@
               <svg class="w-5 h-5 text-red-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
-              <p class="text-sm text-red-700 dark:text-red-300">{{ uploadError }}</p>
+              <div>
+                <p class="text-sm text-red-700 dark:text-red-300">{{ uploadError }}</p>
+                <button
+                  v-if="detalleErrorColumnas"
+                  @click="mostrarErrorColumnas = true"
+                  class="text-xs text-red-600 dark:text-red-400 hover:underline mt-1"
+                >
+                  Ver detalle
+                </button>
+              </div>
             </div>
           </div>
         </div>
 
         <!-- Historial de Cargas -->
-        <div class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700">
           <div class="px-5 py-4 border-b border-gray-200 dark:border-gray-700">
-            <h2 class="text-sm font-semibold text-gray-900 dark:text-white">Historial de cargas</h2>
+            <h2 class="text-sm font-semibold text-gray-900 dark:text-white">Historial de las últimas 10 cargas</h2>
           </div>
-          <div class="overflow-x-auto">
-            <table v-if="store.cargas.length > 0" class="w-full text-sm">
-              <thead>
-                <tr class="border-b border-gray-200 dark:border-gray-700">
-                  <th class="text-left px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Archivo</th>
-                  <th class="text-left px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Banco</th>
-                  <th class="text-right px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Registros</th>
-                  <th class="text-left px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Fecha</th>
-                </tr>
-              </thead>
-              <tbody class="divide-y divide-gray-100 dark:divide-gray-700/50">
-                <tr v-for="carga in store.cargas" :key="carga.id_carga" class="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors">
-                  <td class="px-4 py-3 text-gray-900 dark:text-gray-200 truncate max-w-[200px]" :title="carga.nombre_archivo">{{ carga.nombre_archivo }}</td>
-                  <td class="px-4 py-3">
-                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300">
-                      {{ carga.tipo_origen }}
-                    </span>
-                  </td>
-                  <td class="px-4 py-3 text-right text-gray-700 dark:text-gray-300 font-mono">{{ carga.registros_procesados }}</td>
-                  <td class="px-4 py-3 text-gray-500 dark:text-gray-400 text-xs">{{ formatDate(carga.fecha_carga) }}</td>
-                </tr>
-              </tbody>
-            </table>
-            <div v-else class="px-5 py-8 text-center text-sm text-gray-500 dark:text-gray-400">
-              <p>No hay cargas registradas</p>
-            </div>
+          <div v-if="store.cargas.length > 0" class="overflow-auto">
+            <HistorialCargasTable :cargas="store.cargas" />
+          </div>
+          <div v-else class="px-5 py-8 text-center text-sm text-gray-500 dark:text-gray-400">
+            <p>No hay cargas registradas</p>
+          </div>
+          <div class="px-6 py-3 bg-gray-50 dark:bg-gray-900/50 border-t border-gray-200 dark:border-gray-700 rounded-b-xl text-center">
+            <button
+              @click="mostrarHistorialCompleto = true"
+              class="text-xs text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 font-medium hover:underline"
+            >
+              Ver todo el historial
+            </button>
           </div>
         </div>
       </div>
     </div>
+
+    <!-- Historial completo, paginado -->
+    <HistorialCargasModal v-if="mostrarHistorialCompleto" @close="mostrarHistorialCompleto = false" />
+
+    <!-- Error de mapeo de columnas: ofrece ir a corregir el catálogo de bancos -->
+    <ConfirmModal
+      :open="mostrarErrorColumnas"
+      title="No se pudo leer el archivo"
+      :message="detalleErrorColumnas"
+      confirm-label="Revisar catálogo de bancos"
+      cancel-label="Cerrar"
+      @confirm="irACatalogoBancos"
+      @cancel="mostrarErrorColumnas = false"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { useConciliacionStore } from '../stores/conciliacionStore'
 import { useAuthStore } from '@/stores/auth'
 import { useToast } from '@/composables/useToast'
 import { MAX_EXCEL_UPLOAD_SIZE_BYTES, MAX_EXCEL_UPLOAD_SIZE_MB } from '@/config/uploadLimits'
-import { APP_LOCALE } from '@/plugins/locale'
+import ConfirmModal from '@/components/modales/ConfirmModal.vue'
+import HistorialCargasModal from '../components/HistorialCargasModal.vue'
+import HistorialCargasTable from '../components/HistorialCargasTable.vue'
 
 const store = useConciliacionStore()
 const authStore = useAuthStore()
 const toast = useToast()
+const router = useRouter()
 
 const fileInput = ref<HTMLInputElement | null>(null)
 const selectedFile = ref<File | null>(null)
-const selectedBanco = ref('')
 const isDragging = ref(false)
 const uploading = ref(false)
 const uploadDone = ref(false)
 const uploadError = ref('')
+const mostrarErrorColumnas = ref(false)
+const detalleErrorColumnas = ref('')
+const mostrarHistorialCompleto = ref(false)
 
 onMounted(async () => {
   try {
-    await Promise.all([store.fetchBancos(), store.fetchCargas()])
+    await store.fetchCargas()
   } catch {
     // handled by store
   }
@@ -216,11 +214,15 @@ function handleFileSelect(event: Event) {
 
 function handleDrop(event: DragEvent) {
   isDragging.value = false
+  if (uploading.value) return
   if (event.dataTransfer?.files?.[0]) validateAndSet(event.dataTransfer.files[0])
 }
 
 function validateAndSet(file: File) {
+  uploadDone.value = false
+  store.lastImportResult = null
   uploadError.value = ''
+  detalleErrorColumnas.value = ''
   const ext = file.name.toLowerCase().substring(file.name.lastIndexOf('.'))
   if (!['.xlsx', '.xls'].includes(ext)) {
     uploadError.value = 'Solo se permiten archivos Excel (.xlsx, .xls)'
@@ -236,31 +238,39 @@ function validateAndSet(file: File) {
 function clearFile() {
   selectedFile.value = null
   uploadError.value = ''
+  detalleErrorColumnas.value = ''
   if (fileInput.value) fileInput.value.value = ''
 }
 
-function resetUpload() {
-  uploadDone.value = false
-  store.lastImportResult = null
-  clearFile()
-}
-
 async function handleUpload() {
-  if (!selectedFile.value || !selectedBanco.value) return
+  if (!selectedFile.value) return
   uploading.value = true
   uploadError.value = ''
   try {
-    await store.importExcel(selectedFile.value, selectedBanco.value, authStore.userName)
+    await store.importExcel(selectedFile.value, undefined, authStore.userName)
     uploadDone.value = true
+    clearFile()
     toast.success('Importación exitosa', 'Los movimientos han sido procesados')
     // Refrescar historial
     await store.fetchCargas()
   } catch (e: any) {
     uploadError.value = e.response?.data?.message || e.message || 'Error al importar archivo'
     toast.error('Error', uploadError.value)
+
+    const detalle = e.response?.data?.details
+    detalleErrorColumnas.value = typeof detalle === 'string' && detalle.trim() ? detalle : ''
+
+    // Limpiar el archivo (sin tocar el mensaje de error) para que reaparezca el cuadro de arrastrar
+    selectedFile.value = null
+    if (fileInput.value) fileInput.value.value = ''
   } finally {
     uploading.value = false
   }
+}
+
+function irACatalogoBancos() {
+  mostrarErrorColumnas.value = false
+  router.push('/conciliacion/bancos')
 }
 
 function formatFileSize(bytes: number): string {
@@ -271,11 +281,4 @@ function formatFileSize(bytes: number): string {
   return (bytes / Math.pow(k, i)).toFixed(1) + ' ' + sizes[i]
 }
 
-function formatDate(dateStr: string): string {
-  try {
-    return new Date(dateStr).toLocaleDateString(APP_LOCALE, { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
-  } catch {
-    return dateStr
-  }
-}
 </script>

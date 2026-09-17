@@ -23,6 +23,16 @@ const routes: RouteRecordRaw[] = [
     },
   },
   {
+    path: '/conciliacion/bancos',
+    name: 'conciliacion-bancos',
+    component: () => import('./views/CatalogoBancosView.vue'),
+    meta: {
+      requiresAuth: true,
+      title: 'Catálogo de Bancos',
+      permissions: ['conciliacion.catalogo'],
+    },
+  },
+  {
     path: '/conciliacion/sincronizar-sap',
     name: 'conciliacion-sync-sap',
     component: () => import('./views/SincronizarSAPView.vue'),
