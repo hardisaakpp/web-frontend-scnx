@@ -3,10 +3,13 @@ import type {
   AppResponse,
   DashboardMetricas,
   Banco,
+  BancoCatalogoCreate,
+  BancoCatalogoUpdate,
   CargaArchivo,
   ImportResult,
   SAPSyncRequest,
-  SAPSyncResponse,
+  SincronizacionSAP,
+  SincronizacionIniciada,
   ConciliacionRequest,
   ConciliacionResponse,
   ConciliacionManualRequest,
@@ -53,41 +56,82 @@ export const conciliacionService = {
     return unwrap(await api.get<AppResponse<Record<string, unknown>>>('/api/v1/banca/'))
   },
 
-  /** Importar movimientos bancarios desde Excel */
-  async importExcel(file: File, banco: string, usuario?: string): Promise<AppResponse<ImportResult>> {
+  /** Importar movimientos bancarios desde Excel. Si se omite `banco`, el backend lo autodetecta. */
+  async importExcel(file: File, banco?: string, usuario?: string): Promise<AppResponse<ImportResult>> {
     const formData = new FormData()
     formData.append('file', file)
 
-    const params: Record<string, string> = { banco }
+    const params: Record<string, string> = {}
+    if (banco) params.banco = banco
     if (usuario) params.usuario = usuario
 
     return unwrapFull(
       await api.post<AppResponse<ImportResult>>('/api/v1/banca/import', formData, {
         params,
-        headers: { 'Content-Type': 'multipart/form-data' },
         timeout: 120_000, // 2 min para archivos grandes
       }),
     )
   },
 
-  /** Historial de archivos importados */
+  /** Historial de archivos importados (últimos, sin paginar) */
   async getCargas(): Promise<CargaArchivo[]> {
     return unwrap(await api.get<AppResponse<CargaArchivo[]>>('/api/v1/banca/cargas'))
   },
 
+  /** Historial de archivos importados, paginado */
+  async getCargasPaginado(pagina: number, cantidad: number): Promise<AppResponse<CargaArchivo[]>> {
+    return unwrapFull(
+      await api.get<AppResponse<CargaArchivo[]>>('/api/v1/banca/cargas', {
+        params: { pagina, cantidad },
+      }),
+    )
+  },
+
   // ── Catálogo ──────────────────────────────────────────────
 
-  /** Listar bancos registrados */
-  async getBancos(): Promise<Banco[]> {
-    return unwrap(await api.get<AppResponse<Banco[]>>('/api/v1/catalogo/bancos'))
+  /** Listar bancos registrados (por defecto solo activos) */
+  async getBancos(soloActivos = true): Promise<Banco[]> {
+    return unwrap(
+      await api.get<AppResponse<Banco[]>>('/api/v1/catalogo/bancos', {
+        params: { solo_activos: soloActivos },
+      }),
+    )
+  },
+
+  /** Detalle de un banco, incluyendo su config_mapeo completo */
+  async getBanco(idBanco: number): Promise<Banco> {
+    return unwrap(await api.get<AppResponse<Banco>>(`/api/v1/catalogo/bancos/${idBanco}`))
+  },
+
+  /** Registrar un nuevo banco en el catálogo */
+  async crearBanco(payload: BancoCatalogoCreate): Promise<AppResponse<Banco>> {
+    return unwrapFull(await api.post<AppResponse<Banco>>('/api/v1/catalogo/bancos', payload))
+  },
+
+  /** Actualizar un banco existente (incluye reemplazar su config_mapeo) */
+  async actualizarBanco(idBanco: number, payload: BancoCatalogoUpdate): Promise<AppResponse<Banco>> {
+    return unwrapFull(await api.put<AppResponse<Banco>>(`/api/v1/catalogo/bancos/${idBanco}`, payload))
+  },
+
+  /** Desactivar un banco (soft-delete) */
+  async eliminarBanco(idBanco: number): Promise<AppResponse<Banco>> {
+    return unwrapFull(await api.delete<AppResponse<Banco>>(`/api/v1/catalogo/bancos/${idBanco}`))
   },
 
   // ── SAP ───────────────────────────────────────────────────
 
-  /** Sincronizar movimientos desde SAP HANA */
-  async syncSAP(request: SAPSyncRequest): Promise<SAPSyncResponse> {
-    const response = await api.post<SAPSyncResponse>('/api/v1/sap/sync', request)
-    return response.data
+  /** Dispara la sincronización SAP en segundo plano (202). Lanza 409 (error_code SYNC_EN_CURSO) si ya hay una corriendo. */
+  async iniciarSyncSAP(request: SAPSyncRequest): Promise<AppResponse<SincronizacionIniciada>> {
+    return unwrapFull(await api.post<AppResponse<SincronizacionIniciada>>('/api/v1/sap/sync', request))
+  },
+
+  /** Historial de sincronizaciones SAP, paginado (más recientes primero) */
+  async getSincronizacionesSAP(pagina: number, cantidad: number): Promise<AppResponse<SincronizacionSAP[]>> {
+    return unwrapFull(
+      await api.get<AppResponse<SincronizacionSAP[]>>('/api/v1/sap/sincronizaciones', {
+        params: { pagina, cantidad },
+      }),
+    )
   },
 
   // ── Conciliación ──────────────────────────────────────────
