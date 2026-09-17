@@ -2,7 +2,7 @@ import { ref } from 'vue'
 import { defineStore } from 'pinia'
 import { pickingApi } from '../services/pickingApi'
 import { mapApiError } from '@/utils/apiErrorMapper'
-import type { OrdenPickingScanResponse, OrdenPickingSesionResponse } from '../types'
+import type { OrdenPickingLogResponse, OrdenPickingScanResponse, OrdenPickingSesionResponse } from '../types'
 
 /**
  * Sesion de picking activa: iniciar/cargar, escanear, eliminar el propio scan, cerrar.
@@ -13,6 +13,7 @@ import type { OrdenPickingScanResponse, OrdenPickingSesionResponse } from '../ty
 export const usePickingStore = defineStore('recepcionProveedoresPicking', () => {
   const sesion = ref<OrdenPickingSesionResponse | null>(null)
   const scans = ref<OrdenPickingScanResponse[]>([])
+  const logs = ref<OrdenPickingLogResponse[]>([])
   const loading = ref(false)
   const error = ref<string | null>(null)
   const actionError = ref<string | null>(null)
@@ -53,6 +54,7 @@ export const usePickingStore = defineStore('recepcionProveedoresPicking', () => 
     activeSesionId.value = sesionId
     sesion.value = null
     scans.value = []
+    logs.value = []
     error.value = null
     loading.value = true
     try {
@@ -77,6 +79,19 @@ export const usePickingStore = defineStore('recepcionProveedoresPicking', () => 
     } catch (err: unknown) {
       if (activeSesionId.value !== sesionId) return
       actionError.value = mapApiError(err, 'No se pudo cargar el historial de escaneos.').message
+    }
+  }
+
+  async function cargarLogs(): Promise<void> {
+    if (!sesion.value) return
+    const sesionId = sesion.value.id
+    try {
+      const resultado = await pickingApi.obtenerLogs(sesionId)
+      if (activeSesionId.value !== sesionId) return
+      logs.value = resultado
+    } catch (err: unknown) {
+      if (activeSesionId.value !== sesionId) return
+      actionError.value = mapApiError(err, 'No se pudo cargar el registro de eventos.').message
     }
   }
 
@@ -214,6 +229,7 @@ export const usePickingStore = defineStore('recepcionProveedoresPicking', () => 
   return {
     sesion,
     scans,
+    logs,
     loading,
     error,
     actionError,
@@ -222,6 +238,7 @@ export const usePickingStore = defineStore('recepcionProveedoresPicking', () => 
     iniciar,
     cargarSesion,
     cargarScans,
+    cargarLogs,
     escanear,
     eliminarScan,
     confirmarPicking,

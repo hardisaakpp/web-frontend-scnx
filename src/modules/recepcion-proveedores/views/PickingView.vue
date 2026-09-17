@@ -17,6 +17,8 @@ const router = useRouter()
 const pickingStore = usePickingStore()
 const authStore = useAuthStore()
 const toast = useToast()
+/** Bodega/Supervisor mide tiempos de recepcion con el log de eventos; Tienda no lo ve. */
+const esSupervisor = authStore.hasPermission('recepcionproveedores.view')
 
 const sesionId = computed(() => Number(route.params.sesionId))
 const usuarioActualId = computed(() => authStore.userData?.id ?? null)
@@ -30,6 +32,7 @@ const mostrarConfirmarPicking = ref(false)
 const mostrarConfirmarParcial = ref(false)
 const mostrarIntegracionExitosa = ref(false)
 const mostrarConfirmarEliminar = ref(false)
+const mostrarLogs = ref(false)
 
 /**
  * pickingStore.isSubmitting es una unica bandera compartida por las acciones del store, pero
@@ -127,6 +130,13 @@ async function copiarAlPortapapeles(texto: string): Promise<void> {
 async function eliminarScan(scanId: number): Promise<void> {
   await pickingStore.eliminarScan(scanId)
   codigoInputEl.value?.focus()
+}
+
+async function alternarLogs(): Promise<void> {
+  mostrarLogs.value = !mostrarLogs.value
+  if (mostrarLogs.value && pickingStore.logs.length === 0) {
+    await pickingStore.cargarLogs()
+  }
 }
 
 async function confirmarPicking(): Promise<void> {
@@ -457,6 +467,25 @@ watch(sesionId, cargar)
             </tr>
           </tbody>
         </table>
+      </div>
+
+      <button
+        v-if="esSupervisor"
+        type="button"
+        class="px-3 py-2 text-sm font-medium bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors mb-2"
+        @click="alternarLogs"
+      >
+        {{ mostrarLogs ? 'Ocultar logs de esta sesión' : 'Ver logs de esta sesión' }}
+      </button>
+
+      <div v-if="esSupervisor && mostrarLogs" class="rounded-lg border border-gray-200 dark:border-gray-700 p-4">
+        <h2 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Registro de eventos</h2>
+        <ul class="space-y-1 text-xs text-gray-600 dark:text-gray-400">
+          <li v-for="log in pickingStore.logs" :key="log.id">
+            [{{ new Date(log.fechaHora).toLocaleString() }}] {{ log.evento }} — {{ log.detalle }}
+          </li>
+          <li v-if="pickingStore.logs.length === 0">Sin eventos registrados.</li>
+        </ul>
       </div>
 
     </template>
