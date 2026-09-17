@@ -333,7 +333,7 @@ import {
   MagnifyingGlassIcon
 } from '@heroicons/vue/24/outline'
 import { useToast } from '@/composables/useToast'
-import VolverButton from '@/components/VolverButton.vue'
+import VolverButton from '@/components/navegacion/VolverButton.vue'
 import { useMisDepositos } from '../composables/useMisDepositos'
 import { useTesoreriaAccess } from '../composables/useTesoreriaAccess'
 import { extraerMensajeError, tesoreriaService } from '../services/tesoreriaService'

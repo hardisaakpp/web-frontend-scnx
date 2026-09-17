@@ -312,8 +312,8 @@ import {
   TrashIcon
 } from '@heroicons/vue/24/outline'
 import { useToast } from '@/composables/useToast'
-import QuickTablePagination from '@/components/QuickTablePagination.vue'
-import VolverButton from '@/components/VolverButton.vue'
+import QuickTablePagination from '@/components/paginacion/QuickTablePagination.vue'
+import VolverButton from '@/components/navegacion/VolverButton.vue'
 import { useAuditoriaGlobal } from '../composables/useAuditoriaGlobal'
 import { useTesoreriaAccess } from '../composables/useTesoreriaAccess'
 import { extraerMensajeError, tesoreriaService } from '../services/tesoreriaService'

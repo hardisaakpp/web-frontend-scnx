@@ -150,7 +150,7 @@ import {
   Cog6ToothIcon,
   ExclamationTriangleIcon
 } from '@heroicons/vue/24/outline'
-import VolverButton from '@/components/VolverButton.vue'
+import VolverButton from '@/components/navegacion/VolverButton.vue'
 import ForbiddenView from '@/views/ForbiddenView.vue'
 import { useConfiguracionTesoreria } from '../composables/useConfiguracionTesoreria'
 import { useCuentasFinancieras } from '../composables/useCuentasFinancieras'
