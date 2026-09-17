@@ -242,16 +242,18 @@ export const useAuthStore = defineStore('auth', {
   getters: {
     isAuthenticated: (state): boolean => !!state.token,
     isAdmin(state): boolean {
-      // Verificar en state.role primero
-      if (state.role === 'Admin') return true
-      // Verificar en userData.roles
-      if (state.userData?.roles?.includes('Admin')) return true
-      // Verificar en localStorage
+      const checkRole = (r: unknown) => {
+        if (!r) return false
+        const s = String(r).toLowerCase()
+        return s === 'admin' || s === 'administrador' || s.includes('admin')
+      }
+      if (checkRole(state.role)) return true
+      if (state.userData?.roles?.some(checkRole)) return true
       try {
         const userStr = localStorage.getItem('user')
         if (userStr) {
           const user = JSON.parse(userStr) as User
-          return user.roles?.includes('Admin') || false
+          return user.roles?.some(checkRole) || false
         }
       } catch {
         return false

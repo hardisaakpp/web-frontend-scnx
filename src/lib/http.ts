@@ -197,3 +197,6 @@ export const transferenciasDirectasApi = createModuleApi(
 export const demandaOtbHttp = createModuleApi(
   ENV.DEMANDA_OTB_URL,
 )
+
+/** api-tesoreria (Depósitos Bancarios) — headers de auditoría porque registra papeletas físicas y las envía a SAP. */
+export const tesoreriaHttp = createModuleApi(ENV.TESORERIA_URL, { auditHeaders: true })

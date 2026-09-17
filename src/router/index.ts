@@ -1,4 +1,4 @@
-import { createRouter, createWebHistory } from 'vue-router'
+import { createRouter, createWebHistory, type NavigationGuardNext } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import MainLayout from '../layouts/MainLayout.vue'
 import LoginView from '../views/Login.vue'
@@ -27,6 +27,7 @@ import transferenciasDirectasRoutes from '../modules/transferencias-directas/rou
 import integracionesRoutes from '../modules/integraciones/router'
 import cediRoutes from '../modules/cedi/router'
 import demandaOtbRoutes from '../modules/demanda-otb/router'
+import tesoreriaRoutes from '../modules/tesoreria/router'
 
 console.log('🔍 DEBUG usuariosRoutes:', usuariosRoutes)
 console.log('🔍 DEBUG cajaChicaRoutes:', cajaChicaRoutes)
@@ -89,6 +90,7 @@ const router = createRouter({
         ...integracionesRoutes,
         ...cediRoutes,
         ...demandaOtbRoutes,
+        ...tesoreriaRoutes,
         {
           path: 'forbidden',
           name: 'forbidden',
@@ -113,11 +115,54 @@ const ALLOW_UNAUTHENTICATED =
   import.meta.env.DEV &&
   import.meta.env.VITE_ALLOW_UNAUTHENTICATED !== 'false'
 
+/**
+ * Centraliza el "escape hatch" de desarrollo usado por las 3 verificaciones del guard: si
+ * ALLOW_UNAUTHENTICATED está activo, registra un warning y permite continuar la navegación en
+ * vez de bloquearla. Devuelve true cuando el guard debe dejar pasar la navegación igualmente.
+ */
+function puedeSaltarRestriccion(mensajeLog: string, ...detalleLog: unknown[]): boolean {
+  if (!ALLOW_UNAUTHENTICATED) return false
+  if (import.meta.env.DEV) {
+    console.debug(mensajeLog, ...detalleLog)
+  }
+  return true
+}
+
+/** Tolera variantes de rol admin ('Administrador Principal', 'admin', etc.) además del flag `isAdmin`. */
+function esAdminConTolerancia(authStore: ReturnType<typeof useAuthStore>): boolean {
+  if (authStore.isAdmin) return true
+  return authStore.userRoles?.some((r) => {
+    const s = String(r).toLowerCase()
+    return s === 'admin' || s === 'administrador' || s.includes('admin')
+  }) ?? false
+}
+
+/**
+ * Aplica una verificación de acceso del guard: si `bloqueado`, redirige a `routeName` salvo que
+ * `puedeSaltarRestriccion` habilite el escape hatch de desarrollo. Devuelve true cuando ya resolvió
+ * la navegación (llamó a `next`), para que el guard principal corte la ejecución con `return`.
+ */
+function aplicarRestriccion(
+  bloqueado: boolean,
+  routeName: 'login' | 'forbidden',
+  next: NavigationGuardNext,
+  mensajeLog: string,
+  ...detalleLog: unknown[]
+): boolean {
+  if (!bloqueado) return false
+  if (puedeSaltarRestriccion(mensajeLog, ...detalleLog)) {
+    next()
+    return true
+  }
+  next({ name: routeName })
+  return true
+}
+
 // Navigation guard
 router.beforeEach(async (to, from, next) => {
   const authStore = useAuthStore()
   const requiresAuth = to.matched.some(record => record.meta.requiresAuth)
-  const requiredRole = to.matched.find(record => record.meta.role)?.meta.role
+  const requiredRole = to.matched.find(record => record.meta.role)?.meta.role as string | undefined
   const requiredPermissions = to.matched.find(record => record.meta.permissions)?.meta.permissions as string[] | undefined
 
   // Cargar user y capabilities desde GET /Auth/me cuando hay token y aún no tenemos capabilities (p. ej. tras recarga).
@@ -126,52 +171,31 @@ router.beforeEach(async (to, from, next) => {
   }
 
   // Verificar autenticación
-  if (requiresAuth && !authStore.isAuthenticated) {
-    if (ALLOW_UNAUTHENTICATED) {
-      // En desarrollo, permitir acceso pero registrar warning
-      if (import.meta.env.DEV) {
-        console.debug(`⚠️ [Router] Acceso sin autenticación a ruta protegida: ${to.path}`)
-      }
-      next()
-      return
-    }
-    next({ name: 'login' })
-    return
-  }
+  if (aplicarRestriccion(
+    requiresAuth && !authStore.isAuthenticated,
+    'login',
+    next,
+    `⚠️ [Router] Acceso sin autenticación a ruta protegida: ${to.path}`
+  )) return
 
   // Verificar rol si está definido
-  if (requiredRole && !authStore.hasRole(requiredRole as string)) {
-    if (ALLOW_UNAUTHENTICATED) {
-      if (import.meta.env.DEV) {
-        console.debug(`⚠️ [Router] Acceso sin rol requerido a: ${to.path}`)
-      }
-      next()
-      return
-    }
-    next({ name: 'forbidden' })
-    return
-  }
+  if (aplicarRestriccion(
+    !!requiredRole && !authStore.hasRole(requiredRole),
+    'forbidden',
+    next,
+    `⚠️ [Router] Acceso sin rol requerido a: ${to.path}`
+  )) return
 
   // Verificar permisos si están definidos (los administradores tienen acceso automático)
   if (requiredPermissions && requiredPermissions.length > 0) {
-    // Verificar si es admin desde userRoles (ya que isAdmin getter no funciona)
-    const isAdmin = authStore.userRoles?.includes('Admin') || false
-    
-    if (!isAdmin) {
-      const hasPermission = authStore.hasAnyPermission(requiredPermissions)
-      if (!hasPermission) {
-        if (ALLOW_UNAUTHENTICATED) {
-          // En desarrollo, permitir acceso pero registrar warning
-          if (import.meta.env.DEV) {
-            console.debug(`⚠️ [Router] Acceso sin permisos requeridos a: ${to.path}. Permisos requeridos:`, requiredPermissions)
-          }
-          next()
-          return
-        }
-        next({ name: 'forbidden' })
-        return
-      }
-    }
+    const tienePermiso = esAdminConTolerancia(authStore) || authStore.hasAnyPermission(requiredPermissions)
+    if (aplicarRestriccion(
+      !tienePermiso,
+      'forbidden',
+      next,
+      `⚠️ [Router] Acceso sin permisos requeridos a: ${to.path}. Permisos requeridos:`,
+      requiredPermissions
+    )) return
   }
 
   next()

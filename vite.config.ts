@@ -71,6 +71,7 @@ export default defineConfig(async ({ mode }): Promise<UserConfig> => {
   console.log(`\x1b[35m[proxy]\x1b[0m Demanda OTB → ${demandaOtbProxyTarget}`)
 
   const ruletaProxyTarget = upstreamUrl(env, 'RULETA')
+  const tesoreriaProxyTarget = upstreamUrl(env, 'TESORERIA')
   const cediProxyTarget = upstreamUrl(env, 'CEDI')
   const pygProxyPrefix =
     'UPSTREAM_PYG_PREFIX' in env
@@ -122,27 +123,17 @@ export default defineConfig(async ({ mode }): Promise<UserConfig> => {
         },
 
         '/api/Auth/me': {
-
-          target: authMeProxyTarget,
-
+          target: coreProxyTarget,
           changeOrigin: true,
-
           secure: false,
-
           rewrite: (path: string) => path
-
         },
 
         '/api/auth/me': {
-
-          target: authMeProxyTarget,
-
+          target: coreProxyTarget,
           changeOrigin: true,
-
           secure: false,
-
           rewrite: (path: string) => path
-
         },
 
         '/api/users/preferences': {
@@ -407,6 +398,20 @@ export default defineConfig(async ({ mode }): Promise<UserConfig> => {
           // El backend de CEDI (SCNexus.Cedi.API) usa el mismo patrón de rutas
           // "api/[controller]" que el Core, por eso se reescribe a /api (igual que caja-chica).
           rewrite: (path: string) => path.replace(/^\/cedi-api/, '/api')
+
+        },
+
+        '/tesoreria-api': {
+
+          target: tesoreriaProxyTarget,
+
+          changeOrigin: true,
+
+          secure: false,
+
+          // api-tesoreria expone todo bajo /api/v1/tesoreria/*; el servicio del módulo
+          // llama rutas relativas simples (p. ej. '/depositos/resumen').
+          rewrite: (path: string) => path.replace(/^\/tesoreria-api/, '/api/v1/tesoreria')
 
         }
 

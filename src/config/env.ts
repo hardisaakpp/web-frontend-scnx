@@ -37,4 +37,6 @@ export const ENV = {
   RECEPCION_PROVEEDORES_URL: getEnv('VITE_RECEPCION_PROVEEDORES_API_URL', '/api/recepcion-proveedores-api'),
   /** mIAApi — asistente de IA (Cool-turito / SCNEXUS AI) */
   MIA_URL: getEnv('VITE_MIA_API_URL', '/mia-api'),
+  /** api-tesoreria — Depósitos Bancarios y auditoría de Tesorería. */
+  TESORERIA_URL: getEnv('VITE_TESORERIA_API_URL', '/tesoreria-api'),
 };
