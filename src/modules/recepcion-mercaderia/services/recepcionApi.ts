@@ -232,6 +232,8 @@ const recepcionApi = {
   // refetched transfer, not this response, is the durable signal for a queued SAP job.
   confirm: async (transferId: number, body: ConfirmTransferRequest = {}): Promise<ConfirmTransferResponse> => {
     const response = await api.post<ConfirmTransferResponse>(`${BASE}/transfers/${transferId}/confirm`, {
+      responsibleName: body.responsibleName?.trim() ?? null,
+      courierWaybillNumber: body.courierWaybillNumber?.trim() ?? null,
       allowPartial: body.allowPartial ?? false,
     })
     return response.data

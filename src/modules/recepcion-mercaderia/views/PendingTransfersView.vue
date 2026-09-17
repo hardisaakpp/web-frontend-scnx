@@ -105,6 +105,14 @@ function applySearch(): void {
       </template>
 
       <template v-else>
+        <div
+          v-if="store.status === 'error'"
+          role="alert"
+          class="py-4 text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 rounded-lg px-4 border border-red-200 dark:border-red-800"
+        >
+          {{ store.error }}
+        </div>
+
         <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 shadow-sm">
         <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-4">
           <div class="text-sm text-gray-600 dark:text-gray-300 font-medium">

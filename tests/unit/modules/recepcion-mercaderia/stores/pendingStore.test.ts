@@ -235,6 +235,20 @@ describe('usePendingStore', () => {
       expect(store.error).toBe('No se pudo recibir la transferencia.')
     })
 
+    it('maps PENDING_TRANSFER_STALE to an actionable message without retrying', async () => {
+      featureReadiness.pendingTransfersReady = true
+      const store = usePendingStore()
+      vi.mocked(recepcionApi.materializePendingTransfer).mockRejectedValue({
+        response: { status: 409, data: { code: 'PENDING_TRANSFER_STALE' } },
+      })
+
+      await store.receive('SAP-1', 'T01')
+
+      expect(store.error).toBe('El saldo de esta transferencia aún no está actualizado. Intenta nuevamente en unos minutos.')
+      expect(recepcionApi.materializePendingTransfer).toHaveBeenCalledTimes(1)
+      expect(recepcionApi.getPendingTransfers).not.toHaveBeenCalled()
+    })
+
     it('sets isSubmitting true while receive is in flight and false after it resolves', async () => {
       featureReadiness.pendingTransfersReady = true
       const store = usePendingStore()

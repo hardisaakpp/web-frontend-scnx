@@ -51,6 +51,7 @@ const canScan = computed(() => authStore.hasPermission('recepcion.picking.scan')
 const canConfirm = computed(() => authStore.hasPermission('recepcion.reception.confirm'))
 const canConfirmPartial = computed(() => authStore.hasPermission('recepcion.reception.confirm.partial'))
 const canManageDifferences = computed(() => authStore.hasPermission('recepcion.diferencias.gestionar'))
+const canEditConfirmationMetadata = computed(() => canScan.value || canConfirm.value || canConfirmPartial.value)
 
 onMounted(() => {
   store.fetchTransfer(transferId.value)
@@ -91,6 +92,7 @@ watch(
 const scanQuantities = ref<Record<number, number>>({})
 const scanResponsibleName = ref('')
 const scanCourierWaybill = ref('')
+const confirmationError = ref<string | null>(null)
 // Line ids reset to 0 by the forced-recount gate below, for the "needs recount" row highlight.
 const recountLineIds = ref<Set<number>>(new Set())
 
@@ -100,6 +102,14 @@ const scanBarcodeInput = ref('')
 const scanBarcodeQuantity = ref(1)
 const scanFeedback = ref<string | null>(null)
 const barcodeInputEl = ref<HTMLInputElement | null>(null)
+
+function normalizedResponsibleName(): string {
+  return scanResponsibleName.value.trim().toUpperCase()
+}
+
+function normalizedCourierWaybill(): string {
+  return scanCourierWaybill.value.trim().toUpperCase()
+}
 
 function resetBarcodeInputs(): void {
   scanBarcodeInput.value = ''
@@ -117,8 +127,8 @@ async function handleBarcodeScan(): Promise<void> {
   const enteredQty = Math.max(1, scanBarcodeQuantity.value || 1)
 
   const result = await store.scanBarcode(barcode, enteredQty, {
-    responsibleName: scanResponsibleName.value || null,
-    courierWaybillNumber: scanCourierWaybill.value || null,
+    responsibleName: normalizedResponsibleName() || null,
+    courierWaybillNumber: normalizedCourierWaybill() || null,
   })
   if (!result) return
 
@@ -143,14 +153,40 @@ async function handleScan(): Promise<void> {
     .map((l) => ({ lineId: l.lineId, enteredQuantity: scanQuantities.value[l.lineId] }))
   if (entries.length === 0) return
   await store.scanManual(entries, {
-    responsibleName: scanResponsibleName.value || null,
-    courierWaybillNumber: scanCourierWaybill.value || null,
+    responsibleName: normalizedResponsibleName() || null,
+    courierWaybillNumber: normalizedCourierWaybill() || null,
   })
 }
 
 // Confirm
+function confirmationPayload(allowPartial: boolean) {
+  return {
+    responsibleName: normalizedResponsibleName(),
+    courierWaybillNumber: normalizedCourierWaybill(),
+    allowPartial,
+  }
+}
+
+function validateConfirmationFields(): boolean {
+  confirmationError.value = null
+  if (!scanResponsibleName.value.trim()) {
+    confirmationError.value = 'Ingresa el nombre del responsable.'
+    return false
+  }
+  if (!normalizedCourierWaybill()) {
+    confirmationError.value = 'Ingresa el número de guía.'
+    return false
+  }
+  if (normalizedCourierWaybill().length !== 10) {
+    confirmationError.value = 'La guía debe tener exactamente 10 caracteres.'
+    return false
+  }
+  return true
+}
+
 async function handleConfirm(): Promise<void> {
-  await store.confirm({})
+  if (!validateConfirmationFields()) return
+  await store.confirm(confirmationPayload(false))
 }
 
 // Confirm/scan/recordDifference failures shown as a dismissible modal instead of an inline banner
@@ -159,7 +195,7 @@ async function handleConfirm(): Promise<void> {
 // "known SAP integration failure" case); actionError covers everything else (validation, SAP
 // rejection detail already translated by the backend, etc.) - never the fetch-load error, which has
 // its own inline banner below since it means there's no transfer to even show a modal over.
-const pickingErrorMessage = computed(() => store.sapErrorMessage ?? store.actionError)
+const pickingErrorMessage = computed(() => confirmationError.value ?? store.sapErrorMessage ?? store.actionError)
 
 // Forced-recount gate (parity with legacy recP.php's crearTransferencia()): the first "Confirmar
 // parcial" attempt on a transfer with any line still short of its requested quantity blocks,
@@ -171,6 +207,7 @@ const showRecountDialog = ref(false)
 
 async function handleConfirmPartial(): Promise<void> {
   if (!store.currentTransfer) return
+  if (!validateConfirmationFields()) return
   const incompleteLines = store.currentTransfer.lines.filter((l) => l.scanned < l.quantity)
   if (incompleteLines.length > 0 && !store.hasRecounted) {
     store.hasRecounted = true
@@ -181,12 +218,13 @@ async function handleConfirmPartial(): Promise<void> {
     showRecountDialog.value = true
     return
   }
-  await store.confirm({ allowPartial: true })
+  await store.confirm(confirmationPayload(true))
 }
 
 async function confirmPartialFromRecountDialog(): Promise<void> {
+  if (!validateConfirmationFields()) return
   showRecountDialog.value = false
-  await store.confirm({ allowPartial: true })
+  await store.confirm(confirmationPayload(true))
 }
 
 interface DifferenceGroup {
@@ -302,7 +340,7 @@ async function handleDownloadPickingReport(): Promise<void> {
           :open="!!pickingErrorMessage"
           title="No se pudo completar la operación"
           :message="pickingErrorMessage ?? ''"
-          @close="store.clearConfirmError()"
+          @close="confirmationError = null; store.clearConfirmError()"
         />
 
         <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -497,25 +535,31 @@ async function handleDownloadPickingReport(): Promise<void> {
             </table>
           </div>
 
-          <div v-if="canScan" class="flex flex-wrap gap-4 items-end mt-4">
+          <div v-if="canEditConfirmationMetadata" class="flex flex-wrap gap-4 items-end mt-4">
             <div class="flex flex-col gap-1.5">
-              <label for="scan-responsible-input" class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Responsable (opcional)</label>
+              <label for="scan-responsible-input" class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Responsable *</label>
               <input
                 id="scan-responsible-input"
                 data-testid="scan-responsible-input"
                 v-model="scanResponsibleName"
                 type="text"
+                required
+                @input="scanResponsibleName = scanResponsibleName.toUpperCase()"
                 placeholder="Usuario actual"
                 class="rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-600 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
               />
             </div>
             <div class="flex flex-col gap-1.5">
-              <label for="scan-courier-input" class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Guía courier</label>
+              <label for="scan-courier-input" class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Guía courier *</label>
               <input
                 id="scan-courier-input"
                 data-testid="scan-courier-input"
                 v-model="scanCourierWaybill"
                 type="text"
+                required
+                minlength="10"
+                maxlength="10"
+                @input="scanCourierWaybill = scanCourierWaybill.toUpperCase()"
                 placeholder="Requerida para tiendas LP-/YHD-"
                 class="rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-600 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
               />

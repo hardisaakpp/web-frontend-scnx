@@ -4,7 +4,7 @@ import { createPinia, setActivePinia } from 'pinia'
 import TransferDetailView from '@/modules/recepcion-mercaderia/views/TransferDetailView.vue'
 import recepcionApi from '@/modules/recepcion-mercaderia/services/recepcionApi'
 import { useAuthStore } from '@/stores/auth'
-import type { Difference, ReceptionLine, ReceptionTransfer } from '@/modules/recepcion-mercaderia/types'
+import type { ConfirmTransferResponse, Difference, ReceptionLine, ReceptionTransfer } from '@/modules/recepcion-mercaderia/types'
 
 vi.mock('@/modules/recepcion-mercaderia/services/recepcionApi', () => ({
   default: {
@@ -285,7 +285,7 @@ describe('TransferDetailView', () => {
 
     expect(recepcionApi.scan).toHaveBeenCalledWith(7, {
       scans: [{ lineId: 1, scannedQuantity: 6 }],
-      responsibleName: 'Juan Perez',
+      responsibleName: 'JUAN PEREZ',
       courierWaybillNumber: 'GUIA-123',
     })
   })
@@ -311,6 +311,8 @@ describe('TransferDetailView', () => {
     const wrapper = mount(TransferDetailView, { global: { stubs: { RouterLink: true } } })
     await flushPromises()
 
+    await wrapper.find('[data-testid="scan-responsible-input"]').setValue('María Pérez')
+    await wrapper.find('[data-testid="scan-courier-input"]').setValue('GUIA-12345')
     await wrapper.find('[data-testid="confirm-btn"]').trigger('click')
     await flushPromises()
 
@@ -339,15 +341,74 @@ describe('TransferDetailView', () => {
     // Complete line (scanned === quantity) — the forced-recount gate only fires on incomplete
     // lines, and this test is about the payload shape, not that gate (covered separately below).
     vi.mocked(recepcionApi.getTransfer).mockResolvedValue(mockGetTransfer(buildTransfer({ lines: [buildLine({ scanned: 10, quantity: 10 })] })))
-    vi.mocked(recepcionApi.confirm).mockResolvedValue(undefined)
+    vi.mocked(recepcionApi.confirm).mockResolvedValue({ success: true, sapDocEntry: null, sapDocNum: null, message: '' })
 
     const wrapper = mount(TransferDetailView, { global: { stubs: { RouterLink: true } } })
     await flushPromises()
 
+    await wrapper.find('[data-testid="scan-responsible-input"]').setValue('María Pérez')
+    await wrapper.find('[data-testid="scan-courier-input"]').setValue('GUIA-12345')
     await wrapper.find('[data-testid="confirm-partial-btn"]').trigger('click')
     await flushPromises()
 
-    expect(recepcionApi.confirm).toHaveBeenCalledWith(7, { allowPartial: true })
+    expect(recepcionApi.confirm).toHaveBeenCalledWith(7, {
+      allowPartial: true,
+      responsibleName: 'MARÍA PÉREZ',
+      courierWaybillNumber: 'GUIA-12345',
+    })
+  })
+
+  it('blocks complete confirmation when responsible name is blank or whitespace-only', async () => {
+    mockAuth(['recepcion.reception.confirm'])
+    vi.mocked(recepcionApi.getTransfer).mockResolvedValue(mockGetTransfer(buildTransfer()))
+
+    const wrapper = mount(TransferDetailView, { global: { stubs: { RouterLink: true } } })
+    await flushPromises()
+
+    await wrapper.find('[data-testid="scan-responsible-input"]').setValue('   ')
+    await wrapper.find('[data-testid="scan-courier-input"]').setValue('GUIA-12345')
+    await wrapper.find('[data-testid="confirm-btn"]').trigger('click')
+    await flushPromises()
+
+    expect(recepcionApi.confirm).not.toHaveBeenCalled()
+    expect(new DOMWrapper(document.body).text()).toContain('Ingresa el nombre del responsable.')
+    expect((wrapper.find('[data-testid="scan-responsible-input"]').element as HTMLInputElement).value).toBe('   ')
+  })
+
+  it('blocks partial confirmation when courier waybill is blank or whitespace-only', async () => {
+    mockAuth(['recepcion.reception.confirm.partial'])
+    vi.mocked(recepcionApi.getTransfer).mockResolvedValue(
+      mockGetTransfer(buildTransfer({ lines: [buildLine({ scanned: 10, quantity: 10 })] }))
+    )
+
+    const wrapper = mount(TransferDetailView, { global: { stubs: { RouterLink: true } } })
+    await flushPromises()
+
+    await wrapper.find('[data-testid="scan-responsible-input"]').setValue('María Pérez')
+    await wrapper.find('[data-testid="scan-courier-input"]').setValue('   ')
+    await wrapper.find('[data-testid="confirm-partial-btn"]').trigger('click')
+    await flushPromises()
+
+    expect(recepcionApi.confirm).not.toHaveBeenCalled()
+    expect(new DOMWrapper(document.body).text()).toContain('Ingresa el número de guía.')
+    expect((wrapper.find('[data-testid="scan-courier-input"]').element as HTMLInputElement).value).toBe('   ')
+  })
+
+  it.each(['GUIA-1234', 'GUIA-123456'])('blocks confirmation when courier waybill is not exactly 10 characters: %s', async (courierWaybill) => {
+    mockAuth(['recepcion.reception.confirm'])
+    vi.mocked(recepcionApi.getTransfer).mockResolvedValue(mockGetTransfer(buildTransfer()))
+
+    const wrapper = mount(TransferDetailView, { global: { stubs: { RouterLink: true } } })
+    await flushPromises()
+
+    await wrapper.find('[data-testid="scan-responsible-input"]').setValue('María Pérez')
+    await wrapper.find('[data-testid="scan-courier-input"]').setValue(courierWaybill)
+    await wrapper.find('[data-testid="confirm-btn"]').trigger('click')
+    await flushPromises()
+
+    expect(recepcionApi.confirm).not.toHaveBeenCalled()
+    expect(new DOMWrapper(document.body).text()).toContain('La guía debe tener exactamente 10 caracteres.')
+    expect((wrapper.find('[data-testid="scan-courier-input"]').element as HTMLInputElement).value).toBe(courierWaybill)
   })
 
   it('blocks the first partial-confirm attempt on an incomplete transfer, resets the incomplete line inputs to 0, and opens the recount dialog', async () => {
@@ -358,6 +419,8 @@ describe('TransferDetailView', () => {
     const wrapper = mount(TransferDetailView, { global: { stubs: { RouterLink: true } } })
     await flushPromises()
 
+    await wrapper.find('[data-testid="scan-responsible-input"]').setValue('María Pérez')
+    await wrapper.find('[data-testid="scan-courier-input"]').setValue('GUIA-12345')
     await wrapper.find('[data-testid="confirm-partial-btn"]').trigger('click')
     await flushPromises()
 
@@ -373,11 +436,13 @@ describe('TransferDetailView', () => {
   it('allows the second partial-confirm attempt through, matching legacy behavior of trusting the recount flag rather than re-verifying the scan', async () => {
     mockAuth(['recepcion.reception.confirm.partial'])
     vi.mocked(recepcionApi.getTransfer).mockResolvedValue(mockGetTransfer(buildTransfer()))
-    vi.mocked(recepcionApi.confirm).mockResolvedValue(undefined)
+    vi.mocked(recepcionApi.confirm).mockResolvedValue({ success: true, sapDocEntry: null, sapDocNum: null, message: '' })
 
     const wrapper = mount(TransferDetailView, { global: { stubs: { RouterLink: true } } })
     await flushPromises()
 
+    await wrapper.find('[data-testid="scan-responsible-input"]').setValue('María Pérez')
+    await wrapper.find('[data-testid="scan-courier-input"]').setValue('GUIA-12345')
     await wrapper.find('[data-testid="confirm-partial-btn"]').trigger('click')
     await flushPromises()
     expect(recepcionApi.confirm).not.toHaveBeenCalled()
@@ -385,17 +450,23 @@ describe('TransferDetailView', () => {
     await wrapper.find('[data-testid="confirm-partial-btn"]').trigger('click')
     await flushPromises()
 
-    expect(recepcionApi.confirm).toHaveBeenCalledWith(7, { allowPartial: true })
+    expect(recepcionApi.confirm).toHaveBeenCalledWith(7, {
+      allowPartial: true,
+      responsibleName: 'MARÍA PÉREZ',
+      courierWaybillNumber: 'GUIA-12345',
+    })
   })
 
   it('confirms the partial reception directly from the recount dialog without needing a second click on the outer button', async () => {
     mockAuth(['recepcion.picking.scan', 'recepcion.reception.confirm.partial'])
     vi.mocked(recepcionApi.getTransfer).mockResolvedValue(mockGetTransfer(buildTransfer()))
-    vi.mocked(recepcionApi.confirm).mockResolvedValue(undefined)
+    vi.mocked(recepcionApi.confirm).mockResolvedValue({ success: true, sapDocEntry: null, sapDocNum: null, message: '' })
 
     const wrapper = mount(TransferDetailView, { global: { stubs: { RouterLink: true } } })
     await flushPromises()
 
+    await wrapper.find('[data-testid="scan-responsible-input"]').setValue('María Pérez')
+    await wrapper.find('[data-testid="scan-courier-input"]').setValue('GUIA-12345')
     await wrapper.find('[data-testid="confirm-partial-btn"]').trigger('click')
     await flushPromises()
     expect(recepcionApi.confirm).not.toHaveBeenCalled()
@@ -404,7 +475,11 @@ describe('TransferDetailView', () => {
     await body.find('[data-testid="confirm-dialog-confirm-btn"]').trigger('click')
     await flushPromises()
 
-    expect(recepcionApi.confirm).toHaveBeenCalledWith(7, { allowPartial: true })
+    expect(recepcionApi.confirm).toHaveBeenCalledWith(7, {
+      allowPartial: true,
+      responsibleName: 'MARÍA PÉREZ',
+      courierWaybillNumber: 'GUIA-12345',
+    })
     expect(body.find('[data-testid="confirm-dialog"]').exists()).toBe(false)
 
     wrapper.unmount()
@@ -417,6 +492,8 @@ describe('TransferDetailView', () => {
     const wrapper = mount(TransferDetailView, { global: { stubs: { RouterLink: true } } })
     await flushPromises()
 
+    await wrapper.find('[data-testid="scan-responsible-input"]').setValue('María Pérez')
+    await wrapper.find('[data-testid="scan-courier-input"]').setValue('GUIA-12345')
     await wrapper.find('[data-testid="confirm-partial-btn"]').trigger('click')
     await flushPromises()
 
@@ -433,21 +510,27 @@ describe('TransferDetailView', () => {
   it('does not gate the partial confirm when there are no incomplete lines', async () => {
     mockAuth(['recepcion.reception.confirm.partial'])
     vi.mocked(recepcionApi.getTransfer).mockResolvedValue(mockGetTransfer(buildTransfer({ lines: [buildLine({ scanned: 10, quantity: 10 })] })))
-    vi.mocked(recepcionApi.confirm).mockResolvedValue(undefined)
+    vi.mocked(recepcionApi.confirm).mockResolvedValue({ success: true, sapDocEntry: null, sapDocNum: null, message: '' })
 
     const wrapper = mount(TransferDetailView, { global: { stubs: { RouterLink: true } } })
     await flushPromises()
 
+    await wrapper.find('[data-testid="scan-responsible-input"]').setValue('María Pérez')
+    await wrapper.find('[data-testid="scan-courier-input"]').setValue('GUIA-12345')
     await wrapper.find('[data-testid="confirm-partial-btn"]').trigger('click')
     await flushPromises()
 
-    expect(recepcionApi.confirm).toHaveBeenCalledWith(7, { allowPartial: true })
+    expect(recepcionApi.confirm).toHaveBeenCalledWith(7, {
+      allowPartial: true,
+      responsibleName: 'MARÍA PÉREZ',
+      courierWaybillNumber: 'GUIA-12345',
+    })
   })
 
   it('disables the confirm button while a confirm call is in flight, to prevent duplicate POSTs on double-click', async () => {
     mockAuth(['recepcion.reception.confirm'])
     vi.mocked(recepcionApi.getTransfer).mockResolvedValue(mockGetTransfer(buildTransfer()))
-    let resolveConfirm!: (v: void) => void
+    let resolveConfirm!: (v: ConfirmTransferResponse) => void
     vi.mocked(recepcionApi.confirm).mockReturnValue(
       new Promise((resolve) => {
         resolveConfirm = resolve
@@ -457,12 +540,14 @@ describe('TransferDetailView', () => {
     const wrapper = mount(TransferDetailView, { global: { stubs: { RouterLink: true } } })
     await flushPromises()
 
+    await wrapper.find('[data-testid="scan-responsible-input"]').setValue('María Pérez')
+    await wrapper.find('[data-testid="scan-courier-input"]').setValue('GUIA-12345')
     await wrapper.find('[data-testid="confirm-btn"]').trigger('click')
     await flushPromises()
 
     expect(wrapper.find('[data-testid="confirm-btn"]').attributes('disabled')).toBeDefined()
 
-    resolveConfirm(undefined)
+    resolveConfirm({ success: true, sapDocEntry: null, sapDocNum: null, message: '' })
     await flushPromises()
 
     expect(recepcionApi.confirm).toHaveBeenCalledTimes(1)
@@ -473,11 +558,13 @@ describe('TransferDetailView', () => {
     vi.mocked(recepcionApi.getTransfer)
       .mockResolvedValueOnce(mockGetTransfer(buildTransfer()))
       .mockResolvedValueOnce(mockGetTransfer(buildTransfer({ status: 'confirmed' })))
-    vi.mocked(recepcionApi.confirm).mockResolvedValue(undefined)
+    vi.mocked(recepcionApi.confirm).mockResolvedValue({ success: true, sapDocEntry: null, sapDocNum: null, message: '' })
 
     const wrapper = mount(TransferDetailView, { global: { stubs: { RouterLink: true } } })
     await flushPromises()
 
+    await wrapper.find('[data-testid="scan-responsible-input"]').setValue('María Pérez')
+    await wrapper.find('[data-testid="scan-courier-input"]').setValue('GUIA-12345')
     await wrapper.find('[data-testid="confirm-btn"]').trigger('click')
     await flushPromises()
 
@@ -494,6 +581,8 @@ describe('TransferDetailView', () => {
     const wrapper = mount(TransferDetailView, { global: { stubs: { RouterLink: true } } })
     await flushPromises()
 
+    await wrapper.find('[data-testid="scan-responsible-input"]').setValue('María Pérez')
+    await wrapper.find('[data-testid="scan-courier-input"]').setValue('GUIA-12345')
     await wrapper.find('[data-testid="confirm-btn"]').trigger('click')
     await flushPromises()
 
@@ -514,6 +603,8 @@ describe('TransferDetailView', () => {
     const wrapper = mount(TransferDetailView, { global: { stubs: { RouterLink: true } } })
     await flushPromises()
 
+    await wrapper.find('[data-testid="scan-responsible-input"]').setValue('María Pérez')
+    await wrapper.find('[data-testid="scan-courier-input"]').setValue('GUIA-12345')
     await wrapper.find('[data-testid="confirm-btn"]').trigger('click')
     await flushPromises()
 
@@ -530,6 +621,8 @@ describe('TransferDetailView', () => {
     const wrapper = mount(TransferDetailView, { global: { stubs: { RouterLink: true } } })
     await flushPromises()
 
+    await wrapper.find('[data-testid="scan-responsible-input"]').setValue('María Pérez')
+    await wrapper.find('[data-testid="scan-courier-input"]').setValue('GUIA-12345')
     await wrapper.find('[data-testid="confirm-btn"]').trigger('click')
     await flushPromises()
 

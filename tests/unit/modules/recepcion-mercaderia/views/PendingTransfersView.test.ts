@@ -146,6 +146,25 @@ describe('PendingTransfersView', () => {
     expect(routerPush).not.toHaveBeenCalled()
   })
 
+  it('renders the backend message when materialize returns PENDING_TRANSFER_STALE', async () => {
+    featureReadiness.pendingTransfersReady = true
+    vi.mocked(recepcionApi.getPendingTransfers).mockResolvedValue(paged([buildLine()]))
+    vi.mocked(recepcionApi.materializePendingTransfer).mockRejectedValue({
+      response: { status: 409, data: { code: 'PENDING_TRANSFER_STALE' } },
+    })
+
+    const wrapper = mount(PendingTransfersView)
+    await flushPromises()
+
+    await wrapper.find('[data-testid="materialize-btn"]').trigger('click')
+    await flushPromises()
+    await new DOMWrapper(document.body).find('[data-testid="confirm-dialog-confirm-btn"]').trigger('click')
+    await flushPromises()
+
+    expect(wrapper.find('[role="alert"]').text()).toContain('El saldo de esta transferencia aún no está actualizado.')
+    expect(routerPush).not.toHaveBeenCalled()
+  })
+
   it('disables the materialize button while a materialize call is in flight, to prevent duplicate POSTs on double-click', async () => {
     featureReadiness.pendingTransfersReady = true
     vi.mocked(recepcionApi.getPendingTransfers).mockResolvedValue(paged([buildLine()]))

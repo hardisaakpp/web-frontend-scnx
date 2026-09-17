@@ -295,21 +295,29 @@ describe('recepcionApi', () => {
     })
   })
 
-  it('confirm sends { allowPartial: false } by default and passes the response through unmapped (real shape is ConfirmReceptionTransferResult { success, sapDocEntry, sapDocNum, message }, not a transfer — verified with backend)', async () => {
+  it('confirm sends required metadata and allowPartial:false, passing the response through unmapped', async () => {
     vi.mocked(api.post).mockResolvedValue({ data: { success: true, sapDocEntry: 123, sapDocNum: 456, message: null } })
 
-    const result = await recepcionApi.confirm(7)
+    const result = await recepcionApi.confirm(7, { responsibleName: ' María Pérez ', courierWaybillNumber: ' GUIA-12345 ' })
 
     expect(result).toEqual({ success: true, sapDocEntry: 123, sapDocNum: 456, message: null })
-    expect(api.post).toHaveBeenCalledWith('recepcion-api/reception/transfers/7/confirm', { allowPartial: false })
+    expect(api.post).toHaveBeenCalledWith('recepcion-api/reception/transfers/7/confirm', {
+      responsibleName: 'María Pérez',
+      courierWaybillNumber: 'GUIA-12345',
+      allowPartial: false,
+    })
   })
 
   it('confirm forwards allowPartial:true for ConfirmPartial (real field name, not "partial")', async () => {
     vi.mocked(api.post).mockResolvedValue({ data: { success: true, sapDocEntry: 123, sapDocNum: 456, message: null } })
 
-    await recepcionApi.confirm(7, { allowPartial: true })
+    await recepcionApi.confirm(7, { allowPartial: true, responsibleName: 'María Pérez', courierWaybillNumber: 'GUIA-12345' })
 
-    expect(api.post).toHaveBeenCalledWith('recepcion-api/reception/transfers/7/confirm', { allowPartial: true })
+    expect(api.post).toHaveBeenCalledWith('recepcion-api/reception/transfers/7/confirm', {
+      responsibleName: 'María Pérez',
+      courierWaybillNumber: 'GUIA-12345',
+      allowPartial: true,
+    })
   })
 
   it('confirm passes through the queued-job reason ("Queued"/"StillPending") when SAP confirmation was not resolved inline', async () => {
