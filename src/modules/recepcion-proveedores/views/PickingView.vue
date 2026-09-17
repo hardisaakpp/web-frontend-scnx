@@ -30,6 +30,14 @@ const mostrarConfirmarIntegrarSap = ref(false)
 const mostrarIntegracionExitosa = ref(false)
 const mostrarConfirmarEliminar = ref(false)
 
+/**
+ * pickingStore.isSubmitting es una unica bandera compartida por las 6 acciones del store, pero
+ * varios de estos botones pueden estar visibles a la vez (ej. Cerrar y Eliminar en EnProceso).
+ * Se rastrea aqui cual accion puntual esta en curso para que el spinner salga solo en el boton
+ * que el usuario realmente presiono, no en todos los que comparten isSubmitting.
+ */
+const accionEnCurso = ref<'cerrar' | 'integrar' | 'verificar' | 'eliminar' | null>(null)
+
 const enProceso = computed(() => pickingStore.sesion?.estado === 'EnProceso')
 const puedeCerrar = computed(() => pickingStore.sesion?.estado === 'EnProceso' && pickingStore.scans.length > 0)
 const puedeIntegrarSap = computed(() => pickingStore.sesion?.estado === 'Finalizada' || pickingStore.sesion?.estado === 'ErrorSap')
@@ -90,19 +98,34 @@ async function eliminarScan(scanId: number): Promise<void> {
 
 async function confirmarCierre(): Promise<void> {
   mostrarConfirmarCierre.value = false
-  const ok = await pickingStore.cerrar()
-  if (ok) mostrarCierreExitoso.value = true
+  accionEnCurso.value = 'cerrar'
+  try {
+    const ok = await pickingStore.cerrar()
+    if (ok) mostrarCierreExitoso.value = true
+  } finally {
+    accionEnCurso.value = null
+  }
 }
 
 async function confirmarIntegrarSap(): Promise<void> {
   mostrarConfirmarIntegrarSap.value = false
-  const ok = await pickingStore.integrarSap()
-  if (ok && pickingStore.sesion?.estado === 'IntegradaSap') mostrarIntegracionExitosa.value = true
+  accionEnCurso.value = 'integrar'
+  try {
+    const ok = await pickingStore.integrarSap()
+    if (ok && pickingStore.sesion?.estado === 'IntegradaSap') mostrarIntegracionExitosa.value = true
+  } finally {
+    accionEnCurso.value = null
+  }
 }
 
 async function verificarEstado(): Promise<void> {
-  const ok = await pickingStore.verificarEstadoSap()
-  if (ok && pickingStore.sesion?.estado === 'IntegradaSap') mostrarIntegracionExitosa.value = true
+  accionEnCurso.value = 'verificar'
+  try {
+    const ok = await pickingStore.verificarEstadoSap()
+    if (ok && pickingStore.sesion?.estado === 'IntegradaSap') mostrarIntegracionExitosa.value = true
+  } finally {
+    accionEnCurso.value = null
+  }
 }
 
 async function alternarLogs(): Promise<void> {
@@ -114,10 +137,15 @@ async function alternarLogs(): Promise<void> {
 
 async function confirmarEliminarPicking(): Promise<void> {
   mostrarConfirmarEliminar.value = false
-  const docNum = pickingStore.sesion?.docNum
-  const ok = await pickingStore.eliminarSesion()
-  if (ok && docNum !== undefined) {
-    router.push({ name: 'recepcion-proveedores-detalle', params: { docNum } })
+  accionEnCurso.value = 'eliminar'
+  try {
+    const docNum = pickingStore.sesion?.docNum
+    const ok = await pickingStore.eliminarSesion()
+    if (ok && docNum !== undefined) {
+      router.push({ name: 'recepcion-proveedores-detalle', params: { docNum } })
+    }
+  } finally {
+    accionEnCurso.value = null
   }
 }
 
@@ -160,37 +188,45 @@ watch(sesionId, cargar)
           <button
             type="button"
             :disabled="!puedeCerrar || pickingStore.isSubmitting"
-            class="px-3 py-2 text-sm font-medium bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            class="px-3 py-2 text-sm font-medium bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
             @click="mostrarConfirmarCierre = true"
           >
-            Cerrar Picking
+            <LoadingSpinner v-if="accionEnCurso === 'cerrar'" layout="inline" size="sm" color="current" aria-label="Cerrando" />
+            {{ accionEnCurso === 'cerrar' ? 'Cerrando...' : 'Cerrar Picking' }}
           </button>
           <button
             v-if="puedeIntegrarSap"
             type="button"
             :disabled="pickingStore.isSubmitting"
-            class="px-3 py-2 text-sm font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            class="px-3 py-2 text-sm font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
             @click="mostrarConfirmarIntegrarSap = true"
           >
-            {{ pickingStore.sesion.estado === 'ErrorSap' ? 'Reintentar integración SAP' : 'Integrar a SAP' }}
+            <LoadingSpinner v-if="accionEnCurso === 'integrar'" layout="inline" size="sm" color="current" aria-label="Integrando" />
+            {{
+              accionEnCurso === 'integrar'
+                ? 'Integrando...'
+                : pickingStore.sesion.estado === 'ErrorSap' ? 'Reintentar integración SAP' : 'Integrar a SAP'
+            }}
           </button>
           <button
             v-if="puedeVerificarEstadoSap"
             type="button"
             :disabled="pickingStore.isSubmitting"
-            class="px-3 py-2 text-sm font-medium bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors disabled:opacity-50"
+            class="px-3 py-2 text-sm font-medium bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors disabled:opacity-50 flex items-center gap-2"
             @click="verificarEstado"
           >
-            Verificar estado
+            <LoadingSpinner v-if="accionEnCurso === 'verificar'" layout="inline" size="sm" color="current" aria-label="Verificando" />
+            {{ accionEnCurso === 'verificar' ? 'Verificando...' : 'Verificar estado' }}
           </button>
           <button
             v-if="puedeEliminarPicking"
             type="button"
             :disabled="pickingStore.isSubmitting"
-            class="px-3 py-2 text-sm font-medium bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            class="px-3 py-2 text-sm font-medium bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
             @click="mostrarConfirmarEliminar = true"
           >
-            Eliminar Picking
+            <LoadingSpinner v-if="accionEnCurso === 'eliminar'" layout="inline" size="sm" color="current" aria-label="Eliminando" />
+            {{ accionEnCurso === 'eliminar' ? 'Eliminando...' : 'Eliminar Picking' }}
           </button>
         </div>
       </div>
