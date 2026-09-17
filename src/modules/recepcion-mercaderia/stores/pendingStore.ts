@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import recepcionApi from '../services/recepcionApi'
 import { featureReadiness } from '../config/featureReadiness'
+import { backendErrorMessage } from '../utils/apiErrorMapper'
 import type { FlowStatus, PendingTransferLine } from '../types'
 
 /**
@@ -100,8 +101,8 @@ export const usePendingStore = defineStore('recepcionPending', () => {
         await fetchPending()
       }
       return transferId
-    } catch {
-      error.value = 'No se pudo recibir la transferencia.'
+    } catch (err) {
+      error.value = backendErrorMessage(err, 'No se pudo recibir la transferencia.')
       status.value = 'error'
       return undefined
     } finally {

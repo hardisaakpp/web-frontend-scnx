@@ -12,8 +12,10 @@ const ERROR_CODE_MESSAGES: Record<string, string> = {
   UNKNOWN_RECEPTION_TRANSFER_LINE: 'Esa línea no pertenece a esta transferencia.',
   RECEPTION_TRANSFER_ALREADY_CONFIRMED: 'Esta transferencia ya fue confirmada.',
   INCOMPLETE_RECEPTION_TRANSFER: 'Faltan líneas por completar y no tiene permiso para confirmar parcialmente.',
-  COURIER_WAYBILL_REQUIRED: 'Debe ingresar la guía courier para esta bodega.',
+  COURIER_WAYBILL_REQUIRED: 'Ingresa el número de guía.',
   DIFFERENCE_IDENTIFIER_REQUIRED: 'Debe indicar un código de barras o una línea para registrar la diferencia.',
+  PENDING_TRANSFER_STALE: 'El saldo de esta transferencia aún no está actualizado. Intenta nuevamente en unos minutos.',
+  RESPONSIBLE_REQUIRED: 'Ingresa el nombre del responsable.',
   FORBIDDEN: 'No tiene acceso a esta bodega o recurso.',
   ENTITY_NOT_FOUND: 'No se encontró la transferencia u otro recurso solicitado.',
 }

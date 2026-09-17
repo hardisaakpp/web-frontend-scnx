@@ -115,6 +115,8 @@ export interface SaveScanProgressRequest {
 
 export interface ConfirmTransferRequest {
   allowPartial?: boolean
+  responsibleName?: string | null
+  courierWaybillNumber?: string | null
 }
 
 /**
