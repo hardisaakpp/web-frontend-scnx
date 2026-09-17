@@ -749,6 +749,7 @@ const pageTitle = computed(() => {
     '/conciliacion/novedades': 'Novedades',
     '/conciliacion/historial': 'Historial',
     '/conciliacion/partidas-abiertas': 'Partidas Abiertas',
+    '/conciliacion/bancos': 'Catálogo de Bancos',
     '/mba3-consultas': 'Gestión ODC SAP',
     '/gestion-usuarios': 'Personal de Tiendas',
     '/pyg': 'Importador PYG',

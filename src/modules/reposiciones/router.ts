@@ -64,7 +64,7 @@ const routes: RouteRecordRaw[] = [
     meta: {
       requiresAuth: true,
       title: 'Historial Global',
-      permissions: ['reposiciones.administrador', 'reposiciones.negocio'],
+      permissions: ['reposiciones.administrador', 'reposiciones.negocio', 'reposiciones.reportes'],
     },
   },
   {

@@ -1,0 +1,89 @@
+Correciones solicitadas:
+--caso 1:
+coregir problema de duplicacion en datos obtenidos de sap
+
+ESTADO: implementado y validado en local (rama fix/sap-movimientos-duplicados), pendiente de commit.
+ALCANCE: solo backend. Este caso no requiere ningun cambio de frontend (a diferencia del caso 2).
+
+Causa raiz encontrada:
+- El modelo MovimientoSAP (app/models/sap.py) nunca tuvo una restriccion UNIQUE real sobre
+  (trans_id, line_id) en la base, pese a que el diseno original (plan_importacion_sap.md,
+  sql/v002__movimientos_sap.sql) la definia. El "upsert" en sap_service.py solo hacia un
+  SELECT antes del INSERT, sin respaldo de constraint ni locking -> cualquier resync solapado
+  (dos usuarios, doble intento, autoflush=False del ORM dentro de un mismo lote) duplicaba filas.
+- El historial de Alembic estaba totalmente desincronizado del esquema real (la tabla se
+  redisenio por fuera de Alembic, usando Base.metadata.create_all() en el arranque de la app),
+  por eso el constraint se perdio en el camino y nadie lo noto.
+
+Cambios implementados:
+- app/models/sap.py: UniqueConstraint('trans_id','line_id', name='uq_sap_trans_line') +
+  nuevo modelo MovimientoSAPHistorial (tabla movimiento_sap_historial) para auditar cambios
+  detectados en resincronizaciones.
+- app/services/sap_service.py: _upsert_movimiento separado en _procesar_existente (compara
+  campo a campo; si el movimiento YA esta conciliado, NO se sobrescribe, solo se registra la
+  alerta en el historial) y _insertar_nuevo (savepoint + captura de IntegrityError, para que
+  una colision por concurrencia se resuelva como actualizacion en vez de tumbar el commit
+  completo del lote).
+- app/schemas/sap.py y app/api/v1/endpoints/sap.py: nuevo campo alertas_conciliados_modificados
+  en la respuesta de POST /sap/sync.
+- Migracion Alembic baseline unica (down_revision=None) generada desde cero, reemplazando las
+  3 migraciones viejas que ya no describian el esquema real. Validada con alembic check (sin
+  diferencias), upgrade/downgrade/upgrade, y revision adversarial (workflow) sin hallazgos
+  reales pendientes.
+- Se autorizo borrar y redesplegar desde cero tanto la base "produccion" (en realidad demo, sin
+  uso productivo real) como el ambiente test/DESA -> la migracion baseline con create_table
+  plano (sin checkfirst) es valida en ese escenario.
+
+Pendiente (no bloqueante):
+- Aplicar el mismo fix de IntegrityError/rollback puntual en import_excel.py (comparte el mismo
+  patron de "todo o nada" en el commit final), pospuesto para no mezclar con el caso 2.
+- Hacer commit de los cambios en la rama fix/sap-movimientos-duplicados.
+
+--caso 2:
+estandarizar la lectura de carga de excel: necesito cargar 5 archivos de banco diferentes, 
+ya tenemos una solucion parcial pero los formatos tienes unos campos que se cambiaron muy 
+lijeramente y ademas que algunos llevan encabezado.
+
+disponemos de los archivos originales generados de los bancos para hacer una prueba estan en la carpeta excel_modelos
+
+ESTADO CASO 2: implementado y validado en local con los 5 archivos reales de excel_modelos,
+pendiente de commit (misma rama fix/sap-movimientos-duplicados, o crear una nueva para esto).
+
+Cambios implementados:
+- app/services/import_excel.py:
+  - _limpiar_monto: detecta el separador decimal por posicion (el que aparece mas a la
+    derecha), soporta formato US ($1,234.56) y europeo (1.234,56) sin config por banco.
+  - _leer_excel ahora acepta fila_header (skiprows) para saltar bloques de metadata antes
+    del encabezado real.
+  - Matching de columnas normalizado (mayusculas/tildes/espacios) via _resolver_columna,
+    ya no depende de que el nombre configurado coincida caracter por caracter.
+  - Nueva deteccion automatica de banco (_detectar_banco): si no se especifica banco al
+    subir el Excel, prueba el config_mapeo de cada banco activo y elige el que mejor
+    coincide (umbral 70% de columnas reconocidas). nombre_banco ahora es opcional en
+    procesar_excel().
+- app/scripts/seed_bancos.py: corregido fila_header/columnas/formato_fecha reales de los
+  5 bancos (Produbanco y Bolivariano tenian dia/mes invertido en formato_fecha desde
+  siempre, confirmado con datos reales: ~79% de fechas de Produbanco se guardaban mal en
+  silencio). IMPORTANTE: el seed ya NO sobreescribe bancos existentes en cada arranque
+  (antes sobreescribia config_mapeo/nombre_excel siempre) -- ahora solo inserta los que
+  faltan, para no pisar ediciones hechas desde el CRUD/frontend.
+- app/api/v1/endpoints/banca.py: acepta .xls ademas de .xlsx (el archivo de Bolivariano
+  trae extension .xls pero contenido xlsx real), y el parametro `banco` en POST /banca/import
+  ahora es opcional (si se omite, se autodetecta).
+- Nuevo CRUD de configuracion en app/api/v1/endpoints/catalogo.py (para editar desde el
+  frontend, sin migraciones, ya que config_mapeo es JSON en banco_catalogo):
+  - GET    /catalogo/bancos            (lista, ?solo_activos=true por defecto)
+  - GET    /catalogo/bancos/{id_banco} (detalle con config_mapeo parseado)
+  - POST   /catalogo/bancos            (crear banco nuevo)
+  - PUT    /catalogo/bancos/{id_banco} (editar, incluye reemplazar config_mapeo)
+  - DELETE /catalogo/bancos/{id_banco} (soft-delete: pone activo=false, no borra el registro)
+  - Nuevo app/schemas/catalogo.py (BancoCatalogoCreate/Update)
+
+Validacion: los 5 archivos de excel_modelos se subieron SIN indicar banco (nombre_banco=None)
+y los 5 se detectaron correctamente, 7469 filas insertadas en total, 0 errores, 0 duplicados.
+Probado tambien: editar config_mapeo via PUT, reiniciar el servicio, confirmar que el cambio
+persiste (no lo pisa el seed). POST rechaza codigo_cuenta_sap duplicado (400). DELETE
+desactiva sin borrar.
+
+Pendiente: commit; el frontend (scnexus-front) para consumir el CRUD y la carga sin banco
+explicito lo esta preparando el usuario en paralelo.
