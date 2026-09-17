@@ -2,10 +2,10 @@ import { ref } from 'vue'
 import { defineStore } from 'pinia'
 import { pickingApi } from '../services/pickingApi'
 import { mapApiError } from '@/utils/apiErrorMapper'
-import type { OrdenPickingLogResponse, OrdenPickingScanResponse, OrdenPickingSesionResponse } from '../types'
+import type { OrdenPickingScanResponse, OrdenPickingSesionResponse } from '../types'
 
 /**
- * Sesion de picking activa: iniciar/cargar, escanear, eliminar el propio scan, cerrar, logs.
+ * Sesion de picking activa: iniciar/cargar, escanear, eliminar el propio scan, cerrar.
  * Guard de respuestas obsoletas (activeSesionId) igual criterio que
  * recepcion-mercaderia/stores/pickingStore.ts: si el usuario navega a otra sesion mientras una
  * peticion sigue en vuelo, esa respuesta tardia se descarta en vez de pisar el estado actual.
@@ -13,7 +13,6 @@ import type { OrdenPickingLogResponse, OrdenPickingScanResponse, OrdenPickingSes
 export const usePickingStore = defineStore('recepcionProveedoresPicking', () => {
   const sesion = ref<OrdenPickingSesionResponse | null>(null)
   const scans = ref<OrdenPickingScanResponse[]>([])
-  const logs = ref<OrdenPickingLogResponse[]>([])
   const loading = ref(false)
   const error = ref<string | null>(null)
   const actionError = ref<string | null>(null)
@@ -54,7 +53,6 @@ export const usePickingStore = defineStore('recepcionProveedoresPicking', () => 
     activeSesionId.value = sesionId
     sesion.value = null
     scans.value = []
-    logs.value = []
     error.value = null
     loading.value = true
     try {
@@ -79,19 +77,6 @@ export const usePickingStore = defineStore('recepcionProveedoresPicking', () => 
     } catch (err: unknown) {
       if (activeSesionId.value !== sesionId) return
       actionError.value = mapApiError(err, 'No se pudo cargar el historial de escaneos.').message
-    }
-  }
-
-  async function cargarLogs(): Promise<void> {
-    if (!sesion.value) return
-    const sesionId = sesion.value.id
-    try {
-      const resultado = await pickingApi.obtenerLogs(sesionId)
-      if (activeSesionId.value !== sesionId) return
-      logs.value = resultado
-    } catch (err: unknown) {
-      if (activeSesionId.value !== sesionId) return
-      actionError.value = mapApiError(err, 'No se pudo cargar el registro de eventos.').message
     }
   }
 
@@ -140,45 +125,38 @@ export const usePickingStore = defineStore('recepcionProveedoresPicking', () => 
     }
   }
 
-  async function cerrar(): Promise<boolean> {
-    if (!sesion.value) return false
-    const sesionId = sesion.value.id
-
-    actionError.value = null
-    isSubmitting.value = true
-    try {
-      const resultado = await pickingApi.cerrar(sesionId)
-      if (activeSesionId.value !== sesionId) return false
-      sesion.value = resultado
-      return true
-    } catch (err: unknown) {
-      if (activeSesionId.value !== sesionId) return false
-      actionError.value = mapApiError(err, 'No se pudo cerrar el picking.').message
-      return false
-    } finally {
-      if (activeSesionId.value === sesionId) isSubmitting.value = false
-    }
+  /**
+   * "Confirmar Picking"/"Confirmar Parcial": un solo clic que cierra la sesion (si todavia esta
+   * EnProceso) y crea el Goods Receipt en SAP en la misma peticion. Devuelve true en cualquier
+   * round-trip HTTP exitoso — el resultado de negocio (IntegradaSap/EnviandoSap/ErrorSap) vive
+   * en sesion.estado/sesion.sapErrorMensaje. ErrorSap llega en un 200 normal, NO es un error
+   * HTTP: no debe pasar por actionError/ErrorModal.
+   */
+  async function confirmarPicking(): Promise<boolean> {
+    return ejecutarConfirmacion(pickingApi.confirmarPicking, 'No se pudo confirmar el picking.')
   }
 
-  /**
-   * Devuelve true en cualquier round-trip HTTP exitoso (igual que cerrar()) — el resultado de
-   * negocio (IntegradaSap/EnviandoSap/ErrorSap) vive en sesion.estado/sesion.sapErrorMensaje.
-   * ErrorSap llega en un 200 normal, NO es un error HTTP: no debe pasar por actionError/ErrorModal.
-   */
-  async function integrarSap(): Promise<boolean> {
+  async function confirmarParcial(): Promise<boolean> {
+    return ejecutarConfirmacion(pickingApi.confirmarParcial, 'No se pudo confirmar la recepción parcial.')
+  }
+
+  async function ejecutarConfirmacion(
+    accion: (sesionId: number) => Promise<OrdenPickingSesionResponse>,
+    mensajeError: string,
+  ): Promise<boolean> {
     if (!sesion.value) return false
     const sesionId = sesion.value.id
 
     actionError.value = null
     isSubmitting.value = true
     try {
-      const resultado = await pickingApi.integrarSap(sesionId)
+      const resultado = await accion(sesionId)
       if (activeSesionId.value !== sesionId) return false
       sesion.value = resultado
       return true
     } catch (err: unknown) {
       if (activeSesionId.value !== sesionId) return false
-      actionError.value = mapApiError(err, 'No se pudo integrar el picking a SAP.').message
+      actionError.value = mapApiError(err, mensajeError).message
       return false
     } finally {
       if (activeSesionId.value === sesionId) isSubmitting.value = false
@@ -236,7 +214,6 @@ export const usePickingStore = defineStore('recepcionProveedoresPicking', () => 
   return {
     sesion,
     scans,
-    logs,
     loading,
     error,
     actionError,
@@ -245,11 +222,10 @@ export const usePickingStore = defineStore('recepcionProveedoresPicking', () => 
     iniciar,
     cargarSesion,
     cargarScans,
-    cargarLogs,
     escanear,
     eliminarScan,
-    cerrar,
-    integrarSap,
+    confirmarPicking,
+    confirmarParcial,
     verificarEstadoSap,
     eliminarSesion,
     limpiarActionError,

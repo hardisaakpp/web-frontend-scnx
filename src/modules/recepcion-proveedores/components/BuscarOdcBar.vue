@@ -24,9 +24,9 @@ const docNum = ref<string>(props.initialDocNum != null ? String(props.initialDoc
 const buscando = ref(false)
 const error = ref<string | null>(null)
 
-// El boton "Logs" solo se muestra cuando esta barra vive en el detalle de una ODC: ahi lleva su
-// referencia en la query para que "Volver" en LogsView regrese a esa ODC en vez de al dashboard.
-// En /buscar y en /logs mismos ya no aporta nada (el dashboard ya ofrece "Historial").
+// El boton "Logs" (registro tecnico evento a evento, distinto del "Historial" de recepciones del
+// dashboard) solo se muestra cuando esta barra vive en el detalle de una ODC: ahi lleva su
+// referencia en la query para que "Volver" en LogsView regrese a esa ODC en vez del dashboard.
 const logsTo = computed(() => ({
   path: '/recepcion-proveedores/logs',
   query: props.initialDocNum != null ? { volverA: String(props.initialDocNum) } : {},

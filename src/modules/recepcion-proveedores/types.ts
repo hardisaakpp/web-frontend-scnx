@@ -42,8 +42,17 @@ export interface EntradaMercaderiaResponse {
   lineas: EntradaMercaderiaLineaResponse[]
 }
 
+export interface OrdenCompraPendienteResponse {
+  docNum: number
+  whsCode: string
+  cardName: string | null
+  docDate: string
+  cantidadPendiente: number
+}
+
 export type EstadoPickingSesion = 'EnProceso' | 'Finalizada' | 'EnviandoSap' | 'IntegradaSap' | 'ErrorSap'
 export type EstadoPickingLinea = 'Pendiente' | 'Parcial' | 'Completa'
+export type ModoConfirmacionPicking = 'Picking' | 'Parcial'
 
 export interface OrdenPickingLineaResponse {
   id: number
@@ -54,6 +63,7 @@ export interface OrdenPickingLineaResponse {
   cantidadPedida: number
   cantidadPendiente: number
   cantidadPickeada: number
+  cantidadSobrante: number
   estadoLinea: EstadoPickingLinea
 }
 
@@ -66,6 +76,9 @@ export interface OrdenPickingSesionResponse {
   sapDocEntry: number | null
   sapDocNum: number | null
   sapErrorMensaje: string | null
+  modoConfirmacion: ModoConfirmacionPicking | null
+  proveedor: string | null
+  docDueDate: string | null
   lineas: OrdenPickingLineaResponse[]
 }
 
@@ -98,4 +111,22 @@ export interface OrdenPickingLogGeneralResponse {
   detalle: string | null
   usuarioId: string | null
   usuarioNombre: string | null
+}
+
+export interface OrdenPickingFragmentadaResponse {
+  docNum: number
+  whsCode: string
+  cardName: string | null
+  ultimaIntegracion: string
+  openQtyRestante: number
+}
+
+export interface HistorialRecepcionResponse {
+  id: number
+  docNum: number
+  whsCode: string
+  estado: EstadoPickingSesion
+  estadoTexto: string
+  fechaRecepcion: string
+  observaciones: string | null
 }

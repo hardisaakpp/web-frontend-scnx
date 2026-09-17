@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { ClipboardDocumentIcon } from '@heroicons/vue/24/outline'
 import { usePickingStore } from '../stores/pickingStore'
 import { useAuthStore } from '@/stores/auth'
+import { useToast } from '@/composables/useToast'
 import type { OrdenPickingLineaResponse } from '../types'
 import LoadingSpinner from '@/components/feedback/LoadingSpinner.vue'
 import ErrorModal from '@/components/modales/ErrorModal.vue'
@@ -14,6 +16,7 @@ const route = useRoute()
 const router = useRouter()
 const pickingStore = usePickingStore()
 const authStore = useAuthStore()
+const toast = useToast()
 
 const sesionId = computed(() => Number(route.params.sesionId))
 const usuarioActualId = computed(() => authStore.userData?.id ?? null)
@@ -23,28 +26,35 @@ const cantidadInput = ref(1)
 const codigoInputEl = ref<HTMLInputElement | null>(null)
 const cantidadInputEl = ref<HTMLInputElement | null>(null)
 
-const mostrarLogs = ref(false)
-const mostrarConfirmarCierre = ref(false)
-const mostrarCierreExitoso = ref(false)
-const mostrarConfirmarIntegrarSap = ref(false)
+const mostrarConfirmarPicking = ref(false)
+const mostrarConfirmarParcial = ref(false)
 const mostrarIntegracionExitosa = ref(false)
 const mostrarConfirmarEliminar = ref(false)
 
 /**
- * pickingStore.isSubmitting es una unica bandera compartida por las 6 acciones del store, pero
- * varios de estos botones pueden estar visibles a la vez (ej. Cerrar y Eliminar en EnProceso).
- * Se rastrea aqui cual accion puntual esta en curso para que el spinner salga solo en el boton
- * que el usuario realmente presiono, no en todos los que comparten isSubmitting.
+ * pickingStore.isSubmitting es una unica bandera compartida por las acciones del store, pero
+ * varios botones pueden estar visibles a la vez (ej. Confirmar Picking y Confirmar Parcial en
+ * EnProceso). Se rastrea aqui cual accion puntual esta en curso para que el spinner salga solo
+ * en el boton que el usuario realmente presiono, no en todos los que comparten isSubmitting.
  */
-const accionEnCurso = ref<'cerrar' | 'integrar' | 'verificar' | 'eliminar' | null>(null)
+const accionEnCurso = ref<'confirmarPicking' | 'confirmarParcial' | 'verificar' | 'eliminar' | null>(null)
 
 const enProceso = computed(() => pickingStore.sesion?.estado === 'EnProceso')
-const puedeCerrar = computed(() => pickingStore.sesion?.estado === 'EnProceso' && pickingStore.scans.length > 0)
-const puedeIntegrarSap = computed(() => pickingStore.sesion?.estado === 'Finalizada' || pickingStore.sesion?.estado === 'ErrorSap')
-const puedeVerificarEstadoSap = computed(() => pickingStore.sesion?.estado === 'EnviandoSap')
-const puedeEliminarPicking = computed(
-  () => pickingStore.sesion?.estado !== 'EnviandoSap' && pickingStore.sesion?.estado !== 'IntegradaSap'
+const puedeConfirmarPicking = computed(() => enProceso.value && pickingStore.scans.length > 0)
+const puedeConfirmarParcial = computed(
+  () => enProceso.value && (pickingStore.sesion?.lineas.some((l) => l.estadoLinea === 'Completa') ?? false)
 )
+/** "Reintentar": la sesion ya se cerro (Finalizada/ErrorSap) en el modo persistido en sesion.modoConfirmacion. */
+const puedeReintentar = computed(() => pickingStore.sesion?.estado === 'Finalizada' || pickingStore.sesion?.estado === 'ErrorSap')
+const modoReintento = computed(() => pickingStore.sesion?.modoConfirmacion ?? 'Picking')
+const puedeVerificarEstadoSap = computed(() => pickingStore.sesion?.estado === 'EnviandoSap')
+/**
+ * Solo antes de confirmar (parcial o picking): una vez cerrada la sesion, la unica salida es
+ * reintentar, no eliminar. Ademas, "Eliminar Picking" borra la sesion completa (ver
+ * confirmarEliminarPicking) asi que sin escaneos no hay nada que perder: deshabilitado para
+ * evitar el viaje redondo (eliminar -> reiniciar sesion -> recargar la ODC desde SAP) sin motivo.
+ */
+const puedeEliminarPicking = computed(() => enProceso.value && pickingStore.scans.length > 0)
 
 async function cargar(): Promise<void> {
   await pickingStore.cargarSesion(sesionId.value)
@@ -91,27 +101,61 @@ function seleccionarLineaCompleta(linea: OrdenPickingLineaResponse): void {
   })
 }
 
+/**
+ * Clic sobre la celda "Código de barras": llena el campo Código con el codeBars en vez del
+ * itemCode, para el caso en que el usuario quiera buscar/escanear por ese valor puntual.
+ */
+function seleccionarLineaPorCodigoBarras(linea: OrdenPickingLineaResponse): void {
+  if (!enProceso.value || linea.estadoLinea === 'Completa' || pickingStore.isSubmitting || !linea.codeBars) return
+  codigoInput.value = linea.codeBars
+  nextTick(() => {
+    cantidadInputEl.value?.focus()
+    cantidadInputEl.value?.select()
+  })
+}
+
+async function copiarAlPortapapeles(texto: string): Promise<void> {
+  if (!texto) return
+  try {
+    await navigator.clipboard.writeText(texto)
+    toast.success('Copiado al portapapeles', texto)
+  } catch {
+    toast.error('Error al copiar', 'No se pudo copiar al portapapeles')
+  }
+}
+
 async function eliminarScan(scanId: number): Promise<void> {
   await pickingStore.eliminarScan(scanId)
   codigoInputEl.value?.focus()
 }
 
-async function confirmarCierre(): Promise<void> {
-  mostrarConfirmarCierre.value = false
-  accionEnCurso.value = 'cerrar'
+async function confirmarPicking(): Promise<void> {
+  mostrarConfirmarPicking.value = false
+  accionEnCurso.value = 'confirmarPicking'
   try {
-    const ok = await pickingStore.cerrar()
-    if (ok) mostrarCierreExitoso.value = true
+    const ok = await pickingStore.confirmarPicking()
+    if (ok && pickingStore.sesion?.estado === 'IntegradaSap') mostrarIntegracionExitosa.value = true
   } finally {
     accionEnCurso.value = null
   }
 }
 
-async function confirmarIntegrarSap(): Promise<void> {
-  mostrarConfirmarIntegrarSap.value = false
-  accionEnCurso.value = 'integrar'
+async function confirmarParcial(): Promise<void> {
+  mostrarConfirmarParcial.value = false
+  accionEnCurso.value = 'confirmarParcial'
   try {
-    const ok = await pickingStore.integrarSap()
+    const ok = await pickingStore.confirmarParcial()
+    if (ok && pickingStore.sesion?.estado === 'IntegradaSap') mostrarIntegracionExitosa.value = true
+  } finally {
+    accionEnCurso.value = null
+  }
+}
+
+/** Reintentar: repite la misma accion (modoReintento) que cerro originalmente la sesion. */
+async function reintentar(): Promise<void> {
+  accionEnCurso.value = modoReintento.value === 'Parcial' ? 'confirmarParcial' : 'confirmarPicking'
+  try {
+    const ok = modoReintento.value === 'Parcial' ? await pickingStore.confirmarParcial() : await pickingStore.confirmarPicking()
     if (ok && pickingStore.sesion?.estado === 'IntegradaSap') mostrarIntegracionExitosa.value = true
   } finally {
     accionEnCurso.value = null
@@ -128,29 +172,31 @@ async function verificarEstado(): Promise<void> {
   }
 }
 
-async function alternarLogs(): Promise<void> {
-  mostrarLogs.value = !mostrarLogs.value
-  if (mostrarLogs.value && pickingStore.logs.length === 0) {
-    await pickingStore.cargarLogs()
-  }
-}
-
+/**
+ * Al eliminar, la sesion se borra por completo en el backend (no queda nada que recargar bajo
+ * este mismo sesionId). Para no forzar al usuario a esperar la recarga de la ODC desde SAP en
+ * OrdenCompraDetailView, se reinicia aqui mismo una sesion nueva y vacia para la misma ODC/almacen
+ * y se reemplaza la ruta (replace, no push) para no dejar el sesionId eliminado en el historial.
+ * Solo si ese reinicio falla se cae al comportamiento anterior (volver al detalle de la ODC).
+ */
 async function confirmarEliminarPicking(): Promise<void> {
   mostrarConfirmarEliminar.value = false
   accionEnCurso.value = 'eliminar'
   try {
     const docNum = pickingStore.sesion?.docNum
+    const whsCode = pickingStore.sesion?.whsCode
     const ok = await pickingStore.eliminarSesion()
-    if (ok && docNum !== undefined) {
+    if (!ok || docNum === undefined || whsCode === undefined) return
+
+    const nuevaSesion = await pickingStore.iniciar(docNum, whsCode)
+    if (nuevaSesion) {
+      router.replace({ name: 'recepcion-proveedores-picking', params: { sesionId: nuevaSesion.id } })
+    } else {
       router.push({ name: 'recepcion-proveedores-detalle', params: { docNum } })
     }
   } finally {
     accionEnCurso.value = null
   }
-}
-
-function cerrarModalExito(): void {
-  mostrarCierreExitoso.value = false
 }
 
 onMounted(cargar)
@@ -174,38 +220,46 @@ watch(sesionId, cargar)
             Picking — ODC {{ pickingStore.sesion.docNum }}
           </h1>
           <p class="text-sm text-gray-600 dark:text-gray-400">
-            Almacén {{ pickingStore.sesion.whsCode }} · Estado: {{ pickingStore.sesion.estado }}
+            {{ pickingStore.sesion.proveedor ?? 'Proveedor no disponible' }} · Almacén {{ pickingStore.sesion.whsCode }}
+            <template v-if="pickingStore.sesion.docDueDate"> · Fecha entrega: {{ pickingStore.sesion.docDueDate }}</template>
+            · Estado: {{ pickingStore.sesion.estado }}
           </p>
         </div>
         <div class="flex flex-wrap gap-2">
           <button
+            v-if="enProceso"
             type="button"
-            class="px-3 py-2 text-sm font-medium bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-            @click="alternarLogs"
-          >
-            {{ mostrarLogs ? 'Ocultar logs de esta sesión' : 'Ver logs de esta sesión' }}
-          </button>
-          <button
-            type="button"
-            :disabled="!puedeCerrar || pickingStore.isSubmitting"
+            :disabled="!puedeConfirmarParcial || pickingStore.isSubmitting"
+            title="Envía a SAP solo los productos completos; el resto queda pendiente para otro picking."
             class="px-3 py-2 text-sm font-medium bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-            @click="mostrarConfirmarCierre = true"
+            @click="mostrarConfirmarParcial = true"
           >
-            <LoadingSpinner v-if="accionEnCurso === 'cerrar'" layout="inline" size="sm" color="current" aria-label="Cerrando" />
-            {{ accionEnCurso === 'cerrar' ? 'Cerrando...' : 'Cerrar Picking' }}
+            <LoadingSpinner v-if="accionEnCurso === 'confirmarParcial'" layout="inline" size="sm" color="current" aria-label="Confirmando" />
+            {{ accionEnCurso === 'confirmarParcial' ? 'Confirmando...' : 'Confirmar Parcial' }}
           </button>
           <button
-            v-if="puedeIntegrarSap"
+            v-if="enProceso"
+            type="button"
+            :disabled="!puedeConfirmarPicking || pickingStore.isSubmitting"
+            title="Cierra la ODC y envía a SAP todo lo escaneado, sin opción a recibir el resto después."
+            class="px-3 py-2 text-sm font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+            @click="mostrarConfirmarPicking = true"
+          >
+            <LoadingSpinner v-if="accionEnCurso === 'confirmarPicking'" layout="inline" size="sm" color="current" aria-label="Confirmando" />
+            {{ accionEnCurso === 'confirmarPicking' ? 'Confirmando...' : 'Confirmar Picking' }}
+          </button>
+          <button
+            v-if="puedeReintentar"
             type="button"
             :disabled="pickingStore.isSubmitting"
             class="px-3 py-2 text-sm font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-            @click="mostrarConfirmarIntegrarSap = true"
+            @click="reintentar"
           >
-            <LoadingSpinner v-if="accionEnCurso === 'integrar'" layout="inline" size="sm" color="current" aria-label="Integrando" />
+            <LoadingSpinner v-if="accionEnCurso === 'confirmarPicking' || accionEnCurso === 'confirmarParcial'" layout="inline" size="sm" color="current" aria-label="Reintentando" />
             {{
-              accionEnCurso === 'integrar'
-                ? 'Integrando...'
-                : pickingStore.sesion.estado === 'ErrorSap' ? 'Reintentar integración SAP' : 'Integrar a SAP'
+              accionEnCurso
+                ? 'Reintentando...'
+                : `Reintentar ${modoReintento === 'Parcial' ? 'Confirmar Parcial' : 'Confirmar Picking'}`
             }}
           </button>
           <button
@@ -219,9 +273,10 @@ watch(sesionId, cargar)
             {{ accionEnCurso === 'verificar' ? 'Verificando...' : 'Verificar estado' }}
           </button>
           <button
-            v-if="puedeEliminarPicking"
+            v-if="enProceso"
             type="button"
-            :disabled="pickingStore.isSubmitting"
+            :disabled="!puedeEliminarPicking || pickingStore.isSubmitting"
+            :title="!puedeEliminarPicking ? 'No hay escaneos registrados para eliminar' : undefined"
             class="px-3 py-2 text-sm font-medium bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
             @click="mostrarConfirmarEliminar = true"
           >
@@ -303,9 +358,38 @@ watch(sesionId, cargar)
               :title="enProceso && linea.estadoLinea !== 'Completa' ? 'Clic para escanear este producto' : undefined"
               @click="seleccionarLinea(linea)"
             >
-              <td class="px-4 py-2 text-sm text-gray-900 dark:text-white">{{ linea.itemCode }}</td>
+              <td class="px-4 py-2 text-sm text-gray-900 dark:text-white">
+                <span class="inline-flex items-center gap-1.5">
+                  {{ linea.itemCode }}
+                  <button
+                    type="button"
+                    class="text-gray-400 dark:text-gray-500 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+                    title="Copiar código de producto"
+                    @click.stop="copiarAlPortapapeles(linea.itemCode)"
+                  >
+                    <ClipboardDocumentIcon class="w-4 h-4" />
+                  </button>
+                </span>
+              </td>
               <td class="px-4 py-2 text-sm text-gray-700 dark:text-gray-300">{{ linea.itemDescription }}</td>
-              <td class="px-4 py-2 text-sm text-gray-700 dark:text-gray-300">{{ linea.codeBars }}</td>
+              <td
+                class="px-4 py-2 text-sm text-gray-700 dark:text-gray-300"
+                :class="{ 'cursor-pointer hover:underline': enProceso && linea.estadoLinea !== 'Completa' && linea.codeBars }"
+                :title="enProceso && linea.estadoLinea !== 'Completa' && linea.codeBars ? 'Clic para escanear con este código de barras' : undefined"
+                @click.stop="seleccionarLineaPorCodigoBarras(linea)"
+              >
+                <span v-if="linea.codeBars" class="inline-flex items-center gap-1.5">
+                  {{ linea.codeBars }}
+                  <button
+                    type="button"
+                    class="text-gray-400 dark:text-gray-500 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+                    title="Copiar código de barras"
+                    @click.stop="copiarAlPortapapeles(linea.codeBars)"
+                  >
+                    <ClipboardDocumentIcon class="w-4 h-4" />
+                  </button>
+                </span>
+              </td>
               <td
                 class="px-4 py-2 text-sm text-right text-gray-900 dark:text-white"
                 :class="{ 'cursor-pointer hover:underline': enProceso && linea.estadoLinea !== 'Completa' }"
@@ -315,7 +399,7 @@ watch(sesionId, cargar)
                 {{ linea.cantidadPedida }}
               </td>
               <td class="px-4 py-2 text-sm text-right font-semibold text-gray-900 dark:text-white">{{ linea.cantidadPickeada }}</td>
-              <td class="px-4 py-2 text-sm text-right text-gray-900 dark:text-white">{{ linea.cantidadPendiente - linea.cantidadPickeada }}</td>
+              <td class="px-4 py-2 text-sm text-right text-gray-900 dark:text-white">{{ Math.max(0, linea.cantidadPendiente - linea.cantidadPickeada) }}</td>
               <td class="px-4 py-2 text-sm">
                 <span
                   class="px-2 py-0.5 rounded-full text-xs font-semibold"
@@ -326,6 +410,13 @@ watch(sesionId, cargar)
                   }"
                 >
                   {{ linea.estadoLinea }}
+                </span>
+                <span
+                  v-if="linea.cantidadSobrante > 0"
+                  class="ml-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300"
+                  title="Cantidad recibida por encima de lo pedido en esta línea"
+                >
+                  Sobrante: {{ linea.cantidadSobrante }}
                 </span>
               </td>
             </tr>
@@ -368,42 +459,26 @@ watch(sesionId, cargar)
         </table>
       </div>
 
-      <div v-if="mostrarLogs" class="rounded-lg border border-gray-200 dark:border-gray-700 p-4">
-        <h2 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Registro de eventos</h2>
-        <ul class="space-y-1 text-xs text-gray-600 dark:text-gray-400">
-          <li v-for="log in pickingStore.logs" :key="log.id">
-            [{{ new Date(log.fechaHora).toLocaleString() }}] {{ log.evento }} — {{ log.detalle }}
-          </li>
-          <li v-if="pickingStore.logs.length === 0">Sin eventos registrados.</li>
-        </ul>
-      </div>
     </template>
 
     <p v-else-if="pickingStore.error" class="text-sm text-red-600 dark:text-red-400">{{ pickingStore.error }}</p>
 
     <ConfirmModal
-      :open="mostrarConfirmarCierre"
-      title="¿Cerrar picking?"
-      message="No podrás registrar más escaneos en esta sesión después de cerrarla."
-      confirm-label="Cerrar picking"
-      @confirm="confirmarCierre"
-      @cancel="mostrarConfirmarCierre = false"
-    />
-
-    <SuccessModal
-      :open="mostrarCierreExitoso"
-      title="Picking cerrado"
-      message="La sesión de picking se cerró correctamente."
-      @close="cerrarModalExito"
+      :open="mostrarConfirmarParcial"
+      title="¿Confirmar Parcial?"
+      message="Se creará un Goods Receipt en SAP solo con los productos completos. Los productos pendientes o parciales quedarán disponibles para otra sesión de picking."
+      confirm-label="Confirmar Parcial"
+      @confirm="confirmarParcial"
+      @cancel="mostrarConfirmarParcial = false"
     />
 
     <ConfirmModal
-      :open="mostrarConfirmarIntegrarSap"
-      title="¿Integrar a SAP?"
-      message="Se creará un Goods Receipt en SAP con lo escaneado en esta sesión."
-      confirm-label="Integrar a SAP"
-      @confirm="confirmarIntegrarSap"
-      @cancel="mostrarConfirmarIntegrarSap = false"
+      :open="mostrarConfirmarPicking"
+      title="¿Confirmar Picking?"
+      message="Se cerrará esta ODC y se creará un Goods Receipt en SAP con todo lo escaneado. No podrás recibir el resto después."
+      confirm-label="Confirmar Picking"
+      @confirm="confirmarPicking"
+      @cancel="mostrarConfirmarPicking = false"
     />
 
     <SuccessModal
@@ -416,7 +491,7 @@ watch(sesionId, cargar)
     <ConfirmModal
       :open="mostrarConfirmarEliminar"
       title="¿Eliminar picking?"
-      message="Esta acción eliminará todo el picking y no se puede deshacer. ¿Desea continuar?"
+      message="Se eliminarán todos los escaneos registrados y se iniciará una nueva sesión de picking vacía para esta ODC. No se puede deshacer. ¿Desea continuar?"
       confirm-label="Eliminar Picking"
       @confirm="confirmarEliminarPicking"
       @cancel="mostrarConfirmarEliminar = false"
