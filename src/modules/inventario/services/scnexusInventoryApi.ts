@@ -13,6 +13,7 @@ export interface ItemStockDto {
   level1?: string | null
   level2?: string | null
   level3?: string | null
+  barcode?: string | null
   cost?: number | null
   pvp?: number | null
 }
