@@ -234,9 +234,10 @@
                   <ArrowPathIcon class="h-4 w-4" :class="{ 'animate-spin': reintentandoIds.has(item.id) }" aria-hidden="true" />
                 </button>
 
-                <!-- Anular depósito si no está integrado en SAP -->
+                <!-- Anular depósito: si no está integrado en SAP basta con Eliminar; si ya está
+                     integrado, es exclusivo de Contabilidad/Admin (puedeAnularSap) -->
                 <button
-                  v-if="puedeEliminar && !item.creadoSAP && item.estado !== EstadoDeposito.Anulado"
+                  v-if="item.estado !== EstadoDeposito.Anulado && (item.creadoSAP ? puedeAnularSap : puedeEliminar)"
                   type="button"
                   :disabled="anulandoIds.has(item.id)"
                   :aria-busy="anulandoIds.has(item.id)"
@@ -295,6 +296,8 @@
       :open="modalAnularAbierto"
       :numero-comprobante="itemParaAnular?.numeroComprobante ?? ''"
       :anulando="itemParaAnular ? anulandoIds.has(itemParaAnular.id) : false"
+      :creado-s-a-p="itemParaAnular?.creadoSAP ?? false"
+      :doc-entry-s-a-p="itemParaAnular?.docEntrySAP ?? null"
       @close="modalAnularAbierto = false"
       @confirmar="onConfirmarAnular"
     />
@@ -341,7 +344,7 @@ const {
   fetchAuditoria, exportarCsv, reintentarSap, anular
 } = useAuditoriaGlobal()
 
-const { tieneAccesoGlobal, opcionesAlmacenes, puedeEliminar, puedeIntegrarSap } = useTesoreriaAccess()
+const { tieneAccesoGlobal, opcionesAlmacenes, puedeEliminar, puedeAnularSap, puedeIntegrarSap } = useTesoreriaAccess()
 
 const hoy = new Date()
 const hace7Dias = new Date(hoy.getTime() - 7 * 24 * 60 * 60 * 1000)
@@ -403,9 +406,9 @@ function abrirModalAnular(item: AuditoriaGlobalDto): void {
   modalAnularAbierto.value = true
 }
 
-async function onConfirmarAnular(motivo: string): Promise<void> {
+async function onConfirmarAnular(motivo: string, confirmacionSapReversado: boolean): Promise<void> {
   if (!itemParaAnular.value) return
-  await anular(itemParaAnular.value, motivo)
+  await anular(itemParaAnular.value, motivo, confirmacionSapReversado)
   modalAnularAbierto.value = false
 }
 

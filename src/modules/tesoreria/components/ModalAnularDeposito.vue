@@ -20,6 +20,21 @@
             Esta acción marcará el depósito como anulado y quedará registrada en la auditoría. No se puede deshacer.
           </p>
 
+          <!-- Banner de advertencia exclusivo para depósitos ya integrados en SAP -->
+          <div
+            v-if="creadoSAP"
+            role="alert"
+            class="mt-4 flex items-start gap-2 rounded-lg border border-vermilion-300 bg-vermilion-50 px-3 py-2.5 text-sm text-vermilion-800 dark:border-vermilion-800 dark:bg-vermilion-950/30 dark:text-vermilion-300"
+          >
+            <ExclamationTriangleIcon class="h-5 w-5 flex-shrink-0" aria-hidden="true" />
+            <p>
+              <strong>ATENCIÓN:</strong> Este depósito se encuentra contabilizado en SAP Business One con
+              <strong>DocEntry {{ docEntrySAP ?? '—' }}</strong>. La anulación local debe ejecutarse únicamente
+              después de haber cancelado el documento en SAP Desktop (Gestión de Bancos &gt; Depósitos &gt; Cancelar),
+              para evitar descuadres fiscales.
+            </p>
+          </div>
+
           <label for="motivoAnulacion" class="mt-4 block text-sm font-medium text-gray-700 dark:text-gray-300">
             Motivo de la anulación <span class="text-red-500" aria-hidden="true">*</span>
           </label>
@@ -33,6 +48,21 @@
             class="mt-1 w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500"
           />
           <p class="mt-1 text-xs text-gray-400">{{ motivo.length }}/250</p>
+
+          <!-- Checkbox obligatorio de confirmación de reversión manual en SAP Desktop -->
+          <label
+            v-if="creadoSAP"
+            class="mt-3 flex items-start gap-2.5 rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-2.5 cursor-pointer"
+          >
+            <input
+              v-model="confirmacionSapReversado"
+              type="checkbox"
+              class="mt-0.5 h-4 w-4 rounded border-gray-300 text-red-600 focus:ring-red-500"
+            />
+            <span class="text-sm text-gray-700 dark:text-gray-300">
+              Confirmo que este depósito (DocEntry {{ docEntrySAP ?? '—' }}) ya fue cancelado previamente en SAP Business One Desktop.
+            </span>
+          </label>
         </div>
 
         <footer class="flex items-center justify-end gap-2 border-t border-gray-200 dark:border-gray-700 px-5 py-3">
@@ -45,7 +75,7 @@
           </button>
           <button
             type="button"
-            :disabled="motivo.trim().length < 5 || anulando"
+            :disabled="!formularioValido || anulando"
             :aria-busy="anulando"
             class="inline-flex items-center gap-2 rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
             @click="confirmar"
@@ -63,7 +93,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, toRef, watch } from 'vue'
+import { computed, ref, toRef, watch } from 'vue'
 import { ExclamationTriangleIcon } from '@heroicons/vue/24/outline'
 import { useModalFocusTrap } from '../composables/useModalFocusTrap'
 
@@ -71,29 +101,40 @@ const props = defineProps<{
   open: boolean
   numeroComprobante: string
   anulando: boolean
+  /** Cuando es true, exige el checkbox de confirmación de reversión manual en SAP Desktop. */
+  creadoSAP?: boolean
+  docEntrySAP?: number | null
 }>()
 
 const emit = defineEmits<{
   (e: 'close'): void
-  (e: 'confirmar', motivo: string): void
+  (e: 'confirmar', motivo: string, confirmacionSapReversado: boolean): void
 }>()
 
 const tituloId = `anular-deposito-titulo-${Math.random().toString(36).slice(2, 9)}`
 const dialogRef = ref<HTMLElement | null>(null)
 const primerCampoRef = ref<HTMLTextAreaElement | null>(null)
 const motivo = ref('')
+const confirmacionSapReversado = ref(false)
+
+const formularioValido = computed(() =>
+  motivo.value.trim().length >= 5 && (!props.creadoSAP || confirmacionSapReversado.value)
+)
 
 function cerrar(): void {
   emit('close')
 }
 
 function confirmar(): void {
-  if (motivo.value.trim().length < 5) return
-  emit('confirmar', motivo.value.trim())
+  if (!formularioValido.value) return
+  emit('confirmar', motivo.value.trim(), confirmacionSapReversado.value)
 }
 
 watch(() => props.open, (isOpen) => {
-  if (isOpen) motivo.value = ''
+  if (isOpen) {
+    motivo.value = ''
+    confirmacionSapReversado.value = false
+  }
 })
 
 const { onKeydown } = useModalFocusTrap(dialogRef, primerCampoRef, toRef(props, 'open'), cerrar)

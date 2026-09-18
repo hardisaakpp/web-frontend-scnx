@@ -315,6 +315,8 @@
       :open="modalAnularAbierto"
       :numero-comprobante="depositoParaAnular?.numeroComprobante ?? ''"
       :anulando="depositoParaAnular ? anulandoIds.has(depositoParaAnular.id) : false"
+      :creado-s-a-p="depositoParaAnular?.creadoSAP ?? false"
+      :doc-entry-s-a-p="depositoParaAnular?.docEntrySAP ?? null"
       @close="modalAnularAbierto = false"
       @confirmar="onConfirmarAnular"
     />
@@ -458,6 +460,8 @@ function abrirModalAnular(deposito: DepositoDto): void {
 
 async function onConfirmarAnular(motivo: string): Promise<void> {
   if (!depositoParaAnular.value) return
+  // TablaDetallePapeletas.vue mantiene oculta la papelera para creadoSAP === true en esta vista de
+  // tienda: el flujo con checkbox de reversión SAP nunca se dispara desde aquí, por diseño.
   const ok = await anularDeposito(depositoParaAnular.value, motivo, { fechaDesde: fechaDesde.value, fechaHasta: fechaHasta.value })
   if (ok) modalAnularAbierto.value = false
 }

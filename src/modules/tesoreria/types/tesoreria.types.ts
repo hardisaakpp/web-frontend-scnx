@@ -136,9 +136,24 @@ export interface ConfiguracionTesoreriaDto {
   /** Hora local de Ecuador a partir de la cual se bloquea el registro extemporáneo. El backend
    *  serializa el TimeSpan como "HH:mm:ss" (p. ej. "14:00:00"). */
   horaLimiteCorte: string
+  // ─── Motor de notificaciones acumulativas (independiente del candado de tienda) ────────────
+  notificacionesActivas: boolean
+  usarRangoCalendarioNotificacion: boolean
+  diasVentanaNotificacion: number
+  /** DateOnly "yyyy-MM-dd", solo relevante cuando usarRangoCalendarioNotificacion es true. */
+  fechaInicioNotificacion: string | null
+  fechaFinNotificacion: string | null
 }
 
 export type UpdateConfiguracionRequest = ConfiguracionTesoreriaDto
+
+// ─── Resultado de una corrida (automática o manual) del motor de notificaciones ─────────────
+export interface ResultadoNotificacionesDto {
+  tiendasEvaluadas: number
+  correosEnviados: number
+  tiendasOmitidas: number
+  errores: number
+}
 
 // ─── Gestión de cuentas financieras (activación/desactivación, Contabilidad/Admin) ──────────
 export interface ActualizarEstadoCuentaPayload {
@@ -182,6 +197,36 @@ export interface CrearDepositoPayload {
   responsable: string
   esSobrante: boolean
   comprobante: File
+}
+
+// ─── Destinatarios de alertas de Tesorería (Contactos de Notificación, Contabilidad/Admin) ──
+export interface ContactoNotificacionDto {
+  id: number
+  empresaId: TipoEmpresa
+  nombreCompleto: string
+  email: string
+  cargo: string | null
+  activo: boolean
+  fechaCreacion: string
+}
+
+export interface CrearContactoNotificacionPayload {
+  nombreCompleto: string
+  email: string
+  cargo: string | null
+}
+
+export interface ActualizarContactoNotificacionPayload extends CrearContactoNotificacionPayload {
+  activo: boolean
+}
+
+export interface CambiarEstadoContactoPayload {
+  activo: boolean
+}
+
+export interface EnviarCorreoPruebaResultadoDto {
+  enviados: number
+  destinatarios: string[]
 }
 
 /** Permisos canónicos Tesoreria.Depositos.* — deben coincidir EXACTO con los claims emitidos por api-core-scnexus. */
