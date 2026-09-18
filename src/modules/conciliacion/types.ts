@@ -33,11 +33,48 @@ export interface DashboardParams {
 }
 
 // ── Catálogo de Bancos ──────────────────────────────────────
+export interface BancoColumnasMapeo {
+  fecha: string
+  monto: string
+  tipo_movimiento?: string
+  referencia1?: string
+  referencia2?: string
+  ref_bol?: string
+  oficina?: string
+  cod_transaccion?: string
+  descripcion?: string
+  saldo_banco?: string
+}
+
+export interface BancoConfigMapeo {
+  columnas: BancoColumnasMapeo
+  formato_fecha: string
+  fila_header?: number
+}
+
 export interface Banco {
   id_banco: number
   nombre_banco: string
   codigo_cuenta_sap: string
+  nombre_excel?: string | null
   activo?: boolean
+  config_mapeo?: BancoConfigMapeo | null
+}
+
+export interface BancoCatalogoCreate {
+  codigo_cuenta_sap: string
+  nombre_banco: string
+  nombre_excel?: string | null
+  activo?: boolean
+  config_mapeo?: BancoConfigMapeo | null
+}
+
+export interface BancoCatalogoUpdate {
+  codigo_cuenta_sap?: string
+  nombre_banco?: string
+  nombre_excel?: string | null
+  activo?: boolean
+  config_mapeo?: BancoConfigMapeo | null
 }
 
 // ── Banca — Importación de Excel ────────────────────────────
@@ -49,30 +86,60 @@ export interface CargaArchivo {
   tipo_origen: string
   registros_procesados: number
   usuario_carga: string | null
+  observaciones?: string | null
+}
+
+/** Meta de paginación, compartida por los distintos listados paginados del backend (cargas, sincronizaciones SAP, ...). */
+export interface PaginacionMeta {
+  total: number
+  pagina: number
+  cantidad: number
 }
 
 export interface ImportResult {
   registros_insertados: number
   registros_duplicados: number
   registros_con_error: number
-  errores: any[]
+  errores: string[]
+  banco_detectado: string
 }
 
-// ── SAP — Sincronización ────────────────────────────────────
+// ── SAP — Sincronización (asíncrona, corre en segundo plano) ─
 export interface SAPSyncRequest {
   fecha_desde: string // date YYYY-MM-DD
   fecha_hasta: string // date YYYY-MM-DD
 }
 
+export type EstadoSincronizacionSAP = 'EN_PROGRESO' | 'COMPLETADO' | 'ERROR'
 
-export interface SAPSyncResponse {
-  mensaje: string
-  registros_insertados: number
-  registros_actualizados: number
-  registros_incompletos?: number
-  fecha_inicio_filtro: string  // date
-  fecha_fin_filtro: string     // date
-  fecha_baja: string           // datetime
+export interface SincronizacionSAP {
+  id: string
+  estado: EstadoSincronizacionSAP
+  fecha_inicio: string          // datetime
+  fecha_fin: string | null      // datetime
+  fecha_desde_filtro: string    // date
+  fecha_hasta_filtro: string    // date
+  total_filas: number | null
+  procesados: number | null
+  insertados: number | null
+  actualizados: number | null
+  registros_incompletos: number | null
+  alertas_conciliados_modificados: number | null
+  error_mensaje: string | null
+}
+
+/** Respuesta de POST /sap/sync (202): solo se conoce el arranque, el resultado se consulta con polling. */
+export type SincronizacionIniciada = Pick<
+  SincronizacionSAP,
+  'id' | 'estado' | 'fecha_inicio' | 'fecha_desde_filtro' | 'fecha_hasta_filtro'
+>
+
+/** data del error 409 (SYNC_EN_CURSO) cuando ya hay una sincronización corriendo. */
+export interface SincronizacionEnCursoInfo {
+  id: string
+  fecha_inicio: string
+  procesados: number | null
+  total_filas: number | null
 }
 
 // ── Conciliación — Automática ───────────────────────────────

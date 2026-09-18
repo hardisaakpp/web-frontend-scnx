@@ -277,6 +277,25 @@
             </div>
           </div>
         </router-link>
+
+        <!-- Catálogo de Bancos -->
+        <router-link
+          v-if="authStore.isAdmin || authStore.hasPermission('conciliacion.catalogo')"
+          to="/conciliacion/bancos"
+          class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 hover:border-teal-300 dark:hover:border-teal-600 hover:shadow-md transition-all text-left block group"
+        >
+          <div class="flex items-start gap-3">
+            <div class="w-10 h-10 rounded-lg bg-teal-50 dark:bg-teal-900/30 flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
+              <svg class="w-5 h-5 text-teal-600 dark:text-teal-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 21h18M4 18h16M6 18v-7m4 7v-7m4 7v-7m4 7v-7M4 11l8-6 8 6" />
+              </svg>
+            </div>
+            <div class="flex-1 min-w-0">
+              <div class="font-medium text-gray-900 dark:text-white text-sm">Catálogo de Bancos</div>
+              <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">Configurar el mapeo de columnas del Excel por banco</div>
+            </div>
+          </div>
+        </router-link>
       </div>
     </div>
   </div>
