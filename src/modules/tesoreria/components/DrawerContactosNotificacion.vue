@@ -1,17 +1,6 @@
 <template>
   <Teleport to="body">
     <Transition
-      enter-active-class="transition-opacity ease-in-out duration-300"
-      enter-from-class="opacity-0"
-      enter-to-class="opacity-100"
-      leave-active-class="transition-opacity ease-in-out duration-200"
-      leave-from-class="opacity-100"
-      leave-to-class="opacity-0"
-    >
-      <div v-if="isOpen" class="fixed inset-0 bg-black/60 backdrop-blur-xs z-40" @click="cerrar"></div>
-    </Transition>
-
-    <Transition
       enter-active-class="transform transition ease-in-out duration-300"
       enter-from-class="translate-x-full"
       enter-to-class="translate-x-0"
@@ -19,14 +8,13 @@
       leave-from-class="translate-x-0"
       leave-to-class="translate-x-full"
     >
-      <div
+      <dialog
         v-if="isOpen"
         ref="dialogRef"
-        role="dialog"
-        aria-modal="true"
         aria-labelledby="drawer-contactos-title"
-        class="fixed inset-y-0 right-0 z-50 w-full max-w-3xl sm:max-w-4xl bg-slate-900 border-l border-slate-800 shadow-2xl flex flex-col"
-        @keydown="onKeydown"
+        class="drawer-contactos-dialog fixed inset-y-0 right-0 m-0 h-full w-full max-w-3xl sm:max-w-4xl border-y-0 border-r-0 border-l border-slate-800 bg-slate-900 p-0 shadow-2xl flex flex-col focus:outline-none"
+        @cancel.prevent="cerrar"
+        @click="onBackdropClick"
       >
         <header class="flex items-start justify-between gap-4 border-b border-slate-800 px-5 py-4 flex-shrink-0">
           <div class="min-w-0">
@@ -38,7 +26,6 @@
             </p>
           </div>
           <button
-            ref="botonCerrarRef"
             type="button"
             aria-label="Cerrar panel"
             class="flex-shrink-0 rounded-lg p-1.5 text-slate-400 hover:bg-slate-800 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500"
@@ -179,7 +166,7 @@
             Cerrar <span class="text-slate-500">(Esc)</span>
           </button>
         </footer>
-      </div>
+      </dialog>
     </Transition>
 
     <ModalContactoNotificacion
@@ -194,9 +181,8 @@
 </template>
 
 <script setup lang="ts">
-import { onUnmounted, ref, toRef, watch } from 'vue'
+import { nextTick, onUnmounted, ref, watch } from 'vue'
 import { EnvelopeIcon, ExclamationTriangleIcon, MagnifyingGlassIcon, PlusIcon, UserGroupIcon, XMarkIcon } from '@heroicons/vue/24/outline'
-import { useModalFocusTrap } from '../composables/useModalFocusTrap'
 import { useContactosNotificacion } from '../composables/useContactosNotificacion'
 import ModalContactoNotificacion from './ModalContactoNotificacion.vue'
 import type {
@@ -213,16 +199,20 @@ const {
   erroresCampo, totalActivos, sinCobertura, cargar, crear, actualizar, cambiarEstado, eliminar, enviarPrueba
 } = useContactosNotificacion()
 
-const dialogRef = ref<HTMLElement | null>(null)
-const botonCerrarRef = ref<HTMLButtonElement | null>(null)
+const dialogRef = ref<HTMLDialogElement | null>(null)
 const isModalOpen = ref(false)
 const contactoEnEdicion = ref<ContactoNotificacionDto | null>(null)
 
 function cerrar(): void {
+  dialogRef.value?.close()
   emit('close')
 }
 
-const { onKeydown } = useModalFocusTrap(dialogRef, botonCerrarRef, toRef(props, 'isOpen'), cerrar)
+function onBackdropClick(evento: MouseEvent): void {
+  if (evento.target === dialogRef.value) {
+    cerrar()
+  }
+}
 
 function abrirCrear(): void {
   contactoEnEdicion.value = null
@@ -250,9 +240,13 @@ function confirmarEliminar(contacto: ContactoNotificacionDto): void {
 
 watch(
   () => props.isOpen,
-  (open) => {
+  async (open) => {
     document.body.style.overflow = open ? 'hidden' : ''
-    if (open) cargar()
+    if (open) {
+      cargar()
+      await nextTick()
+      dialogRef.value?.showModal()
+    }
   }
 )
 
@@ -260,3 +254,12 @@ onUnmounted(() => {
   document.body.style.overflow = ''
 })
 </script>
+
+<style>
+/* ::backdrop del <dialog> nativo: no se puede scopear (pseudo-elemento fuera del arbol normal),
+   por eso el nombre de clase bien especifico y el estilo sin "scoped". Reemplaza al overlay
+   manual bg-black/60 que envolvia el drawer antes de la migracion a <dialog>. */
+.drawer-contactos-dialog::backdrop {
+  background-color: rgb(0 0 0 / 0.6);
+}
+</style>
