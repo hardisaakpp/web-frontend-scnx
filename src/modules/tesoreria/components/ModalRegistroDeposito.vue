@@ -327,46 +327,46 @@
               Verifique que los datos sean correctos antes de confirmar. Esta acción registrará el depósito de forma definitiva.
             </p>
 
-            <div class="space-y-3 rounded-xl border border-slate-700 bg-slate-800/60 p-4">
+            <div class="space-y-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/60 p-4">
               <div class="flex items-center justify-between gap-3 text-sm">
-                <span class="text-slate-400">Almacén y Cierre</span>
-                <span class="text-right font-semibold text-white">{{ codigoAlmacen }} — Cierre del {{ formatDateOnly(fechaCierreCaja) }}</span>
+                <span class="text-gray-500 dark:text-gray-400">Almacén y Cierre</span>
+                <span class="text-right font-semibold text-gray-900 dark:text-white">{{ codigoAlmacen }} — Cierre del {{ formatDateOnly(fechaCierreCaja) }}</span>
               </div>
               <div class="flex items-center justify-between gap-3 text-sm">
-                <span class="text-slate-400">Banco Receptor</span>
-                <span class="text-right font-semibold text-white">{{ cuentaSeleccionada?.nombreCuenta }} — {{ cuentaSeleccionada?.codigoFormateado }}</span>
+                <span class="text-gray-500 dark:text-gray-400">Banco Receptor</span>
+                <span class="text-right font-semibold text-gray-900 dark:text-white">{{ cuentaSeleccionada?.nombreCuenta }} — {{ cuentaSeleccionada?.codigoFormateado }}</span>
               </div>
               <div class="flex items-center justify-between gap-3 text-sm">
-                <span class="text-slate-400">Fecha de Depósito</span>
-                <span class="font-semibold text-white">{{ formatDateOnly(fechaDepositoBanco) }}</span>
+                <span class="text-gray-500 dark:text-gray-400">Fecha de Depósito</span>
+                <span class="font-semibold text-gray-900 dark:text-white">{{ formatDateOnly(fechaDepositoBanco) }}</span>
               </div>
               <div class="flex items-center justify-between gap-3 text-sm">
-                <span class="text-slate-400">N.° Comprobante</span>
-                <span class="inline-flex items-center gap-1.5 rounded-lg border border-emerald-600/40 bg-emerald-500/10 px-2.5 py-1 font-mono text-sm font-bold text-emerald-300">
+                <span class="text-gray-500 dark:text-gray-400">N.° Comprobante</span>
+                <span class="inline-flex items-center gap-1.5 rounded-lg border border-emerald-300 bg-emerald-50 dark:border-emerald-600/40 dark:bg-emerald-500/10 px-2.5 py-1 font-mono text-sm font-bold text-emerald-700 dark:text-emerald-300">
                   <CheckCircleIcon class="h-4 w-4" aria-hidden="true" />
                   {{ numeroComprobante }}
                 </span>
               </div>
-              <div class="flex items-center justify-between gap-3 border-t border-slate-700/60 pt-3">
-                <span class="text-sm text-slate-400">Monto Depositado</span>
-                <span class="text-xl font-bold text-white">{{ formatCurrency(montoValor) }}</span>
+              <div class="flex items-center justify-between gap-3 border-t border-gray-200 dark:border-gray-700/60 pt-3">
+                <span class="text-sm text-gray-500 dark:text-gray-400">Monto Depositado</span>
+                <span class="text-xl font-bold text-gray-900 dark:text-white">{{ formatCurrency(montoValor) }}</span>
               </div>
               <div class="flex items-center justify-between gap-3 text-sm">
-                <span class="text-slate-400">Condición</span>
+                <span class="text-gray-500 dark:text-gray-400">Condición</span>
                 <span
                   class="rounded-full px-2.5 py-0.5 text-[11px] font-semibold"
                   :class="esSobrante
-                    ? 'bg-sky-500/10 text-sky-300 border border-sky-700/60'
-                    : 'bg-slate-700/60 text-slate-300 border border-slate-600/60'"
+                    ? 'bg-sky-50 text-sky-700 border border-sky-300 dark:bg-sky-500/10 dark:text-sky-300 dark:border-sky-700/60'
+                    : 'bg-gray-100 text-gray-600 border border-gray-300 dark:bg-gray-700/60 dark:text-gray-300 dark:border-gray-600/60'"
                 >
                   {{ esSobrante ? 'Sobrante / Excedente' : 'Normal' }}
                 </span>
               </div>
-              <div class="flex items-center gap-2 border-t border-slate-700/60 pt-3 text-sm">
-                <DocumentIcon class="h-5 w-5 flex-shrink-0 text-slate-400" aria-hidden="true" />
+              <div class="flex items-center gap-2 border-t border-gray-200 dark:border-gray-700/60 pt-3 text-sm">
+                <DocumentIcon class="h-5 w-5 flex-shrink-0 text-gray-400" aria-hidden="true" />
                 <div class="min-w-0 flex-1 text-left">
-                  <p class="truncate font-medium text-white">{{ archivo?.name }}</p>
-                  <p class="text-xs text-slate-400">{{ archivo ? formatTamano(archivo.size) : '' }}</p>
+                  <p class="truncate font-medium text-gray-900 dark:text-white">{{ archivo?.name }}</p>
+                  <p class="text-xs text-gray-500 dark:text-gray-400">{{ archivo ? formatTamano(archivo.size) : '' }}</p>
                 </div>
               </div>
             </div>
