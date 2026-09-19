@@ -30,7 +30,7 @@
         </header>
 
         <div class="flex-1 overflow-auto bg-gray-50 dark:bg-gray-900 p-4">
-          <p v-if="loading" role="status" class="py-16 text-center text-sm text-gray-500 dark:text-gray-400">Cargando comprobante…</p>
+          <output v-if="loading" class="block py-16 text-center text-sm text-gray-500 dark:text-gray-400">Cargando comprobante…</output>
           <div v-else-if="!fileUrl" role="alert" class="flex flex-col items-center justify-center gap-2 py-16 text-center text-gray-500 dark:text-gray-400">
             <ExclamationTriangleIcon class="h-8 w-8 text-amber-500" aria-hidden="true" />
             <p class="max-w-sm text-sm">

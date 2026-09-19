@@ -238,7 +238,7 @@ onMounted(() => {
   if (puedeConfigurar.value) {
     cargarPoliticas()
     cargarCuentas()
-    if (contactos.value.length === 0) void cargarContactos()
+    if (contactos.value.length === 0) cargarContactos()
   }
 })
 </script>

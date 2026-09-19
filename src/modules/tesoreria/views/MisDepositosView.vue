@@ -468,7 +468,7 @@ async function abrirModalRegistro(): Promise<void> {
   await cargarCatalogoAlmacenes()
   if (!isDrawerOpen.value || filaSeleccionada.value !== fila) return
   erroresCampoDeposito.value = null
-  void fetchCuentas()
+  fetchCuentas()
   modalRegistroAbierto.value = true
 }
 
@@ -514,7 +514,7 @@ watch(resumen, (nuevoResumen) => {
 })
 
 onMounted(() => {
-  if (puedeCrear.value) void cargarCatalogoAlmacenes()
+  if (puedeCrear.value) cargarCatalogoAlmacenes()
   if (almacenSeleccionado.value) consultar()
   window.addEventListener('keydown', onKeydownGlobal)
 })
