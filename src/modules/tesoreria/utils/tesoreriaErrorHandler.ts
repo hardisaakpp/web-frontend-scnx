@@ -52,9 +52,6 @@ export function parsearErrorIntegracionSap(error: unknown): SapErrorFriendly {
   const rawDetail = extraerDetalleCrudo(error)
   const lower = rawDetail.toLowerCase()
 
-  // eslint-disable-next-line no-console
-  console.warn('[SAP Integration Rejected]', rawDetail)
-
   // 1. Cuenta bancaria inactiva o congelada en SAP (código SAP -10)
   if (lower.includes('is inactive') || lower.includes('-10') || (lower.includes('account') && lower.includes('inactive'))) {
     return {

@@ -294,8 +294,7 @@
       :fecha-cierre-caja="filaSeleccionada?.fechaCierre ?? ''"
       :cuentas="cuentas"
       :loading-cuentas="loadingCuentas"
-      :saldo-pendiente="filaSeleccionada ? Math.max(0, filaSeleccionada.totalEfectivo - filaSeleccionada.totalDepositado) : 0"
-      :puede-autorizar-sobregiro="puedeAutorizarSobregiro"
+      :saldo-pendiente="saldoPendiente"
       :guardando="creandoDeposito"
       :errores-campo="erroresCampoDeposito"
       @close="modalRegistroAbierto = false"
@@ -306,7 +305,8 @@
     <ModalVisorComprobante
       :open="modalVisorAbierto"
       :file-url="urlComprobante"
-      :file-name="depositoParaVisor?.nombreArchivoOriginal ?? depositoParaVisor?.numeroComprobante ?? null"
+      :file-name="nombreComprobante"
+      :loading="cargandoComprobante"
       @close="modalVisorAbierto = false"
     />
 
@@ -335,10 +335,13 @@ import {
   MagnifyingGlassIcon
 } from '@heroicons/vue/24/outline'
 import { useToast } from '@/composables/useToast'
+import { useReposicionStore } from '@/modules/reposiciones/stores/reposicionStore'
+import reposicionApi from '@/modules/reposiciones/services/reposicionApi'
 import VolverButton from '@/components/navegacion/VolverButton.vue'
 import { useMisDepositos } from '../composables/useMisDepositos'
+import { useComprobante } from '../composables/useComprobante'
 import { useTesoreriaAccess } from '../composables/useTesoreriaAccess'
-import { extraerMensajeError, tesoreriaService } from '../services/tesoreriaService'
+import { extraerMensajeError } from '../services/tesoreriaService'
 import { formatCurrency, formatDateOnly, toDateOnlyString } from '../utils/formatters'
 import type { CrearDepositoPayload, DepositoDto, ResumenComparativoDto } from '../types/tesoreria.types'
 import CardKpiTesoreria, { type KpiTone } from '../components/CardKpiTesoreria.vue'
@@ -349,6 +352,7 @@ import ModalVisorComprobante from '../components/ModalVisorComprobante.vue'
 import ModalAnularDeposito from '../components/ModalAnularDeposito.vue'
 
 const toast = useToast()
+const reposicionStore = useReposicionStore()
 const {
   resumen, resumenFiltrado, filtroKpiActivo, detalleActual, cuentas,
   loadingResumen, loadingDetalle, loadingCuentas, creandoDeposito,
@@ -360,7 +364,7 @@ const {
 
 const {
   almacenBase, almacenesAutorizados, opcionesAlmacenes,
-  puedeCrear, puedeAutorizarSobregiro, puedeEliminar, puedeIntegrarSap
+  puedeCrear, puedeEliminar, puedeIntegrarSap
 } = useTesoreriaAccess()
 
 const hoy = new Date()
@@ -370,16 +374,25 @@ const hoyStr = toDateOnlyString(hoy)
 const fechaDesde = ref(toDateOnlyString(hace15Dias))
 const fechaHasta = ref(hoyStr)
 const almacenSeleccionado = ref(almacenBase.value ?? (almacenesAutorizados.value[0] ?? ''))
-const almacenIdActual = ref(0)
+const almacenIdActual = computed(() => {
+  const codigo = (filaSeleccionada.value?.codigoAlmacen ?? almacenSeleccionado.value).trim().toUpperCase()
+  const id = reposicionStore.catalogoAlmacenes.find(almacen => almacen.code.trim().toUpperCase() === codigo)?.id
+  // Compatibilidad solicitada: mantener el flujo si el catálogo no contiene un ID válido.
+  return id !== undefined && Number.isSafeInteger(id) && id > 0 ? id : 0
+})
 
 const filaSeleccionada = ref<ResumenComparativoDto | null>(null)
+const saldoPendiente = computed(() => {
+  const saldo = filaSeleccionada.value
+    ? filaSeleccionada.value.totalEfectivo - filaSeleccionada.value.totalDepositado
+    : 0
+  return Math.max(0, Math.round(saldo * 100) / 100)
+})
 const isDrawerOpen = ref(false)
 const modalRegistroAbierto = ref(false)
-const modalVisorAbierto = ref(false)
+const { modalVisorAbierto, urlComprobante, nombreComprobante, cargandoComprobante, abrirComprobante } = useComprobante()
 const modalAnularAbierto = ref(false)
-const depositoParaVisor = ref<DepositoDto | null>(null)
 const depositoParaAnular = ref<DepositoDto | null>(null)
-const urlComprobante = ref<string | null>(null)
 
 // ─── Tone & Subtitle dinámicos para KPI Diferencia ───────────────────────────
 const kpiDiferenciaTone = computed<KpiTone>(() => {
@@ -439,12 +452,28 @@ function cerrarDrawer(): void {
   filaSeleccionada.value = null
 }
 
-function abrirModalRegistro(): void {
+let cargaCatalogo: Promise<void> | null = null
+function cargarCatalogoAlmacenes(): Promise<void> {
+  if (reposicionStore.catalogoAlmacenes.length > 0) return Promise.resolve()
+  cargaCatalogo ??= reposicionApi.getAlmacenes()
+    .then(almacenes => { reposicionStore.catalogoAlmacenes = almacenes })
+    .catch(err => { toast.warning('No se pudo cargar el catálogo de almacenes', extraerMensajeError(err)) })
+    .finally(() => { cargaCatalogo = null })
+  return cargaCatalogo
+}
+
+async function abrirModalRegistro(): Promise<void> {
+  const fila = filaSeleccionada.value
+  if (!puedeCrear.value || loadingDetalle.value || !detalleActual.value?.permitirNuevoDeposito || !fila) return
+  await cargarCatalogoAlmacenes()
+  if (!isDrawerOpen.value || filaSeleccionada.value !== fila) return
+  erroresCampoDeposito.value = null
   fetchCuentas()
   modalRegistroAbierto.value = true
 }
 
 async function onGuardarDeposito(payload: CrearDepositoPayload): Promise<void> {
+  if (creandoDeposito.value) return
   const creado = await crearDeposito(payload, { fechaDesde: fechaDesde.value, fechaHasta: fechaHasta.value })
   if (creado) modalRegistroAbierto.value = false
 }
@@ -467,15 +496,7 @@ async function onConfirmarAnular(motivo: string): Promise<void> {
 }
 
 async function onVerComprobante(deposito: DepositoDto): Promise<void> {
-  depositoParaVisor.value = deposito
-  urlComprobante.value = null
-  modalVisorAbierto.value = true
-  try {
-    const resultado = await tesoreriaService.obtenerUrlComprobante(deposito.id)
-    urlComprobante.value = resultado.url
-  } catch (err) {
-    toast.error('No se pudo cargar el comprobante', extraerMensajeError(err))
-  }
+  await abrirComprobante(deposito.id)
 }
 
 watch(almacenBase, (nuevo) => {
@@ -493,6 +514,7 @@ watch(resumen, (nuevoResumen) => {
 })
 
 onMounted(() => {
+  if (puedeCrear.value) cargarCatalogoAlmacenes()
   if (almacenSeleccionado.value) consultar()
   window.addEventListener('keydown', onKeydownGlobal)
 })

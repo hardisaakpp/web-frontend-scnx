@@ -1,0 +1,21 @@
+.tesoreria-modal {
+  width: calc(100% - 2rem);
+  max-height: 92vh;
+  margin: auto;
+  padding: 0;
+  border: none;
+  background: transparent;
+}
+
+.tesoreria-modal::backdrop {
+  background-color: rgb(0 0 0 / 0.6);
+}
+
+/* Un solo oscurecimiento al apilar el modal sobre el drawer. */
+body:has(.tesoreria-modal:modal) .drawer-panel-dialog::backdrop {
+  background-color: transparent;
+}
+
+body:has(.tesoreria-modal:modal) {
+  overflow: hidden;
+}

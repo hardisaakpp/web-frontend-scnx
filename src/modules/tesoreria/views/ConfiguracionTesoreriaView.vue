@@ -226,7 +226,7 @@ const {
   cargando: cargandoCuentas, totalCuentas, cuentasParaTiendas, cuentasActivas, cargar: cargarCuentas
 } = useCuentasFinancieras()
 const {
-  totalContactos, totalActivos, sinCobertura: sinCoberturaDeContactos, cargar: cargarContactos
+  contactos, totalContactos, totalActivos, sinCobertura: sinCoberturaDeContactos, cargar: cargarContactos
 } = useContactosNotificacion()
 const { puedeConfigurar } = useTesoreriaAccess()
 
@@ -238,7 +238,7 @@ onMounted(() => {
   if (puedeConfigurar.value) {
     cargarPoliticas()
     cargarCuentas()
-    cargarContactos()
+    if (contactos.value.length === 0) cargarContactos()
   }
 })
 </script>

@@ -1,15 +1,17 @@
 <template>
   <Teleport to="body">
-    <div v-if="open" class="fixed inset-0 z-[80] flex items-center justify-center p-4">
-      <div class="absolute inset-0 bg-black/60"></div>
-
+    <dialog
+      ref="dialogRef"
+      aria-modal="true"
+      :aria-labelledby="tituloId"
+      class="tesoreria-modal max-w-md rounded-2xl"
+      @cancel.prevent.stop="cerrar"
+      @keydown.esc.stop
+      @click="onBackdropClick"
+    >
       <div
-        ref="dialogRef"
-        role="dialog"
-        aria-modal="true"
-        :aria-labelledby="tituloId"
+        v-if="open"
         class="relative w-full max-w-md rounded-2xl bg-white shadow-2xl dark:bg-gray-800 border border-gray-200 dark:border-gray-700"
-        @keydown="onKeydown"
       >
         <div class="px-5 py-4">
           <h2 :id="tituloId" class="flex items-center gap-2 text-base font-semibold text-gray-900 dark:text-white">
@@ -70,6 +72,7 @@
             type="button"
             class="rounded-lg border border-gray-300 dark:border-gray-600 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700"
             @click="cerrar"
+            :disabled="anulando"
           >
             Cancelar
           </button>
@@ -88,14 +91,14 @@
           </button>
         </footer>
       </div>
-    </div>
+    </dialog>
   </Teleport>
 </template>
 
 <script setup lang="ts">
 import { computed, ref, toRef, watch } from 'vue'
 import { ExclamationTriangleIcon } from '@heroicons/vue/24/outline'
-import { useModalFocusTrap } from '../composables/useModalFocusTrap'
+import { useDialogModal } from '../composables/useDialogModal'
 
 const props = defineProps<{
   open: boolean
@@ -112,7 +115,7 @@ const emit = defineEmits<{
 }>()
 
 const tituloId = `anular-deposito-titulo-${Math.random().toString(36).slice(2, 9)}`
-const dialogRef = ref<HTMLElement | null>(null)
+const dialogRef = ref<HTMLDialogElement | null>(null)
 const primerCampoRef = ref<HTMLTextAreaElement | null>(null)
 const motivo = ref('')
 const confirmacionSapReversado = ref(false)
@@ -122,11 +125,13 @@ const formularioValido = computed(() =>
 )
 
 function cerrar(): void {
+  if (props.anulando) return
+  dialogRef.value?.close()
   emit('close')
 }
 
 function confirmar(): void {
-  if (!formularioValido.value) return
+  if (props.anulando || !formularioValido.value) return
   emit('confirmar', motivo.value.trim(), confirmacionSapReversado.value)
 }
 
@@ -135,7 +140,7 @@ watch(() => props.open, (isOpen) => {
     motivo.value = ''
     confirmacionSapReversado.value = false
   }
-})
+}, { immediate: true })
 
-const { onKeydown } = useModalFocusTrap(dialogRef, primerCampoRef, toRef(props, 'open'), cerrar)
+const { onBackdropClick } = useDialogModal(dialogRef, toRef(props, 'open'), primerCampoRef, cerrar)
 </script>

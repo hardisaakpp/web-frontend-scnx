@@ -1,15 +1,17 @@
 <template>
   <Teleport to="body">
-    <div v-if="open" class="fixed inset-0 z-[70] flex items-center justify-center p-4">
-      <div class="absolute inset-0 bg-black/60" @click="cerrar"></div>
-
+    <dialog
+      ref="dialogRef"
+      aria-modal="true"
+      :aria-labelledby="tituloId"
+      class="tesoreria-modal max-w-2xl rounded-2xl"
+      @cancel.prevent.stop="cerrar"
+      @keydown.esc.stop
+      @click="onBackdropClick"
+    >
       <div
-        ref="dialogRef"
-        role="dialog"
-        aria-modal="true"
-        :aria-labelledby="tituloId"
+        v-if="open"
         class="relative flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl dark:bg-gray-800 border border-gray-200 dark:border-gray-700"
-        @keydown="onKeydown"
       >
         <header class="flex items-center justify-between border-b border-gray-200 dark:border-gray-700 px-5 py-4">
           <h2 :id="tituloId" class="flex items-center gap-2 text-base font-semibold text-gray-900 dark:text-white">
@@ -28,7 +30,8 @@
         </header>
 
         <div class="flex-1 overflow-auto bg-gray-50 dark:bg-gray-900 p-4">
-          <div v-if="!fileUrl" class="flex flex-col items-center justify-center gap-2 py-16 text-center text-gray-500 dark:text-gray-400">
+          <output v-if="loading" class="block py-16 text-center text-sm text-gray-500 dark:text-gray-400">Cargando comprobante…</output>
+          <div v-else-if="!fileUrl" role="alert" class="flex flex-col items-center justify-center gap-2 py-16 text-center text-gray-500 dark:text-gray-400">
             <ExclamationTriangleIcon class="h-8 w-8 text-amber-500" aria-hidden="true" />
             <p class="max-w-sm text-sm">
               No fue posible cargar el comprobante. Verifique su conexión o contacte a soporte si el problema persiste.
@@ -67,17 +70,18 @@
           </button>
         </footer>
       </div>
-    </div>
+    </dialog>
   </Teleport>
 </template>
 
 <script setup lang="ts">
 import { computed, ref, toRef } from 'vue'
 import { ArrowDownTrayIcon, DocumentTextIcon, ExclamationTriangleIcon, XMarkIcon } from '@heroicons/vue/24/outline'
-import { useModalFocusTrap } from '../composables/useModalFocusTrap'
+import { useDialogModal } from '../composables/useDialogModal'
 
 const props = defineProps<{
   open: boolean
+  loading?: boolean
   fileUrl: string | null
   fileName?: string | null
   mimeType?: string | null
@@ -86,7 +90,7 @@ const props = defineProps<{
 const emit = defineEmits<(e: 'close') => void>()
 
 const tituloId = `visor-comprobante-titulo-${Math.random().toString(36).slice(2, 9)}`
-const dialogRef = ref<HTMLElement | null>(null)
+const dialogRef = ref<HTMLDialogElement | null>(null)
 const closeButtonRef = ref<HTMLButtonElement | null>(null)
 
 const esPdf = computed(() => {
@@ -95,8 +99,9 @@ const esPdf = computed(() => {
 })
 
 function cerrar(): void {
+  dialogRef.value?.close()
   emit('close')
 }
 
-const { onKeydown } = useModalFocusTrap(dialogRef, closeButtonRef, toRef(props, 'open'), cerrar)
+const { onBackdropClick } = useDialogModal(dialogRef, toRef(props, 'open'), closeButtonRef, cerrar)
 </script>

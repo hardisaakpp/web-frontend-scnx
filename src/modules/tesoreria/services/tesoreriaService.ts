@@ -12,10 +12,12 @@ import type {
   DepositoDto,
   DetalleDiarioDto,
   EnviarCorreoPruebaResultadoDto,
+  ErrorRespuestaTesoreria,
   GetAuditoriaGlobalParams,
   GetResumenDepositosParams,
   PaginatedList,
   ResultadoNotificacionesDto,
+  ResultadoSincronizacionCuentasDto,
   ResumenComparativoDto,
   UpdateConfiguracionRequest,
   UrlComprobanteDto
@@ -31,17 +33,14 @@ import type {
  * excepción; en su lugar se anexa el `correlationId` (si vino en la respuesta) para facilitar trazabilidad.
  */
 export function extraerMensajeError(error: unknown, fallback = 'No se pudo completar la operación. Intente nuevamente.'): string {
-  const err = error as {
-    response?: { data?: { errors?: Record<string, string[]>; title?: string; detail?: string; correlationId?: string } }
-    message?: string
-  }
-  const data = err.response?.data
+  const err = error as ErrorRespuestaTesoreria | null | undefined
+  const data = err?.response?.data
   if (data?.errors) {
     const mensajes = Object.values(data.errors).flat()
     if (mensajes.length > 0) return mensajes.join(' ')
   }
 
-  const mensajeBase = data?.title || data?.detail || err.message || fallback
+  const mensajeBase = data?.detail || data?.title || err?.message || fallback
   return data?.correlationId ? `${mensajeBase} (Ref: ${data.correlationId})` : mensajeBase
 }
 
@@ -51,13 +50,22 @@ export function extraerMensajeError(error: unknown, fallback = 'No se pudo compl
  * culpable en el formulario en vez de solo mostrar un toast con el mensaje aplanado.
  */
 export function extraerErroresCampo(error: unknown): Record<string, string> | null {
-  const err = error as { response?: { data?: { errors?: Record<string, string[]> } } }
-  const errors = err.response?.data?.errors
-  if (!errors) return null
+  const err = error as ErrorRespuestaTesoreria | null | undefined
+  const data = err?.response?.data
 
   const resultado: Record<string, string> = {}
-  for (const [campo, mensajes] of Object.entries(errors)) {
-    if (mensajes.length > 0) resultado[campo] = mensajes[0]
+  for (const [campo, mensajes] of Object.entries(data?.errors ?? {})) {
+    const mensaje = typeof mensajes === 'string' ? mensajes : mensajes?.[0]
+    if (typeof mensaje !== 'string' || !mensaje.trim()) continue
+    const nombre = campo.split('.').pop() ?? campo
+    const clave = nombre.toLowerCase() === 'numerocomprobante' ? 'NumeroComprobante' : nombre
+    resultado[clave] = mensaje
+  }
+  const detail = data?.detail
+  const status = err?.response?.status ?? data?.status
+  if (!resultado.NumeroComprobante && typeof detail === 'string' && detail.trim() &&
+    (status === 409 || /comprobante|papeleta/i.test(detail))) {
+    resultado.NumeroComprobante = detail
   }
   return Object.keys(resultado).length > 0 ? resultado : null
 }
@@ -191,6 +199,16 @@ export const tesoreriaService = {
 
   async actualizarEstadoCuenta(id: number, payload: ActualizarEstadoCuentaPayload): Promise<CuentaFinancieraDto> {
     const { data } = await tesoreriaHttp.patch<CuentaFinancieraDto>(`/cuentas-financieras/${id}/estado`, payload)
+    return data
+  },
+
+  /**
+   * Sincroniza manualmente el subconjunto bancario (FormatCode 1.01.01/11.01.01) del plan de
+   * cuentas de SAP Business One para Mabel Trading. El comando ignora el tenant del request: SAP
+   * solo administra este catálogo para esa empresa, sin importar cuál esté seleccionada en la UI.
+   */
+  async sincronizarCuentasSap(): Promise<ResultadoSincronizacionCuentasDto> {
+    const { data } = await tesoreriaHttp.post<ResultadoSincronizacionCuentasDto>('/cuentas-financieras/sincronizar-sap')
     return data
   },
 

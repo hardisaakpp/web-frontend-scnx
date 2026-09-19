@@ -80,6 +80,14 @@ export interface CuentaFinancieraDto {
   activa: boolean
 }
 
+// ─── Resultado de sincronización manual del subconjunto bancario del catálogo SAP (Mabel Trading) ──
+export interface ResultadoSincronizacionCuentasDto {
+  cuentasRecibidasSap: number
+  cuentasFiltradasBancarias: number
+  cuentasNuevas: number
+  cuentasActualizadas: number
+}
+
 // ─── Auditoría global (sábana multitienda) ──────────────────────────────────────────────────
 export interface AuditoriaGlobalDto {
   /** 0 cuando la fila es sintética ("Falta depósito"): no existe ningún DepositoTienda real detrás. */
@@ -165,6 +173,20 @@ export interface ActualizarEstadoCuentaPayload {
 export interface UrlComprobanteDto {
   url: string
   nombreArchivo: string
+}
+
+/** ProblemDetails de ASP.NET Core, incluidos conflictos sin diccionario de validación. */
+export interface TesoreriaProblemDetails {
+  status?: number
+  title?: string
+  detail?: string
+  correlationId?: string
+  errors?: Record<string, string[] | string>
+}
+
+export interface ErrorRespuestaTesoreria {
+  response?: { status?: number; data?: TesoreriaProblemDetails }
+  message?: string
 }
 
 // ─── Requests ────────────────────────────────────────────────────────────────────────────────

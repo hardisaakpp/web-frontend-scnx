@@ -135,7 +135,11 @@ const emit = defineEmits<{
 }>()
 
 /** Bloqueado mientras el detalle aún no carga (evita registrar sin conocer permitirNuevoDeposito). */
-const puedeRegistrar = computed(() => (props.detalle ? props.detalle.permitirNuevoDeposito : true))
+const puedeRegistrar = computed(() =>
+  !props.loading && !props.error && props.detalle?.permitirNuevoDeposito === true &&
+  props.detalle.codigoAlmacen === props.fila?.codigoAlmacen &&
+  props.detalle.fechaCierreCaja === props.fila?.fechaCierre
+)
 
 function cerrar(): void {
   emit('close')
