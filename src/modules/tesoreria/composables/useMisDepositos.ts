@@ -35,6 +35,10 @@ const errorResumen = ref<string | null>(null)
 const errorDetalle = ref<string | null>(null)
 /** Errores de validación del backend (400/409) al crear un depósito, por nombre de campo. */
 const erroresCampoDeposito = ref<Record<string, string> | null>(null)
+let versionResumen = 0
+let versionDetalle = 0
+let contextoResumen = ''
+let contextoDetalle = ''
 
 export function useMisDepositos() {
   const toast = useToast()
@@ -89,34 +93,43 @@ export function useMisDepositos() {
 
   // ─── Acciones ─────────────────────────────────────────────────────────────
   async function fetchResumen(codigoAlmacen: string, fechaDesde: string, fechaHasta: string): Promise<void> {
+    const version = ++versionResumen
+    contextoResumen = JSON.stringify([codigoAlmacen, fechaDesde, fechaHasta])
     loadingResumen.value = true
     errorResumen.value = null
     filtroKpiActivo.value = 'todos' // evita quedar filtrando sobre datos de otro almacén/rango
     try {
-      resumen.value = await tesoreriaService.getResumen({ codigoAlmacen, fechaDesde, fechaHasta })
+      const resultado = await tesoreriaService.getResumen({ codigoAlmacen, fechaDesde, fechaHasta })
+      if (version === versionResumen) resumen.value = resultado
     } catch (err) {
+      if (version !== versionResumen) return
       errorResumen.value = extraerMensajeError(err, 'No se pudo cargar el resumen de depósitos.')
       resumen.value = []
     } finally {
-      loadingResumen.value = false
+      if (version === versionResumen) loadingResumen.value = false
     }
   }
 
   async function fetchDetalle(codigoAlmacen: string, fechaCierre: string): Promise<void> {
+    const version = ++versionDetalle
+    contextoDetalle = JSON.stringify([codigoAlmacen, fechaCierre])
+    detalleActual.value = null
     loadingDetalle.value = true
     errorDetalle.value = null
     try {
-      detalleActual.value = await tesoreriaService.getDetalle(codigoAlmacen, fechaCierre)
+      const resultado = await tesoreriaService.getDetalle(codigoAlmacen, fechaCierre)
+      if (version === versionDetalle) detalleActual.value = resultado
     } catch (err) {
+      if (version !== versionDetalle) return
       errorDetalle.value = extraerMensajeError(err, 'No se pudo cargar el detalle del día seleccionado.')
       detalleActual.value = null
     } finally {
-      loadingDetalle.value = false
+      if (version === versionDetalle) loadingDetalle.value = false
     }
   }
 
   async function fetchCuentas(): Promise<void> {
-    if (cuentas.value.length > 0) return
+    if (loadingCuentas.value || cuentas.value.length > 0) return
     loadingCuentas.value = true
     try {
       cuentas.value = await tesoreriaService.getCuentasFinancieras()
@@ -127,19 +140,29 @@ export function useMisDepositos() {
     }
   }
 
+  async function refrescarContexto(
+    deposito: Pick<DepositoDto, 'codigoAlmacen' | 'fechaCierreCaja'>,
+    contexto: { fechaDesde: string; fechaHasta: string }
+  ): Promise<void> {
+    await Promise.all([
+      contextoDetalle === JSON.stringify([deposito.codigoAlmacen, deposito.fechaCierreCaja])
+        ? fetchDetalle(deposito.codigoAlmacen, deposito.fechaCierreCaja) : undefined,
+      contextoResumen === JSON.stringify([deposito.codigoAlmacen, contexto.fechaDesde, contexto.fechaHasta])
+        ? fetchResumen(deposito.codigoAlmacen, contexto.fechaDesde, contexto.fechaHasta) : undefined
+    ])
+  }
+
   async function crearDeposito(
     payload: CrearDepositoPayload,
     contexto: { fechaDesde: string; fechaHasta: string }
   ): Promise<DepositoDto | null> {
+    if (creandoDeposito.value) return null
     creandoDeposito.value = true
     erroresCampoDeposito.value = null
     try {
       const creado = await tesoreriaService.crearDeposito(payload)
       toast.success('Depósito registrado', `Papeleta ${creado.numeroComprobante} guardada correctamente.`)
-      await Promise.all([
-        fetchDetalle(payload.codigoAlmacen, payload.fechaCierreCaja),
-        fetchResumen(payload.codigoAlmacen, contexto.fechaDesde, contexto.fechaHasta)
-      ])
+      await refrescarContexto(payload, contexto)
       return creado
     } catch (err) {
       toast.error('No se pudo registrar el depósito', extraerMensajeError(err))
@@ -164,10 +187,7 @@ export function useMisDepositos() {
       const actualizado = await tesoreriaService.integrarSap(deposito.id)
       erroresSapPorDeposito.delete(deposito.id)
       toast.success('Depósito integrado en SAP', `DocEntry ${actualizado.docEntrySAP ?? '—'} generado correctamente.`)
-      await Promise.all([
-        fetchDetalle(deposito.codigoAlmacen, deposito.fechaCierreCaja),
-        fetchResumen(deposito.codigoAlmacen, contexto.fechaDesde, contexto.fechaHasta)
-      ])
+      await refrescarContexto(deposito, contexto)
       return true
     } catch (err) {
       const status = (err as { response?: { status?: number } }).response?.status
@@ -177,10 +197,7 @@ export function useMisDepositos() {
         // (oculta el botón "Enviar a SAP" y muestra el badge de integrado) en vez de quedar stale.
         erroresSapPorDeposito.delete(deposito.id)
         toast.warning('Depósito ya integrado', 'Este depósito ya fue integrado en SAP. Se actualizó la lista con su estado actual.')
-        await Promise.all([
-          fetchDetalle(deposito.codigoAlmacen, deposito.fechaCierreCaja),
-          fetchResumen(deposito.codigoAlmacen, contexto.fechaDesde, contexto.fechaHasta)
-        ])
+        await refrescarContexto(deposito, contexto)
       } else {
         // Traduce el rechazo de SAP (cuenta inactiva, papeleta duplicada en SAP, periodo cerrado,
         // middleware caído, etc.) a un mensaje claro y accionable, en vez de mostrar el JSON crudo.
@@ -199,14 +216,12 @@ export function useMisDepositos() {
     motivo: string,
     contexto: { fechaDesde: string; fechaHasta: string }
   ): Promise<boolean> {
+    if (anulandoIds.has(deposito.id)) return false
     anulandoIds.add(deposito.id)
     try {
       await tesoreriaService.anularDeposito(deposito.id, motivo)
       toast.success('Depósito anulado', `La papeleta ${deposito.numeroComprobante} fue anulada. El saldo pendiente ha sido recalculado.`)
-      await Promise.all([
-        fetchDetalle(deposito.codigoAlmacen, deposito.fechaCierreCaja),
-        fetchResumen(deposito.codigoAlmacen, contexto.fechaDesde, contexto.fechaHasta)
-      ])
+      await refrescarContexto(deposito, contexto)
       return true
     } catch (err) {
       const status = (err as { response?: { status?: number } }).response?.status
@@ -214,10 +229,7 @@ export function useMisDepositos() {
         // El backend ya lo integró a SAP (otra pestaña, un envío concurrente, etc.) — se
         // resincroniza la lista para que la fila oculte el botón de anular y refleje el estado real.
         toast.warning('Conflicto', 'El depósito ya fue integrado en SAP Business One y no puede ser anulado.')
-        await Promise.all([
-          fetchDetalle(deposito.codigoAlmacen, deposito.fechaCierreCaja),
-          fetchResumen(deposito.codigoAlmacen, contexto.fechaDesde, contexto.fechaHasta)
-        ])
+        await refrescarContexto(deposito, contexto)
       } else {
         toast.error('No se pudo anular el depósito', extraerMensajeError(err))
       }

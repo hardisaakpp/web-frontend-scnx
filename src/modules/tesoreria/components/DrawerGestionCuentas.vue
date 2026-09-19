@@ -47,6 +47,20 @@
             </span>
           </label>
         </fieldset>
+        <button
+          type="button"
+          :disabled="sincronizando"
+          :aria-busy="sincronizando"
+          class="inline-flex shrink-0 items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500 shadow-2xs transition-colors"
+          @click="sincronizarConSap"
+        >
+          <svg v-if="sincronizando" class="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24" aria-hidden="true">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+          </svg>
+          <ArrowPathIcon v-else class="h-4 w-4" aria-hidden="true" />
+          {{ sincronizando ? 'Sincronizando…' : 'Sincronizar SAP' }}
+        </button>
       </div>
     </template>
 
@@ -56,7 +70,24 @@
 
     <div v-else-if="cuentasFiltradas.length === 0" class="flex flex-col items-center justify-center gap-2 py-12 text-center text-gray-500 dark:text-gray-400">
       <BuildingLibraryIcon class="h-8 w-8 text-gray-300 dark:text-gray-600" aria-hidden="true" />
-      <p class="font-medium">No hay cuentas que coincidan con la búsqueda o el filtro.</p>
+      <p class="font-medium">
+        {{ cuentas.length === 0 ? 'Aún no hay cuentas bancarias sincronizadas.' : 'No hay cuentas que coincidan con la búsqueda o el filtro.' }}
+      </p>
+      <button
+        v-if="cuentas.length === 0"
+        type="button"
+        :disabled="sincronizando"
+        :aria-busy="sincronizando"
+        class="mt-2 inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500 shadow-2xs transition-colors"
+        @click="sincronizarConSap"
+      >
+        <svg v-if="sincronizando" class="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24" aria-hidden="true">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+        </svg>
+        <ArrowPathIcon v-else class="h-4 w-4" aria-hidden="true" />
+        {{ sincronizando ? 'Sincronizando…' : 'Sincronizar SAP' }}
+      </button>
     </div>
 
     <div v-else class="overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-800">
@@ -125,7 +156,7 @@
 </template>
 
 <script setup lang="ts">
-import { BuildingLibraryIcon, MagnifyingGlassIcon } from '@heroicons/vue/24/outline'
+import { ArrowPathIcon, BuildingLibraryIcon, MagnifyingGlassIcon } from '@heroicons/vue/24/outline'
 import DrawerPanel from '@/components/modales/DrawerPanel.vue'
 import { useCuentasFinancieras, type FiltroEstadoCuenta } from '../composables/useCuentasFinancieras'
 
@@ -133,7 +164,8 @@ defineProps<{ isOpen: boolean }>()
 const emit = defineEmits<(e: 'close') => void>()
 
 const {
-  cuentas, cuentasFiltradas, cargando, actualizandoIds, busqueda, filtroEstado, actualizarEstado
+  cuentas, cuentasFiltradas, cargando, sincronizando, actualizandoIds, busqueda, filtroEstado,
+  sincronizarConSap, actualizarEstado
 } = useCuentasFinancieras()
 
 const FILTROS_ESTADO: Array<{ value: FiltroEstadoCuenta; label: string }> = [

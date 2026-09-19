@@ -1,15 +1,17 @@
 <template>
   <Teleport to="body">
-    <div v-if="open" class="fixed inset-0 z-[70] flex items-center justify-center p-4">
-      <div class="absolute inset-0 bg-black/60 transition-opacity" @click="cerrar"></div>
-
+    <dialog
+      ref="dialogRef"
+      aria-modal="true"
+      :aria-labelledby="tituloId"
+      class="tesoreria-modal max-w-lg rounded-2xl"
+      @cancel.prevent.stop="cerrar"
+      @keydown.esc.stop
+      @click="onBackdropClick"
+    >
       <div
-        ref="dialogRef"
-        role="dialog"
-        aria-modal="true"
-        :aria-labelledby="tituloId"
+        v-if="open"
         class="relative flex max-h-[92vh] w-full max-w-lg flex-col overflow-hidden rounded-2xl bg-white shadow-2xl dark:bg-gray-800 border border-gray-200 dark:border-gray-700"
-        @keydown="onKeydown"
       >
         <header class="flex items-center justify-between border-b border-gray-200 dark:border-gray-700 px-5 py-4">
           <div>
@@ -24,6 +26,7 @@
             type="button"
             class="rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-gray-700 dark:hover:text-gray-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500"
             aria-label="Cerrar formulario de registro"
+            :disabled="guardando"
             @click="cerrar"
           >
             <XMarkIcon class="h-5 w-5" aria-hidden="true" />
@@ -116,7 +119,10 @@
                 </div>
                 <input
                   id="numeroComprobante"
+                  ref="numeroComprobanteInputRef"
                   v-model="numeroComprobante"
+                  :aria-invalid="!!errorNumeroComprobanteBackend || (!!numeroComprobante && !numeroComprobanteValido)"
+                  :aria-describedby="errorNumeroComprobanteBackend || (numeroComprobante && !numeroComprobanteValido) ? 'error-numero-comprobante' : undefined"
                   type="text"
                   required
                   :maxlength="LONGITUD_MAXIMA_COMPROBANTE"
@@ -128,10 +134,10 @@
                     : 'border-gray-300 dark:border-gray-600 focus:border-indigo-500 focus:ring-indigo-500'"
                   @input="onInputNumeroComprobante"
                 />
-                <p v-if="numeroComprobante && !numeroComprobanteValido" class="text-xs text-red-600 dark:text-red-400">
+                <p v-if="numeroComprobante && !numeroComprobanteValido" id="error-numero-comprobante" role="alert" class="text-xs text-red-600 dark:text-red-400">
                   Máximo {{ LONGITUD_MAXIMA_COMPROBANTE }} caracteres alfanuméricos (límite SAP B1).
                 </p>
-                <p v-else-if="errorNumeroComprobanteBackend" class="text-xs text-red-600 dark:text-red-400 font-medium">
+                <p v-else-if="errorNumeroComprobanteBackend" id="error-numero-comprobante" role="alert" class="text-xs text-red-600 dark:text-red-400 font-medium">
                   {{ errorNumeroComprobanteBackend }}
                 </p>
               </div>
@@ -162,52 +168,17 @@
                 />
               </div>
 
-              <!-- Alerta si supera el saldo pendiente -->
+              <!-- Alerta si supera el saldo pendiente (bloqueante: control estricto de efectivo) -->
               <div
-                v-if="montoValor > 0 && !esSobrante && montoValor > saldoPendiente"
-                class="mt-1 flex items-start gap-2 rounded-lg bg-amber-50 dark:bg-amber-900/30 border border-amber-300 dark:border-amber-700 p-2.5 text-xs text-amber-900 dark:text-amber-200"
+                v-if="excedeSaldoPendiente"
+                role="alert"
+                class="mt-1 flex items-start gap-2 rounded-lg bg-red-50 dark:bg-red-900/30 border border-red-300 dark:border-red-700 p-2.5 text-xs text-red-900 dark:text-red-200"
               >
-                <ExclamationTriangleIcon class="h-4 w-4 flex-shrink-0 mt-0.5 text-amber-600 dark:text-amber-400" aria-hidden="true" />
+                <ExclamationTriangleIcon class="h-4 w-4 flex-shrink-0 mt-0.5 text-red-600 dark:text-red-400" aria-hidden="true" />
                 <div>
-                  El monto ingresado (<strong>{{ formatCurrency(montoValor) }}</strong>) supera el efectivo pendiente de conciliar (<strong>{{ formatCurrency(saldoPendiente) }}</strong>).
-                  <template v-if="puedeAutorizarSobregiro">
-                    Active la casilla inferior <em>"Autorizar como excedente / sobrante"</em> para permitir el registro.
-                  </template>
-                  <template v-else>
-                    El rol de Cajero no tiene permiso para sobregiros. Solicite autorización a su Supervisor Zonal o Contabilidad.
-                  </template>
+                  El monto no puede superar el saldo pendiente de <strong>{{ formatCurrency(saldoPendiente) }}</strong>.
                 </div>
               </div>
-            </div>
-
-            <!-- Casilla de Sobrante / Sobregiro -->
-            <div
-              class="rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50 p-3"
-              :title="!puedeAutorizarSobregiro ? 'No tiene permiso para autorizar depósitos como sobrante' : undefined"
-            >
-              <label
-                class="flex items-start gap-3"
-                :class="puedeAutorizarSobregiro ? 'cursor-pointer' : 'cursor-not-allowed opacity-60'"
-              >
-                <input
-                  v-model="esSobrante"
-                  type="checkbox"
-                  :disabled="!puedeAutorizarSobregiro"
-                  :title="!puedeAutorizarSobregiro ? 'No tiene permiso para autorizar depósitos como sobrante' : undefined"
-                  class="mt-0.5 h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-800 disabled:cursor-not-allowed"
-                />
-                <span class="text-sm text-gray-700 dark:text-gray-300">
-                  <span class="font-semibold text-gray-900 dark:text-white">Autorizar como excedente / sobrante</span>
-                  <span class="block text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                    <template v-if="puedeAutorizarSobregiro">
-                      Marque esta opción para registrar depósitos superiores al cierre de caja (requiere permiso de supervisor).
-                    </template>
-                    <template v-else>
-                      No tiene permiso para autorizar depósitos como sobrante. Solicite autorización a su Supervisor Zonal o Contabilidad.
-                    </template>
-                  </span>
-                </span>
-              </label>
             </div>
 
             <!-- Drag & Drop de comprobante (hasta 10 MB) -->
@@ -264,6 +235,7 @@
                 id="comprobante-input"
                 ref="inputArchivoRef"
                 type="file"
+                tabindex="-1"
                 aria-labelledby="dropzone-label"
                 accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png"
                 class="sr-only"
@@ -323,6 +295,7 @@
 
           <!-- ═══════ PASO 3: Resumen ejecutivo y guardado ═══════ -->
           <form v-else class="space-y-4" @submit.prevent="guardar">
+            <h3 ref="resumenRef" tabindex="-1" class="sr-only">Resumen del depósito</h3>
             <p class="text-sm text-gray-500 dark:text-gray-400">
               Verifique que los datos sean correctos antes de confirmar. Esta acción registrará el depósito de forma definitiva.
             </p>
@@ -350,17 +323,6 @@
               <div class="flex items-center justify-between gap-3 border-t border-gray-200 dark:border-gray-700/60 pt-3">
                 <span class="text-sm text-gray-500 dark:text-gray-400">Monto Depositado</span>
                 <span class="text-xl font-bold text-gray-900 dark:text-white">{{ formatCurrency(montoValor) }}</span>
-              </div>
-              <div class="flex items-center justify-between gap-3 text-sm">
-                <span class="text-gray-500 dark:text-gray-400">Condición</span>
-                <span
-                  class="rounded-full px-2.5 py-0.5 text-[11px] font-semibold"
-                  :class="esSobrante
-                    ? 'bg-sky-50 text-sky-700 border border-sky-300 dark:bg-sky-500/10 dark:text-sky-300 dark:border-sky-700/60'
-                    : 'bg-gray-100 text-gray-600 border border-gray-300 dark:bg-gray-700/60 dark:text-gray-300 dark:border-gray-600/60'"
-                >
-                  {{ esSobrante ? 'Sobrante / Excedente' : 'Normal' }}
-                </span>
               </div>
               <div class="flex items-center gap-2 border-t border-gray-200 dark:border-gray-700/60 pt-3 text-sm">
                 <DocumentIcon class="h-5 w-5 flex-shrink-0 text-gray-400" aria-hidden="true" />
@@ -429,12 +391,12 @@
           </button>
         </footer>
       </div>
-    </div>
+    </dialog>
   </Teleport>
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, ref, toRef, watch } from 'vue'
+import { computed, nextTick, onUnmounted, ref, toRef, watch } from 'vue'
 import {
   ArrowUpTrayIcon,
   CheckCircleIcon,
@@ -447,7 +409,7 @@ import {
   XMarkIcon
 } from '@heroicons/vue/24/outline'
 import { useAuthStore } from '@/stores/auth'
-import { useModalFocusTrap } from '../composables/useModalFocusTrap'
+import { useDialogModal } from '../composables/useDialogModal'
 import { formatCurrency, formatDateOnly } from '../utils/formatters'
 import type { CrearDepositoPayload, CuentaFinancieraDto } from '../types/tesoreria.types'
 
@@ -467,7 +429,6 @@ const props = defineProps<{
   cuentas: CuentaFinancieraDto[]
   loadingCuentas: boolean
   saldoPendiente: number
-  puedeAutorizarSobregiro: boolean
   guardando: boolean
   /** Errores de validación del backend (400/409, p. ej. papeleta duplicada) por nombre de campo (PascalCase, tal como los emite ProblemDetails). */
   erroresCampo?: Record<string, string> | null
@@ -479,8 +440,10 @@ const emit = defineEmits<{
 }>()
 
 const tituloId = `registro-deposito-titulo-${Math.random().toString(36).slice(2, 9)}`
-const dialogRef = ref<HTMLElement | null>(null)
+const dialogRef = ref<HTMLDialogElement | null>(null)
 const primerCampoRef = ref<HTMLSelectElement | null>(null)
+const numeroComprobanteInputRef = ref<HTMLInputElement | null>(null)
+const resumenRef = ref<HTMLElement | null>(null)
 const inputArchivoRef = ref<HTMLInputElement | null>(null)
 const comprobanteConfirmacionInputRef = ref<HTMLInputElement | null>(null)
 
@@ -504,9 +467,10 @@ const cuentaFinancieraId = ref(0)
 const fechaDepositoBanco = ref(props.fechaCierreCaja)
 const numeroComprobante = ref('')
 const montoDisplay = ref('')
-const esSobrante = ref(false)
+/** Política de control estricto de efectivo: ya no existe autorización de excedente/sobrante en el cliente. */
+const esSobrante = false
 const archivo = ref<File | null>(null)
-const previewUrl = ref<string | null>(null)
+const previewUrl = ref('')
 const arrastrandoArchivo = ref(false)
 const errorArchivo = ref<string | null>(null)
 /** Se limpia al editar el campo, para no mostrar un error de backend ya resuelto por el usuario. */
@@ -555,17 +519,21 @@ function parseMonto(raw: string): number {
 
 const montoValor = computed(() => parseMonto(montoDisplay.value))
 
-const excedeSaldoSinAutorizar = computed(() => montoValor.value > props.saldoPendiente && !esSobrante.value)
+/** Control estricto de efectivo: el monto jamás puede superar el saldo pendiente (tolerancia IEEE 754). */
+const excedeSaldoPendiente = computed(() => {
+  return (montoValor.value - props.saldoPendiente) > 0.005
+})
 
 /** Condiciones de captura del Paso 1 — habilita "Continuar" y respalda el envío final del Paso 3. */
 const formularioValidoPaso1 = computed(() =>
-  cuentaFinancieraId.value > 0 &&
+  !!cuentaSeleccionada.value &&
   !!fechaDepositoBanco.value &&
   !errorFecha.value &&
   numeroComprobante.value.length > 0 &&
   numeroComprobanteValido.value &&
+  !errorNumeroComprobanteBackend.value &&
   montoValor.value > 0 &&
-  !excedeSaldoSinAutorizar.value &&
+  !excedeSaldoPendiente.value &&
   !!archivo.value
 )
 
@@ -579,7 +547,7 @@ function onBlurMonto(): void {
 
 function limpiarPreview(): void {
   if (previewUrl.value) URL.revokeObjectURL(previewUrl.value)
-  previewUrl.value = null
+  previewUrl.value = ''
 }
 
 function validarYAsignarArchivo(file: File): void {
@@ -653,7 +621,7 @@ function onPasteBlocked(event: ClipboardEvent): void {
 
 // ─── Navegación entre pasos ────────────────────────────────────────────────────
 function avanzarAPaso2(): void {
-  if (!formularioValidoPaso1.value) return
+  if (!formularioValidoPaso1.value || props.guardando) return
   comprobanteConfirmacion.value = ''
   errorCoincidenciaComprobante.value = false
   intentoPegadoBloqueado.value = false
@@ -661,6 +629,7 @@ function avanzarAPaso2(): void {
 }
 
 function avanzarAPaso3(): void {
+  if (!formularioValidoPaso1.value || props.guardando) return
   const comp1 = numeroComprobante.value.trim().toUpperCase()
   const comp2 = comprobanteConfirmacion.value.trim().toUpperCase()
 
@@ -674,14 +643,18 @@ function avanzarAPaso3(): void {
 }
 
 function retrocederPaso(): void {
-  if (pasoActual.value === 3) pasoActual.value = 2
-  else if (pasoActual.value === 2) pasoActual.value = 1
+  if (!props.guardando) pasoActual.value = 1
 }
 
 watch(pasoActual, async (nuevo) => {
-  if (nuevo !== 2) return
   await nextTick()
-  comprobanteConfirmacionInputRef.value?.focus()
+  if (!props.open || pasoActual.value !== nuevo) return
+  if (nuevo === 1) {
+    const campo = errorNumeroComprobanteBackend.value ? numeroComprobanteInputRef.value : primerCampoRef.value
+    campo?.focus()
+  }
+  else if (nuevo === 2) comprobanteConfirmacionInputRef.value?.focus()
+  else resumenRef.value?.focus()
 })
 
 // ─── Reinicio, cierre y envío final ────────────────────────────────────────────
@@ -691,7 +664,6 @@ function resetFormulario(): void {
   fechaDepositoBanco.value = props.fechaCierreCaja
   numeroComprobante.value = ''
   montoDisplay.value = ''
-  esSobrante.value = false
   numeroComprobanteEditadoTrasError.value = false
   comprobanteConfirmacion.value = ''
   errorCoincidenciaComprobante.value = false
@@ -700,11 +672,14 @@ function resetFormulario(): void {
 }
 
 function cerrar(): void {
+  if (props.guardando) return
+  limpiarPreview()
+  dialogRef.value?.close()
   emit('close')
 }
 
 function guardar(): void {
-  if (!formularioValidoPaso1.value || !archivo.value) return
+  if (props.guardando || pasoActual.value !== 3 || !coincidenciaEnVivo.value || !formularioValidoPaso1.value || !archivo.value) return
   emit('guardar', {
     almacenId: props.almacenId,
     codigoAlmacen: props.codigoAlmacen,
@@ -716,23 +691,35 @@ function guardar(): void {
     moneda: 'USD',
     tipoDeposito: 'dtCash',
     responsable: authStore.fullName || authStore.userName || 'Usuario SCNexus',
-    esSobrante: esSobrante.value,
+    // Control estricto de efectivo: siempre false — ya no existe autorización de excedente/sobrante en el cliente.
+    esSobrante,
     comprobante: archivo.value
   })
 }
 
 watch(() => props.open, (isOpen) => {
   if (isOpen) resetFormulario()
-})
+  else quitarArchivo()
+}, { immediate: true })
 
-watch(() => props.erroresCampo, (errores) => {
-  // El backend solo puede rechazar el NumeroComprobante al confirmar en el Paso 3 (papeleta
-  // duplicada) — se regresa al Paso 1 para que el usuario vea y corrija el campo señalado.
-  if (errores?.NumeroComprobante) {
-    numeroComprobanteEditadoTrasError.value = false
-    pasoActual.value = 1
+watch(cuentasHabilitadas, (cuentas) => {
+  if (props.open && cuentaFinancieraId.value === 0 && cuentas.length === 1) {
+    cuentaFinancieraId.value = cuentas[0].id
   }
 })
 
-const { onKeydown } = useModalFocusTrap(dialogRef, primerCampoRef, toRef(props, 'open'), cerrar)
+watch(() => props.erroresCampo, async (errores) => {
+  // El backend solo puede rechazar el NumeroComprobante al confirmar en el Paso 3 (papeleta
+  // duplicada) — se regresa al Paso 1 para que el usuario vea y corrija el campo señalado.
+  if (props.open && errores?.NumeroComprobante) {
+    numeroComprobanteEditadoTrasError.value = false
+    pasoActual.value = 1
+    await nextTick()
+    if (props.open) numeroComprobanteInputRef.value?.focus()
+  }
+})
+
+const { onBackdropClick } = useDialogModal(dialogRef, toRef(props, 'open'), primerCampoRef, cerrar)
+
+onUnmounted(limpiarPreview)
 </script>

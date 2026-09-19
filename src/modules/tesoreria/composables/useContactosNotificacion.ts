@@ -38,7 +38,8 @@ export function useContactosNotificacion() {
     )
   })
 
-  async function cargar(): Promise<void> {
+  async function cargar(forzar = false): Promise<void> {
+    if (cargando.value || (!forzar && contactos.value.length > 0)) return
     cargando.value = true
     try {
       contactos.value = await tesoreriaService.getContactosNotificacion()
@@ -50,6 +51,7 @@ export function useContactosNotificacion() {
   }
 
   async function crear(payload: CrearContactoNotificacionPayload): Promise<boolean> {
+    if (guardando.value) return false
     guardando.value = true
     erroresCampo.value = null
     try {
@@ -67,6 +69,7 @@ export function useContactosNotificacion() {
   }
 
   async function actualizar(id: number, payload: ActualizarContactoNotificacionPayload): Promise<boolean> {
+    if (guardando.value) return false
     guardando.value = true
     erroresCampo.value = null
     try {
@@ -119,6 +122,7 @@ export function useContactosNotificacion() {
   }
 
   async function enviarPrueba(): Promise<void> {
+    if (enviandoPrueba.value) return
     enviandoPrueba.value = true
     try {
       const resultado = await tesoreriaService.enviarCorreoPruebaContactos()

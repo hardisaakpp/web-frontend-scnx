@@ -210,7 +210,7 @@ function confirmarEliminar(contacto: ContactoNotificacionDto): void {
 watch(
   () => props.isOpen,
   (open) => {
-    if (open) cargar()
+    if (open && contactos.value.length === 0 && !cargando.value) void cargar()
   }
 )
 </script>

@@ -288,7 +288,8 @@
     <ModalVisorComprobante
       :open="modalVisorAbierto"
       :file-url="urlComprobante"
-      :file-name="itemParaVisor?.nombreArchivoOriginal ?? itemParaVisor?.numeroComprobante ?? null"
+      :file-name="nombreComprobante"
+      :loading="cargandoComprobante"
       @close="modalVisorAbierto = false"
     />
 
@@ -314,12 +315,11 @@ import {
   MagnifyingGlassIcon,
   TrashIcon
 } from '@heroicons/vue/24/outline'
-import { useToast } from '@/composables/useToast'
 import QuickTablePagination from '@/components/paginacion/QuickTablePagination.vue'
 import VolverButton from '@/components/navegacion/VolverButton.vue'
 import { useAuditoriaGlobal } from '../composables/useAuditoriaGlobal'
+import { useComprobante } from '../composables/useComprobante'
 import { useTesoreriaAccess } from '../composables/useTesoreriaAccess'
-import { extraerMensajeError, tesoreriaService } from '../services/tesoreriaService'
 import { formatCurrency, formatDateOnly, toDateOnlyString } from '../utils/formatters'
 import { EstadoDeposito, type AuditoriaGlobalDto, type FiltroEstadoAuditoria } from '../types/tesoreria.types'
 import SemaforoEstadoBadge from '../components/SemaforoEstadoBadge.vue'
@@ -336,7 +336,6 @@ const OPCIONES_ESTADO: { value: FiltroEstadoAuditoria; label: string }[] = [
   { value: 'RECHAZADO', label: 'Rechazado por SAP' }
 ]
 
-const toast = useToast()
 const {
   items, totalCount, pageNumber, pageSize, totalPages, loading, loadingCsv, error,
   reintentandoIds, anulandoIds, filtroEstado, busquedaRapida, itemsFiltrados,
@@ -353,11 +352,9 @@ const fechaDesde = ref(toDateOnlyString(hace7Dias))
 const fechaHasta = ref(toDateOnlyString(hoy))
 const codigoAlmacenFiltro = ref(tieneAccesoGlobal.value ? '' : (opcionesAlmacenes.value[0]?.codigo ?? ''))
 
-const modalVisorAbierto = ref(false)
+const { modalVisorAbierto, urlComprobante, nombreComprobante, cargandoComprobante, abrirComprobante } = useComprobante()
 const modalAnularAbierto = ref(false)
-const itemParaVisor = ref<AuditoriaGlobalDto | null>(null)
 const itemParaAnular = ref<AuditoriaGlobalDto | null>(null)
-const urlComprobante = ref<string | null>(null)
 
 const errorRango = computed(() => {
   if (!fechaDesde.value || !fechaHasta.value) return null
@@ -390,15 +387,7 @@ async function onExportarCsv(): Promise<void> {
 }
 
 async function onVerComprobante(item: AuditoriaGlobalDto): Promise<void> {
-  itemParaVisor.value = item
-  urlComprobante.value = null
-  modalVisorAbierto.value = true
-  try {
-    const resultado = await tesoreriaService.obtenerUrlComprobante(item.id)
-    urlComprobante.value = resultado.url
-  } catch (err) {
-    toast.error('No se pudo cargar el comprobante', extraerMensajeError(err))
-  }
+  await abrirComprobante(item.id)
 }
 
 function abrirModalAnular(item: AuditoriaGlobalDto): void {

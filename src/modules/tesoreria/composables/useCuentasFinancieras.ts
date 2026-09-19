@@ -10,6 +10,7 @@ export type FiltroEstadoCuenta = 'todas' | 'activas' | 'paraTiendas'
 // refleja de inmediato en los KPIs de la tarjeta sin recargar ni duplicar el fetch.
 const cuentas = ref<CuentaFinancieraDto[]>([])
 const cargando = ref(false)
+const sincronizando = ref(false)
 const actualizandoIds = ref(new Set<number>())
 
 /** Buscador + filtro rápido del Drawer de gestión (en memoria, sin refetch). */
@@ -50,6 +51,39 @@ export function useCuentasFinancieras() {
     }
   }
 
+  /**
+   * Dispara la sincronización manual del catálogo bancario desde SAP Business One (mismo comando
+   * que el job nocturno de Hangfire) y refresca el listado del Drawer con el resultado. El backend
+   * no expone `EmpresaId` en este endpoint — el comando sincroniza siempre Mabel Trading.
+   */
+  async function sincronizarConSap(): Promise<void> {
+    if (sincronizando.value) return
+
+    sincronizando.value = true
+    try {
+      const resultado = await tesoreriaService.sincronizarCuentasSap()
+      await cargar()
+      toast.success(
+        'Sincronización con SAP completada',
+        `${resultado.cuentasNuevas} cuenta(s) nueva(s) y ${resultado.cuentasActualizadas} actualizada(s), de ${resultado.cuentasFiltradasBancarias} cuenta(s) bancaria(s) recibida(s) desde SAP Business One.`
+      )
+    } catch (err) {
+      const status = (err as { response?: { status?: number } })?.response?.status
+      if (status === 403) {
+        toast.error('Acceso denegado', extraerMensajeError(err, 'No tiene permisos para sincronizar catálogos contables.'))
+      } else if (status === 502 || status === 503 || status === 504) {
+        toast.error(
+          'Servicio SAP no disponible',
+          extraerMensajeError(err, 'No se pudo contactar con el servicio de integración SAP. Verifique que el middleware esté operativo.')
+        )
+      } else {
+        toast.error('No se pudo sincronizar con SAP', extraerMensajeError(err, 'No fue posible sincronizar el catálogo con SAP Business One.'))
+      }
+    } finally {
+      sincronizando.value = false
+    }
+  }
+
   async function actualizarEstado(cuenta: CuentaFinancieraDto, payload: ActualizarEstadoCuentaPayload): Promise<void> {
     // Candado por fila: un segundo toggle sobre la misma cuenta mientras la primera petición PATCH
     // sigue en vuelo se ignora en vez de disparar una segunda llamada concurrente.
@@ -72,6 +106,7 @@ export function useCuentasFinancieras() {
     cuentas,
     cuentasFiltradas,
     cargando,
+    sincronizando,
     actualizandoIds,
     busqueda,
     filtroEstado,
@@ -79,6 +114,7 @@ export function useCuentasFinancieras() {
     cuentasParaTiendas,
     cuentasActivas,
     cargar,
+    sincronizarConSap,
     actualizarEstado
   }
 }
