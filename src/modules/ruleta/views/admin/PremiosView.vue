@@ -95,13 +95,13 @@ const mostrarAgregar = ref(false)
 const errorNuevo = ref('')
 const nuevoForm = ref<Omit<PremioAdmin, 'id'>>({
   nombre: '', descripcion: '', tipo: 'fisico',
-  stock_total: null, valor_referencial: null, es_relleno: false, controla_stock_por_tienda: false
+  stock_total: null, valor_referencial: null, es_relleno: false, es_premio_mayor: false, controla_stock_por_tienda: false
 })
 
 function abrirAgregar() {
   nuevoForm.value = {
     nombre: '', descripcion: '', tipo: 'fisico',
-    stock_total: null, valor_referencial: null, es_relleno: false, controla_stock_por_tienda: false
+    stock_total: null, valor_referencial: null, es_relleno: false, es_premio_mayor: false, controla_stock_por_tienda: false
   }
   errorNuevo.value = ''
   mostrarAgregar.value = true

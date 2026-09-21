@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, onUnmounted, watch, computed } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { useRuletaStore } from '../stores/ruletaStore'
 import { useTemaStore } from '../stores/temaStore'
@@ -7,12 +7,17 @@ import SeleccionTiendaModal from '../components/SeleccionTiendaModal.vue'
 import VolverButton from '@/components/VolverButton.vue'
 import RuletaWheel from '../components/RuletaWheel.vue'
 import PremioModal from '../components/PremioModal.vue'
+import AtmosphericParticles from '../components/AtmosphericParticles.vue'
+import { estiloFondoTema } from '../utils/fondoTema'
 import type { Tienda } from '../types'
 
 const authStore = useAuthStore()
 const store = useRuletaStore()
 const temaStore = useTemaStore()
 const tema = computed(() => temaStore.tema)
+
+const estiloFondoPantalla = computed(() => estiloFondoTema(tema.value))
+const overlayFondo = computed(() => (tema.value.fondo?.overlay_opacidad ?? 0) / 100)
 
 const cedula = ref('')
 const cedulaTouched = ref(false)
@@ -39,9 +44,25 @@ const puedeGirar = computed(() =>
   !!store.campanaActivaId
 )
 
+let desmontado = false
+let detenerSincronizacion: (() => void) | undefined
+watch(() => store.campanaActivaId, () => {
+  if (detenerSincronizacion) {
+    detenerSincronizacion()
+    detenerSincronizacion = temaStore.iniciarSincronizacion(() => store.campanaActivaId)
+  }
+})
+onUnmounted(() => {
+  desmontado = true
+  detenerSincronizacion?.()
+})
 onMounted(async () => {
   store.restaurarTiendaDelDia()
   await Promise.all([store.cargarTiendas(), store.cargarSegmentos()])
+  // El tema se resuelve recién aquí (no en la creación del store) porque depende de qué campaña
+  // resultó activa tras cargarSegmentos(): con tema propio publicado se usa ese, si no se hereda
+  // el global — la resolución de herencia la hace el backend (ObtenerTemaCampanaAsync).
+  if (!desmontado) detenerSincronizacion = temaStore.iniciarSincronizacion(() => store.campanaActivaId)
 })
 
 function onTiendaConfirmada(tienda: Tienda) {
@@ -92,8 +113,9 @@ function onCerrarPremio() {
              relative flex flex-col items-center justify-center gap-2 sm:gap-4 lg:gap-6
              overflow-hidden py-4 lg:py-0
              min-h-[400px] h-[55vh] sm:h-[60vh] md:h-[55vh] lg:h-auto"
-      :style="`background: linear-gradient(135deg, ${tema.color_fondo_inicio} 0%, ${tema.color_fondo_fin} 45%, ${tema.color_fondo_fin}dd 100%)`"
+      :style="estiloFondoPantalla"
     >
+      <div class="pointer-events-none absolute inset-0" :style="`background: rgba(0,0,0,${overlayFondo})`" />
 
       <!-- Glows decorativos animados basados en el tema -->
       <div class="pointer-events-none absolute inset-0 overflow-hidden">
@@ -105,6 +127,11 @@ function onCerrarPremio() {
              :style="`background: ${tema.color_hub_acento}15`" />
         <div class="absolute top-0 left-0 right-0 h-1/3 opacity-30 bg-gradient-to-b from-white/10 to-transparent" />
       </div>
+
+      <AtmosphericParticles
+        :tipo="tema.particulas?.tipo ?? 'ninguno'"
+        :intensidad="tema.particulas?.intensidad ?? 'media'"
+      />
 
       <!-- ── Logo One Card ── -->
       <div class="relative z-10 flex justify-center w-full pt-2 lg:pt-6 mb-1 lg:mb-2 mt-4 lg:mt-0">
@@ -310,8 +337,9 @@ function onCerrarPremio() {
       <div
         v-if="modoFullscreen"
         class="fixed inset-0 z-[200] flex flex-col items-center justify-center overflow-hidden"
-        :style="`background: linear-gradient(135deg, ${tema.color_fondo_inicio} 0%, ${tema.color_fondo_fin} 45%, ${tema.color_fondo_fin}dd 100%)`"
+        :style="estiloFondoPantalla"
       >
+        <div class="pointer-events-none absolute inset-0" :style="`background: rgba(0,0,0,${overlayFondo})`" />
 
         <!-- Glows de fondo animados fullscreen basados en el tema -->
         <div class="pointer-events-none absolute inset-0 overflow-hidden">
@@ -322,6 +350,11 @@ function onCerrarPremio() {
           <div class="absolute top-1/2 left-1/2 w-[90vw] h-[90vw] rounded-full blur-[150px] animate-pulse-slow"
                :style="`background: ${tema.color_hub_acento}1A`" />
         </div>
+
+        <AtmosphericParticles
+          :tipo="tema.particulas?.tipo ?? 'ninguno'"
+          :intensidad="tema.particulas?.intensidad ?? 'media'"
+        />
 
         <!-- Logo One Card -->
         <div class="relative z-10 flex justify-center w-full">

@@ -5,7 +5,8 @@ import { useToast } from '@/composables/useToast'
 import { useAdminStore } from '../../stores/adminStore'
 import { extraerMensajeError } from '../../services/utils/errorHandler'
 import DuplicarCampanaModal from '../../components/admin/DuplicarCampanaModal.vue'
-import type { SegmentoCliente, TipoPremio, CrearPremioDTO, PremioAdmin, Tienda, Campana } from '../../types'
+import { ruletaService } from '../../services/ruletaApi'
+import type { SegmentoCliente, TipoPremio, CrearPremioDTO, PremioAdmin, Tienda, Campana, TemaBackend } from '../../types'
 
 const store  = useAdminStore()
 const route  = useRoute()
@@ -16,11 +17,47 @@ const campanaId = route.params.campanaId as string
 
 let probInterval: ReturnType<typeof setInterval> | null = null
 
+// ─── Tema visual de la campaña ────────────────────────────────────────────────
+const temaCampana = ref<TemaBackend | null>(null)
+const cargandoTema = ref(true)
+const quitandoTema = ref(false)
+// El backend siempre resuelve un tema (propio o el global heredado): distinguimos cuál es
+// mirando `esGlobalPredeterminado` — solo el tema global predeterminado tiene ese flag en true.
+const tieneTemaPropio = computed(() => temaCampana.value !== null && !temaCampana.value.esGlobalPredeterminado)
+
+async function cargarTemaCampana() {
+  cargandoTema.value = true
+  try {
+    temaCampana.value = await ruletaService.getTemaCampana(campanaId)
+  } finally {
+    cargandoTema.value = false
+  }
+}
+
+function irAEstudioDeTema() {
+  router.push({ name: 'ruleta-admin-tema', query: { campanaId } })
+}
+
+async function quitarTemaPersonalizado() {
+  if (!window.confirm('¿Volver a heredar el tema global? Se perderá la personalización visual de esta campaña.')) return
+  quitandoTema.value = true
+  try {
+    await ruletaService.quitarTemaCampana(campanaId)
+    await cargarTemaCampana()
+    toast.success('Esta campaña vuelve a usar el tema global.')
+  } catch (e) {
+    toast.error('No se pudo quitar el tema personalizado', extraerMensajeError(e))
+  } finally {
+    quitandoTema.value = false
+  }
+}
+
 // ─── Carga inicial ────────────────────────────────────────────────────────────
 onMounted(async () => {
   if (store.campanas.length === 0) await store.cargarCampanas()
   await store.cargarPremiosCampana(campanaId)
   await store.cargarTiendas()
+  await cargarTemaCampana()
 })
 
 onUnmounted(() => {
@@ -239,6 +276,7 @@ const form = ref<CrearPremioDTO>({
   nombre: '',
   descripcion: '',
   es_vacio: false,
+  es_premio_mayor: false,
   tipo: 'fisico',
   segmento: 'GRUPO_1',
   controla_stock_por_tienda: false,
@@ -264,6 +302,7 @@ function abrirModal() {
     nombre: '',
     descripcion: '',
     es_vacio: false,
+    es_premio_mayor: false,
     tipo: 'fisico',
     segmento: grupo.value?.grupo ?? 'GRUPO_1',
     controla_stock_por_tienda: false,
@@ -305,6 +344,7 @@ function abrirModalEditar(premio: PremioAdmin) {
     nombre:                    premio.nombre,
     descripcion:               premio.descripcion ?? '',
     es_vacio:                  premio.es_relleno,
+    es_premio_mayor:           premio.es_premio_mayor,
     tipo:                      premio.tipo,
     segmento:                  grupo.value?.grupo ?? 'GRUPO_1',
     controla_stock_por_tienda: premio.controla_stock_por_tienda,
@@ -326,6 +366,7 @@ watch(() => form.value.es_vacio, (esVacio) => {
     form.value.tipo = 'relleno'
     form.value.controla_stock_por_tienda = false
     form.value.stock_total = null
+    form.value.es_premio_mayor = false
     if (!form.value.nombre.trim()) form.value.nombre = '¡Sigue intentando!'
   } else {
     form.value.tipo = 'fisico'
@@ -404,6 +445,7 @@ function buildPremioData(): Omit<PremioAdmin, 'id'> {
     stock_total:               esVacio ? null : (form.value.stock_total ?? null),
     valor_referencial:         esVacio ? null : (form.value.valor_referencial ?? null),
     es_relleno:                esVacio,
+    es_premio_mayor:           !esVacio && (form.value.es_premio_mayor ?? false),
     controla_stock_por_tienda: !esVacio && form.value.controla_stock_por_tienda,
     imagen_url:                imagenPreview.value ?? form.value.imagen_url ?? undefined,
     // Preserva el orden visual en la ruleta: no hay ningún control en este formulario para
@@ -892,6 +934,39 @@ function ocultarDropdown() {
       </div>
     </div>
 
+    <!-- ── Tema visual de la campaña ──────────────────────────────────────── -->
+    <div v-if="!cargandoTema" class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm p-5 flex flex-wrap items-center justify-between gap-3">
+      <div class="flex items-center gap-3">
+        <span class="text-2xl" aria-hidden="true">🎨</span>
+        <div>
+          <p class="text-sm font-semibold text-gray-800 dark:text-gray-200">
+            {{ tieneTemaPropio ? 'Tema visual personalizado' : 'Hereda el tema global' }}
+          </p>
+          <p class="text-xs text-gray-500 dark:text-gray-400">
+            {{ tieneTemaPropio
+              ? 'Esta campaña usa colores, branding y efectos propios en la ruleta.'
+              : 'Esta campaña usa el mismo diseño visual configurado para todas las tiendas.' }}
+          </p>
+        </div>
+      </div>
+      <div class="flex items-center gap-2">
+        <button
+          v-if="tieneTemaPropio"
+          @click="quitarTemaPersonalizado"
+          :disabled="quitandoTema"
+          class="px-3.5 py-2 rounded-xl border border-gray-200 dark:border-gray-600 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors disabled:opacity-40"
+        >
+          {{ quitandoTema ? 'Quitando…' : 'Volver a heredar tema global' }}
+        </button>
+        <button
+          @click="irAEstudioDeTema"
+          class="px-3.5 py-2 rounded-xl bg-violet-600 hover:bg-violet-700 text-white text-sm font-semibold transition-colors"
+        >
+          {{ tieneTemaPropio ? 'Editar tema de esta campaña' : 'Personalizar tema de esta campaña' }}
+        </button>
+      </div>
+    </div>
+
     <!-- Loading -->
     <div v-if="store.loadingPremios" class="flex justify-center py-16">
       <div class="w-8 h-8 rounded-full border-4 border-t-transparent animate-spin" style="border-color: #0A86C2 #0A86C2 #0A86C2 transparent"/>
@@ -1247,6 +1322,26 @@ function ocultarDropdown() {
                     ]">
                     <span class="absolute top-1 left-1 w-4 h-4 bg-white rounded-full shadow-md transition-transform duration-200"
                           :class="form.es_vacio ? 'translate-x-5' : 'translate-x-0'"/>
+                  </button>
+                </div>
+
+                <!-- Switch: ¿Premio Mayor / Estrella? -->
+                <div v-if="!form.es_vacio" class="flex items-center justify-between gap-4 p-4 rounded-xl transition-colors"
+                     :class="form.es_premio_mayor
+                       ? 'bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700/50'
+                       : 'bg-gray-50 dark:bg-gray-800/60 border border-gray-200 dark:border-gray-700'">
+                  <div>
+                    <p class="text-sm font-semibold text-gray-800 dark:text-gray-200">👑 Premio Mayor / Estrella</p>
+                    <p class="text-xs mt-0.5 text-gray-500 dark:text-gray-400">
+                      Se destaca en la ruleta con brillo dorado y corona (jackpot).
+                    </p>
+                  </div>
+                  <button type="button" role="switch" :aria-checked="form.es_premio_mayor"
+                    @click="form.es_premio_mayor = !form.es_premio_mayor"
+                    class="relative flex-shrink-0 w-11 h-6 rounded-full transition-colors duration-200 focus:outline-none cursor-pointer"
+                    :class="form.es_premio_mayor ? 'bg-amber-500' : 'bg-gray-300 dark:bg-gray-600'">
+                    <span class="absolute top-1 left-1 w-4 h-4 bg-white rounded-full shadow-md transition-transform duration-200"
+                          :class="form.es_premio_mayor ? 'translate-x-5' : 'translate-x-0'"/>
                   </button>
                 </div>
 

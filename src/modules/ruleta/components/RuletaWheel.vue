@@ -1,16 +1,36 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
-import type { SegmentoRuleta, TemaRuleta } from '../types'
+import type { SegmentoRuleta, TemaVisualConfig } from '../types'
+import { cargarTipografia } from '../constants/tipografias'
 import { TEMA_DEFECTO } from '../stores/temaStore'
 
 const props = defineProps<{
   segmentos: SegmentoRuleta[]
   indiceGanador: number | null
   girando: boolean
-  tema?: TemaRuleta
+  tema?: TemaVisualConfig
 }>()
 
 const t = computed(() => props.tema ?? TEMA_DEFECTO)
+const hubEscala = computed(() => t.value.hub?.escala ?? 1)
+const hubFijo = computed(() => t.value.hub?.rotacion_fija ?? false)
+const hubBordeDecorativo = computed(() => t.value.hub?.borde_decorativo ?? true)
+const tipografia = computed(() => t.value.tipografia ?? TEMA_DEFECTO.tipografia!)
+watch(() => tipografia.value.familia, cargarTipografia, { immediate: true })
+const vip = computed(() => t.value.vip ?? TEMA_DEFECTO.vip!)
+
+function textoSegmento(nombre: string) {
+  return tipografia.value.mayusculas ? nombre.toUpperCase() : nombre
+}
+
+/** Ángulo de rotación del texto: tangencial ("arco", perpendicular al radio) o a lo largo
+ *  del radio ("radial"); en ambos casos se evita que el texto quede boca abajo en la mitad inferior. */
+function rotacionTexto(mid: number) {
+  if (tipografia.value.orientacion === 'radial') {
+    return mid <= 180 ? mid : mid - 180
+  }
+  return mid <= 180 ? mid - 90 : mid + 90
+}
 
 const emit = defineEmits<{
   animacionCompletada: []
@@ -55,6 +75,8 @@ const segmentosCalculados = computed(() =>
   })
 )
 
+const segmentosVip = computed(() => segmentosCalculados.value.filter((s) => s.es_premio_mayor))
+
 const lineasSeparacion = computed(() =>
   Array.from({ length: segCount.value }, (_, i) => {
     const rad = toRad(i * segSize.value)
@@ -90,8 +112,15 @@ const estiloRuleta = computed(() => ({
 
 watch(() => props.indiceGanador, (nuevoIndice) => {
   if (nuevoIndice === null) return
+
+  // Blindaje defensivo: un índice no-entero, negativo o fuera de rango (desincronización entre
+  // el arreglo de segmentos visual y el resultado del giro, o un cambio de campaña a mitad de
+  // animación) nunca debe dejar la aguja apuntando a un gajo inexistente ni descuadrar el cálculo
+  // angular — se acota al entero seguro más cercano dentro de [0, segCount - 1].
+  const indiceSeguro = Math.max(0, Math.min(Math.round(nuevoIndice), segCount.value - 1))
+
   const sz = 360 / segCount.value
-  const centroSegmento     = nuevoIndice * sz + sz / 2
+  const centroSegmento     = indiceSeguro * sz + sz / 2
   const targetEnUnaVuelta  = (360 - centroSegmento + 360) % 360
   const currentEnUnaVuelta = rotacionActual.value % 360
   const extraNeeded        = (targetEnUnaVuelta - currentEnUnaVuelta + 360) % 360
@@ -176,10 +205,20 @@ watch(() => props.indiceGanador, (nuevoIndice) => {
         overflow="visible"
       >
         <defs>
-          <!-- Sombra suave en segmentos -->
+          <!-- Sombra del texto: color/intensidad configurables desde Tipografía -->
           <filter id="seg-shadow-rl">
-            <feDropShadow dx="0" dy="0" stdDeviation="1.2" flood-color="rgba(0,0,0,0.3)"/>
+            <feDropShadow
+              dx="0" dy="0" stdDeviation="1.2"
+              :flood-color="tipografia.sombra_color ?? '#000000'"
+              :flood-opacity="(tipografia.sombra_intensidad ?? 40) / 100"
+            />
           </filter>
+
+          <!-- Gradiente del segmento Premio Mayor / Estrella (Jackpot) -->
+          <radialGradient id="vip-gradient-rl" cx="50%" cy="50%" r="75%">
+            <stop offset="0%"   :stop-color="vip.color_primario"/>
+            <stop offset="100%" :stop-color="vip.color_secundario"/>
+          </radialGradient>
 
           <!-- Brillo dorado para las líneas separadoras -->
           <filter id="divider-glow-rl" x="-50%" y="-50%" width="200%" height="200%">
@@ -210,8 +249,21 @@ watch(() => props.indiceGanador, (nuevoIndice) => {
           v-for="(seg, i) in segmentosCalculados"
           :key="seg.id"
           :d="arcPath(seg.start, seg.end)"
-          :fill="t.paleta_segmentos[i % t.paleta_segmentos.length]"
+          :fill="seg.es_premio_mayor ? 'url(#vip-gradient-rl)' : t.paleta_segmentos[i % t.paleta_segmentos.length]"
         />
+
+        <!-- ── Pulso perimetral del segmento Premio Mayor ── -->
+        <template v-if="vip.pulso">
+          <path
+            v-for="seg in segmentosVip"
+            :key="`vip-pulse-${seg.id}`"
+            :d="arcPath(seg.start, seg.end)"
+            fill="none"
+            :stroke="vip.color_primario"
+            stroke-width="2"
+            class="vip-pulse"
+          />
+        </template>
 
         <!-- ── Overlay de profundidad (sheen) ── -->
         <circle :cx="CX" :cy="CY" r="95" fill="url(#seg-sheen-rl)" />
@@ -281,33 +333,44 @@ watch(() => props.indiceGanador, (nuevoIndice) => {
           :y="labelPos(seg.mid).y"
           text-anchor="middle"
           dominant-baseline="middle"
-          :transform="`rotate(${seg.mid <= 180 ? seg.mid - 90 : seg.mid + 90}, ${labelPos(seg.mid).x}, ${labelPos(seg.mid).y})`"
+          :transform="`rotate(${rotacionTexto(seg.mid)}, ${labelPos(seg.mid).x}, ${labelPos(seg.mid).y})`"
           :font-size="segCount <= 6 ? '5.2' : segCount <= 8 ? '4.5' : '3.8'"
+          :font-family="tipografia.familia"
           font-weight="800"
           :fill="t.color_texto_segmentos"
           opacity="0.96"
           class="pointer-events-none"
           filter="url(#seg-shadow-rl)"
         >
-          {{ seg.nombre }}
+          {{ textoSegmento(seg.nombre) }}
         </text>
 
-        <!-- ── Hub central (concéntrico, sin texto) ── -->
-        <!-- Sombra exterior del hub -->
-        <circle :cx="CX" :cy="CY" r="22.5" fill="rgba(0,0,0,0.45)" />
-        <!-- Fondo hub -->
-        <circle :cx="CX" :cy="CY" r="21"   :fill="t.color_hub_fondo"/>
-        <!-- Anillo dorado grueso -->
-        <circle :cx="CX" :cy="CY" r="19.5" :fill="t.color_aro_primario" opacity="0.95"/>
-        <!-- Anillo highlight del dorado -->
-        <circle :cx="CX" :cy="CY" r="19.5" fill="none" stroke="rgba(255,255,255,0.4)" stroke-width="0.8"/>
-        <!-- Interior oscuro -->
-        <circle :cx="CX" :cy="CY" r="16"   :fill="t.color_hub_fondo"/>
-        <!-- Anillo fino acento interior -->
-        <circle :cx="CX" :cy="CY" r="16"   fill="none" :stroke="t.color_aro_primario" stroke-width="0.6" opacity="0.5"/>
+        <!-- ── Icono del Premio Mayor / Estrella ── -->
+        <text
+          v-for="seg in segmentosVip"
+          :key="`vip-icon-${seg.id}`"
+          :x="labelPos(seg.mid, RADIO * 0.82).x"
+          :y="labelPos(seg.mid, RADIO * 0.82).y"
+          text-anchor="middle"
+          dominant-baseline="middle"
+          font-size="9"
+          class="pointer-events-none"
+        >{{ vip.icono === 'corona' ? '👑' : '⭐' }}</text>
 
       </svg>
 
+    </div>
+
+    <div class="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
+      <svg viewBox="0 0 200 200" class="w-[88%] h-[88%]" :style="hubFijo ? undefined : estiloRuleta" aria-hidden="true">
+        <g :transform="`translate(${CX} ${CY}) scale(${hubEscala})`">
+          <circle r="22.5" fill="rgba(0,0,0,0.45)" />
+          <circle r="21" :fill="t.color_hub_fondo" />
+          <circle v-if="hubBordeDecorativo" r="19.5" fill="none" :stroke="t.color_hub_acento" stroke-width="3" />
+          <circle r="15" fill="none" :stroke="t.color_hub_acento" stroke-width="0.6" opacity="0.5" />
+          <path d="M 0 -10 L 2 -2 L 10 0 L 2 2 L 0 10 L -2 2 L -10 0 L -2 -2 Z" :fill="t.color_hub_acento" />
+        </g>
+      </svg>
     </div>
 
     <!-- ── Puntero tipo pin de ubicación ─────────────────────────────────── -->
@@ -356,5 +419,19 @@ watch(() => props.indiceGanador, (nuevoIndice) => {
 @keyframes led-pulse-rl {
   0%, 100% { opacity: 0.45; }
   50%       { opacity: 1.0;  }
+}
+
+/* ── Pulso del segmento Premio Mayor / Estrella ─────────────────────────── */
+.vip-pulse {
+  animation: vip-pulse-rl 1.8s ease-in-out infinite;
+}
+
+@keyframes vip-pulse-rl {
+  0%, 100% { opacity: 0.35; stroke-width: 2; }
+  50%       { opacity: 0.9;  stroke-width: 3.5; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .vip-pulse { animation: none; opacity: 0.6; }
 }
 </style>

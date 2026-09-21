@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, nextTick } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useToast } from '@/composables/useToast'
 import { useAdminStore } from '../../stores/adminStore'
@@ -7,6 +7,7 @@ import { extraerMensajeError } from '../../services/utils/errorHandler'
 import type { CrearCampanaDTO, EstadoCampana, EstadoOperativoCampana, SegmentoCliente, Campana } from '../../types'
 import VolverButton from '@/components/VolverButton.vue'
 import DuplicarCampanaModal from '../../components/admin/DuplicarCampanaModal.vue'
+import { useMenuContextual } from '../../composables/useMenuContextual'
 
 const store  = useAdminStore()
 const router = useRouter()
@@ -63,38 +64,9 @@ const campanasFiltradas = computed(() => {
 })
 
 // ─── Menú de tres puntos (Teleport + overlay fijo) ───────────────────────────
-const menuAbierto   = ref<string | null>(null)
-const menuStyle     = ref({ top: '0px', right: '0px' })
+const { menuAbierto, menuStyle, menuRef, abrirMenu, cerrarMenu } = useMenuContextual()
 const menuCampana   = computed(() => store.campanas.find(c => c.id === menuAbierto.value) ?? null)
-const menuRef       = ref<HTMLElement | null>(null)
-
-async function abrirMenu(e: MouseEvent, id: string) {
-  e.stopPropagation()
-  if (menuAbierto.value === id) { menuAbierto.value = null; return }
-  const btn  = e.currentTarget as HTMLElement
-  const rect = btn.getBoundingClientRect()
-  const right = `${globalThis.innerWidth - rect.right}px`
-
-  // Posición provisional hacia abajo del botón. La altura real del menú varía según cuántas
-  // acciones aplican al estado de esa campaña (Activar/Pausar/Finalizar son condicionales), así
-  // que no se puede calcular de antemano si cabe — se mide después de montarlo.
-  menuStyle.value = { top: `${rect.bottom + globalThis.scrollY + 6}px`, right }
-  menuAbierto.value = id
-
-  await nextTick()
-  const menuAltura = menuRef.value?.getBoundingClientRect().height ?? 0
-  if (!menuAltura) return
-
-  const espacioAbajo = globalThis.innerHeight - rect.bottom
-  const espacioArriba = rect.top
-  // Si no cabe hacia abajo (fila cerca del final de la ventana) pero sí hacia arriba, se abre
-  // hacia arriba en vez de quedar cortado por el borde de la ventana. Si tampoco cabe hacia
-  // arriba (ventana muy baja), se deja hacia abajo — es el menor de dos desbordes posibles.
-  if (espacioAbajo < menuAltura + 12 && espacioArriba > menuAltura + 12) {
-    menuStyle.value = { top: `${rect.top + globalThis.scrollY - menuAltura - 6}px`, right }
-  }
-}
-function cerrarMenu() { menuAbierto.value = null }
+watch(menuCampana, campana => { if (!campana && menuAbierto.value) cerrarMenu() })
 
 function accionConfigurar() {
   if (!menuCampana.value) return
@@ -549,8 +521,13 @@ const SEGMENTO_LABELS: Record<SegmentoCliente, string> = {
             <td class="px-3 py-4 text-right">
               <button
                 @click="abrirMenu($event, c.id)"
-                class="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 dark:hover:text-gray-200
-                       hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                type="button"
+                :id="`campana-acciones-${c.id}`"
+                :aria-expanded="menuAbierto === c.id"
+                :aria-controls="menuAbierto === c.id ? 'campana-menu-acciones' : undefined"
+                aria-haspopup="menu"
+                class="inline-flex min-h-11 min-w-11 items-center justify-center p-1.5 rounded-lg text-gray-400 hover:text-gray-700 dark:hover:text-gray-200
+                       hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
                 aria-label="Más opciones"
                 title="Más opciones"
               >
@@ -567,26 +544,31 @@ const SEGMENTO_LABELS: Record<SegmentoCliente, string> = {
     <!-- ── Menú flotante (Teleport + overlay) ─────────────────────────────── -->
     <Teleport to="body">
       <!-- Overlay invisible para capturar click fuera -->
-      <div v-if="menuAbierto" class="fixed inset-0 z-40" @click="cerrarMenu" />
+      <div v-if="menuAbierto" class="fixed inset-0 z-40 bg-transparent" aria-hidden="true" @click="cerrarMenu" />
 
       <!-- Dropdown del menú -->
       <Transition
-        enter-active-class="transition-all duration-150"
-        enter-from-class="opacity-0 scale-95 -translate-y-1"
-        enter-to-class="opacity-100 scale-100 translate-y-0"
-        leave-active-class="transition-all duration-100"
-        leave-from-class="opacity-100 scale-100"
-        leave-to-class="opacity-0 scale-95"
+        enter-active-class="transition-opacity duration-150"
+        enter-from-class="opacity-0"
+        enter-to-class="opacity-100"
+        leave-active-class="transition-opacity duration-100 pointer-events-none"
+        leave-from-class="opacity-100"
+        leave-to-class="opacity-0"
       >
         <div
           v-if="menuAbierto && menuCampana"
           ref="menuRef"
+          id="campana-menu-acciones"
+          role="menu"
+          :aria-labelledby="`campana-acciones-${menuAbierto}`"
           class="fixed z-50 w-52 bg-white dark:bg-gray-800 rounded-xl shadow-xl
-                 border border-gray-100 dark:border-gray-700 py-1 origin-top-right"
+                 border border-gray-100 dark:border-gray-700 py-1 overflow-y-auto overscroll-contain break-words
+                 [&_button]:min-h-11 [&_button:focus-visible]:outline-none [&_button:focus-visible]:ring-2
+                 [&_button:focus-visible]:ring-inset [&_button:focus-visible]:ring-indigo-500"
           :style="menuStyle"
         >
           <!-- Configurar / Editar premios -->
-          <button
+          <button role="menuitem" tabindex="-1" type="button"
             @click="accionConfigurar"
             class="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 dark:text-gray-200
                    hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-left"
@@ -599,7 +581,7 @@ const SEGMENTO_LABELS: Record<SegmentoCliente, string> = {
           </button>
 
           <!-- Duplicar: disponible en cualquier estado, especialmente útil en Finalizada -->
-          <button
+          <button role="menuitem" tabindex="-1" type="button"
             @click="pedirDuplicar(menuCampana)"
             class="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 dark:text-gray-200
                    hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-left"
@@ -613,7 +595,7 @@ const SEGMENTO_LABELS: Record<SegmentoCliente, string> = {
           <div class="border-t border-gray-100 dark:border-gray-700 my-1" />
 
           <!-- Editar general -->
-          <button
+          <button role="menuitem" tabindex="-1" type="button"
             v-if="menuCampana.estado === 'borrador' || estadoEfectivo(menuCampana) === 'pausada'"
             @click="abrirModalEditar(menuCampana)"
             class="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 dark:text-gray-200
@@ -629,9 +611,10 @@ const SEGMENTO_LABELS: Record<SegmentoCliente, string> = {
 
           <!-- Activar -->
           <div class="relative group/activar">
-            <button
+            <button role="menuitem" tabindex="-1" type="button"
               @click="menuCampana.tiene_premios ? accionCambiarEstado('activa') : undefined"
               :disabled="!menuCampana.tiene_premios"
+              :aria-describedby="!menuCampana.tiene_premios ? 'campana-activar-ayuda' : undefined"
               class="w-full flex items-center gap-3 px-4 py-2.5 text-sm transition-colors text-left"
               :class="menuCampana.tiene_premios && (menuCampana.estado === 'borrador' || estadoEfectivo(menuCampana) === 'pausada')
                 ? 'text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20'
@@ -643,20 +626,18 @@ const SEGMENTO_LABELS: Record<SegmentoCliente, string> = {
               </svg>
               Activar campaña
             </button>
-            <!-- Tooltip "sin premios" -->
-            <div
+            <!-- Ayuda visible también en pantallas táctiles y dentro del área desplazable. -->
+            <p
               v-if="!menuCampana.tiene_premios && (menuCampana.estado === 'borrador' || menuCampana.estado === 'pausada')"
-              class="absolute right-full top-1/2 -translate-y-1/2 mr-2 w-44 p-2.5 rounded-xl
-                     bg-gray-900 dark:bg-gray-700 text-white text-xs leading-snug
-                     opacity-0 group-hover/activar:opacity-100 transition-opacity pointer-events-none z-10"
+              id="campana-activar-ayuda"
+              class="px-4 pb-2 text-xs leading-snug text-gray-500 dark:text-gray-400"
             >
               Agrega premios antes de activar esta campaña.
-              <div class="absolute left-full top-1/2 -translate-y-1/2 border-4 border-transparent border-l-gray-900 dark:border-l-gray-700"/>
-            </div>
+            </p>
           </div>
 
           <!-- Pausar -->
-          <button
+          <button role="menuitem" tabindex="-1" type="button"
             v-if="menuCampana.estado === 'activa'"
             @click="accionCambiarEstado('pausada')"
             class="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-orange-600 dark:text-orange-400
@@ -669,7 +650,7 @@ const SEGMENTO_LABELS: Record<SegmentoCliente, string> = {
           </button>
 
           <!-- Finalizar (irreversible) -->
-          <button
+          <button role="menuitem" tabindex="-1" type="button"
             v-if="menuCampana.estado === 'activa' || menuCampana.estado === 'pausada'"
             @click="pedirConfirmFinalizar(menuCampana)"
             class="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-red-600 dark:text-red-400
@@ -682,7 +663,7 @@ const SEGMENTO_LABELS: Record<SegmentoCliente, string> = {
           <div v-if="menuCampana.estado !== 'activa' && menuCampana.estado !== 'finalizada'" class="border-t border-gray-100 dark:border-gray-700 my-1" />
 
           <!-- Eliminar: no disponible mientras está Activa ni una vez Finalizada -->
-          <button
+          <button role="menuitem" tabindex="-1" type="button"
             v-if="menuCampana.estado !== 'activa' && menuCampana.estado !== 'finalizada'"
             @click="pedirConfirmDelete(menuCampana)"
             class="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-red-600 dark:text-red-400

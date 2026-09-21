@@ -5,6 +5,90 @@ import type {
   Tienda, SegmentoRuleta, IdentificacionCliente, ResultadoGiro
 } from '../types'
 
+// Comparador semántico tolerante: minúsculas, sin acentos/diacríticos, y sin ningún carácter que
+// no sea letra/dígito (espacios, signos "¡!", guiones, etc.). Así "¡Sigue intentando!" y
+// "Sigue Intentando" (o "sigue-intentando") se reconocen como el mismo premio de consolación sin
+// que el frontend tenga que quemar un catálogo de nombres que marketing cambia por campaña.
+export function normalizarTexto(txt?: string | null): string {
+  return (txt || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .replace(/[^a-z0-9]/g, '')
+}
+
+/**
+ * Resuelve a qué gajo visual de la ruleta debe apuntar la aguja para un resultado de giro dado.
+ * Función pura (sin dependencias de store/red) para poder probarla de forma aislada — ver
+ * BUS-BAJA-05: el backend puede entregar el comodín de emergencia con un nombre distinto al
+ * configurado en la campaña ("Sigue participando" vs "¡Suerte para la próxima!"), y una
+ * comparación de igualdad estricta dejaba la aguja detenida en el índice 0 (con frecuencia el
+ * Premio Mayor/Estrella), mostrando una falsa victoria visual antes de abrir el modal perdedor.
+ *
+ * Estrategia jerárquica, nunca cruzando la frontera "premio real" ↔ "consuelo":
+ *  1. Nombre exacto, luego nombre normalizado (tolera acentos/signos/mayúsculas).
+ *  2. Id del segmento visual, si el backend llega a exponer uno que coincida.
+ *  3. Fallback categórico estricto: para un resultado vacío/consuelo, un gajo vacío elegido al
+ *     azar entre TODOS los marcados como tal (nunca el mismo siempre); para un premio físico
+ *     ganado, un gajo físico elegido al azar entre los reales. Jamás se cruza la categoría.
+ */
+export function resolverIndiceSegmento(
+  segmentos: SegmentoRuleta[],
+  premio: SegmentoRuleta,
+  esGanador: boolean
+): number {
+  if (segmentos.length === 0) return 0
+
+  // Paso 1: nombre exacto, y si no, nombre normalizado.
+  const porNombreExacto = segmentos.findIndex(s => s.nombre === premio.nombre)
+  if (porNombreExacto >= 0) return porNombreExacto
+
+  const nombrePremioNormalizado = normalizarTexto(premio.nombre)
+  if (nombrePremioNormalizado) {
+    const porNombreNormalizado = segmentos.findIndex(
+      s => normalizarTexto(s.nombre) === nombrePremioNormalizado
+    )
+    if (porNombreNormalizado >= 0) return porNombreNormalizado
+  }
+
+  // Paso 2: id del segmento, cuando el origen del premio lo exponga de forma comparable.
+  const porId = segmentos.findIndex(s => s.id === premio.id)
+  if (porId >= 0) return porId
+
+  // Paso 3: fallback categórico estricto — cero falsas victorias, cero falsas derrotas.
+  const esResultadoVacio = premio.es_vacio || premio.tipo === 'relleno' || !esGanador
+
+  if (esResultadoVacio) {
+    const indicesVacios = segmentos
+      .map((s, i) => (s.es_vacio || s.tipo === 'relleno' ? i : -1))
+      .filter(i => i >= 0)
+
+    if (indicesVacios.length > 0) {
+      // Aleatorio ÚNICAMENTE entre los gajos de consuelo: evita el sesgo monótono de anclar
+      // siempre al primero cuando la ruleta tiene varios alternados.
+      return indicesVacios[Math.floor(Math.random() * indicesVacios.length)] // NOSONAR – visual fallback index, not security-sensitive
+    }
+
+    // La ruleta no tiene ningún gajo configurado como vacío (config incompleta de la campaña):
+    // nunca el índice 0 sin validar, que habitualmente es el Premio Mayor/Estrella.
+    return segmentos.length - 1
+  }
+
+  // Premio físico ganado sin match de nombre/id: aleatorio ÚNICAMENTE entre gajos físicos reales,
+  // jamás permitiendo que la aguja caiga sobre una casilla de consuelo tras una jugada ganadora.
+  const indicesFisicos = segmentos
+    .map((s, i) => (!s.es_vacio && s.tipo !== 'relleno' ? i : -1))
+    .filter(i => i >= 0)
+
+  if (indicesFisicos.length > 0) {
+    return indicesFisicos[Math.floor(Math.random() * indicesFisicos.length)] // NOSONAR – visual fallback index, not security-sensitive
+  }
+
+  // Configuración degenerada (premio físico ganado pero la ruleta visual no tiene ningún gajo
+  // físico): sin categoría segura a la que anclarse, se evita igualmente el índice 0 a ciegas.
+  return segmentos.length - 1
+}
+
 // El ERP guarda la sesión completa como JSON en 'user' (no un string plano en 'userName').
 // Sin este parseo, localStorage.getItem('userName') siempre da null y todos los operadores caen
 // en el mismo sufijo genérico 'u', compartiendo la tienda seleccionada en equipos compartidos y
@@ -177,13 +261,9 @@ export const useRuletaStore = defineStore('ruleta', {
         // Propagar el segmento identificado al resultado para que PremioModal pueda evaluarlo
         resultado.cliente.segmento = cliente.segmento
 
-        // Ajustar índice ganador visual buscando en nuestros segmentos el id devuelto
-        const indexEncontrado = this.segmentos.findIndex(s => s.nombre === resultado.premio.nombre)
-        if (indexEncontrado >= 0) {
-          resultado.indice_segmento = indexEncontrado
-        } else {
-          resultado.indice_segmento = Math.floor(Math.random() * this.segmentos.length) // NOSONAR – visual fallback index, not security-sensitive
-        }
+        // Ajustar índice ganador visual con la estrategia jerárquica y categórica de
+        // resolverIndiceSegmento (ver su documentación arriba).
+        resultado.indice_segmento = resolverIndiceSegmento(this.segmentos, resultado.premio, resultado.es_ganador)
 
         this.resultadoGiro = resultado
       } catch (err: any) {

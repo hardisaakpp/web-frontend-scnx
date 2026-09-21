@@ -1,3 +1,4 @@
+import { configurarTemaVectorial } from '../utils/temaVectorial'
 import axios, { type AxiosError } from 'axios'
 import { useToast } from '@/composables/useToast'
 import type {
@@ -11,7 +12,8 @@ import type {
   PremioBackendResponse, GiroRequestDTO,
   GiroVerificacionResponse, RedencionResponse, MetricasCampana,
   HistorialGiroItem, HistorialGirosResponse, GiroFilters, DistribucionSegmentos,
-  StockPremio, PreviewImpactoStockItem, ImpactoStock, ProbabilidadGrupo, DistribucionTiendaItem
+  StockPremio, PreviewImpactoStockItem, ImpactoStock, ProbabilidadGrupo, DistribucionTiendaItem,
+  TemaVisualConfig, TemaBackend, TemaPresetBackend
 } from '../types'
 
 // Instancia heredada para endpoints del core API (getRuletas, etc.)
@@ -100,6 +102,7 @@ function mapPremioFromBackend(p: PremioBackendResponse): PremioAdmin {
     stock_disponible: p.stockDisponible ?? null,
     valor_referencial: p.valorReferencial ?? null,
     es_relleno: p.esVacio,
+    es_premio_mayor: p.esPremioMayor ?? false,
     imagen_url: p.imagenUrl ?? undefined,
     controla_stock_por_tienda: p.controlaStockPorTienda ?? false,
     orden_ruleta: p.ordenRuleta,
@@ -124,6 +127,7 @@ function premioToBackend(data: Partial<PremioAdmin>, segmento?: string, confirma
     stockTotal: data.stock_total ?? null,
     valorReferencial: data.valor_referencial ?? null,
     esVacio: data.es_relleno ?? false,
+    esPremioMayor: data.es_premio_mayor ?? false,
     segmento,
     imagenUrl,
     controlaStockPorTienda: data.controla_stock_por_tienda ?? false,
@@ -196,22 +200,64 @@ export const ruletaService = {
     await api.delete(`/v1/ruleta/${id}`)
   },
 
-  // ─── Tema Global ───────────────────────────────────────────────────────────
-  async getTemaGlobal(): Promise<any> {
+  // ─── Temas (Estudio de Diseño) ─────────────────────────────────────────────
+  // El backend solo conoce versiones PUBLICADAS: el borrador en edición vive
+  // enteramente en temaStore hasta que se llama a publicarTemaGlobal/Campana.
+  async getTemaGlobal(): Promise<TemaBackend | null> {
     try {
-      const response = await campanaApi.get<any>('/api/temas')
-      if (response.data?.temaJson) {
-        return JSON.parse(response.data.temaJson)
-      }
-      return null
+      const response = await campanaApi.get<TemaBackend>('/api/temas/global')
+      return response.data
     } catch (e) {
-      console.error('Error al obtener tema global:', e)
-      return null
+      if ((e as AxiosError)?.response?.status === 404) return null
+      throw e
     }
   },
 
-  async updateTemaGlobal(temaJson: any): Promise<void> {
-    await campanaApi.put('/api/temas', temaJson)
+  async publicarTemaGlobal(configuracion: TemaVisualConfig, rowVersion?: string): Promise<TemaBackend> {
+    const response = await campanaApi.put<TemaBackend>('/api/temas/global', {
+      configuracionJson: JSON.stringify(configurarTemaVectorial(configuracion)),
+      rowVersion: rowVersion ?? null,
+    })
+    return response.data
+  },
+
+  async getTemaCampana(campanaId: string): Promise<TemaBackend | null> {
+    try {
+      const response = await campanaApi.get<TemaBackend>(`/api/campanas/${campanaId}/tema`)
+      return response.data
+    } catch (e) {
+      if ((e as AxiosError)?.response?.status === 404) return null
+      throw e
+    }
+  },
+
+  async publicarTemaCampana(campanaId: string, configuracion: TemaVisualConfig, rowVersion?: string): Promise<TemaBackend> {
+    const response = await campanaApi.put<TemaBackend>(`/api/campanas/${campanaId}/tema`, {
+      configuracionJson: JSON.stringify(configurarTemaVectorial(configuracion)),
+      rowVersion: rowVersion ?? null,
+    })
+    return response.data
+  },
+
+  async quitarTemaCampana(campanaId: string): Promise<void> {
+    await campanaApi.delete(`/api/campanas/${campanaId}/tema`)
+  },
+
+  async getPresetsTema(): Promise<TemaPresetBackend[]> {
+    const response = await campanaApi.get<TemaPresetBackend[]>('/api/temas/presets')
+    return response.data
+  },
+
+  async guardarPresetTema(nombre: string, configuracion: TemaVisualConfig): Promise<TemaPresetBackend> {
+    const response = await campanaApi.post<TemaPresetBackend>('/api/temas/presets', {
+      nombre,
+      configuracionJson: JSON.stringify(configurarTemaVectorial(configuracion)),
+    })
+    return response.data
+  },
+
+  async eliminarPresetTema(id: string): Promise<void> {
+    await campanaApi.delete(`/api/temas/presets/${id}`)
   },
 
   // ─── Tiendas ───────────────────────────────────────────────────────────────
@@ -263,7 +309,8 @@ export const ruletaService = {
         tipo,
         imagen_url: null,
         color: ['#C87137', '#4F46E5', '#A8B4C8', '#3B82F6', '#E63946', '#5A5F6B'][index % 6],
-        es_vacio: p.esVacio
+        es_vacio: p.esVacio,
+        es_premio_mayor: p.esPremioMayor ?? false
       }
     })
   },

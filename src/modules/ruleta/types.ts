@@ -39,6 +39,7 @@ export interface SegmentoRuleta {
   imagen_url: string | null
   color: string
   es_vacio: boolean
+  es_premio_mayor?: boolean
 }
 
 // ─── Identificación de cliente (API Credicorp / segmentación) ─────────────────
@@ -157,6 +158,8 @@ export interface PremioAdmin {
   stock_disponible?: number | null
   valor_referencial?: number | null
   es_relleno: boolean
+  // Premio mayor/estrella (Jackpot): se destaca visualmente en la ruleta (gradiente dorado, pulso, corona).
+  es_premio_mayor: boolean
   imagen_url?: string
   controla_stock_por_tienda: boolean
   orden_ruleta?: number | null
@@ -169,6 +172,7 @@ export interface CrearPremioDTO {
   nombre: string
   descripcion?: string
   es_vacio: boolean
+  es_premio_mayor?: boolean
   tipo: TipoPremio
   segmento: SegmentoCliente
   controla_stock_por_tienda: boolean
@@ -313,6 +317,7 @@ export interface PremioBackendResponse {
   stockDisponible?: number | null
   valorReferencial: number | null
   esVacio: boolean
+  esPremioMayor?: boolean
   activo: boolean
   imagenUrl?: string
   controlaStockPorTienda?: boolean
@@ -489,5 +494,86 @@ export interface TemaRuleta {
 
   // Botón girar
   color_boton: string
+}
+
+// ─── Bloques nuevos del Estudio de Diseño (Fase 2+) ───────────────────────────
+/** Los colores del disco conservan las claves raíz color_hub_fondo y color_hub_acento. */
+export interface HubConfig {
+  escala: number
+  rotacion_fija: boolean
+  borde_decorativo: boolean
+}
+
+export interface ParadaColorGradiente {
+  color: string
+  offset: number
+}
+
+export interface GradienteConfig {
+  tipo: 'lineal' | 'radial' | 'mesh'
+  angulo?: number | null
+  paradas: ParadaColorGradiente[]
+}
+
+export interface FondoConfig {
+  tipo: 'gradiente'
+  gradiente?: GradienteConfig | null
+  overlay_opacidad: number
+}
+
+export type TipoParticula = 'ninguno' | 'nieve' | 'chispas' | 'neon' | 'confeti'
+  | 'burbujas' | 'estrellas' | 'fuegos_artificiales' | 'hojas' | 'luces_flotantes'
+export type IntensidadParticula = 'baja' | 'media' | 'alta'
+
+export interface ParticulasConfig {
+  tipo: TipoParticula
+  intensidad: IntensidadParticula
+}
+
+export interface TipografiaConfig {
+  familia: string
+  mayusculas: boolean
+  sombra_color?: string | null
+  sombra_intensidad: number
+  orientacion: 'arco' | 'radial'
+}
+
+export interface VipConfig {
+  color_primario: string
+  color_secundario: string
+  pulso: boolean
+  icono: 'corona' | 'estrella'
+}
+
+/** Tema completo del Estudio de Diseño: extiende TemaRuleta (compatible con RuletaWheel) con los
+ *  bloques de branding/fondo/partículas/tipografía/VIP. Todos los bloques nuevos son opcionales
+ *  para que un tema guardado antes de esta fase siga siendo válido. */
+export interface TemaVisualConfig extends TemaRuleta {
+  hub?: HubConfig
+  fondo?: FondoConfig
+  particulas?: ParticulasConfig
+  tipografia?: TipografiaConfig
+  vip?: VipConfig
+}
+
+export type DispositivoSimulado = 'tablet-h' | 'tablet-v' | 'desktop'
+
+// ─── DTOs del backend de Temas (api-ruleta: TemasController) ──────────────────
+export interface TemaBackend {
+  id: string
+  nombre: string
+  configuracionJson: string
+  esGlobalPredeterminado: boolean
+  esPublicado: boolean
+  rowVersion: string
+  updatedAt: string
+}
+
+export interface TemaPresetBackend {
+  id: string
+  nombre: string
+  configuracionJson: string
+  miniaturaUrl: string | null
+  esSistema: boolean
 }
 

@@ -21,7 +21,10 @@ const notificacionError = ref('')
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@.]+(?:\.[^\s@.]+)*\.[^\s@.]{2,}$/
 
-const mostrarCampoEmail = props.resultado.cliente.segmento === 'GRUPO_6' && !props.resultado.premio.es_vacio
+// El segmento puede llegar con variaciones de formato ("grupo 6", "Grupo-6") desde el backend;
+// se normaliza antes de comparar para no perder el campo de correo por una diferencia de formato.
+const segmentoNormalizado = (props.resultado.cliente.segmento ?? '').toUpperCase().replace(/[- ]/g, '_')
+const mostrarCampoEmail = segmentoNormalizado === 'GRUPO_6' && !props.resultado.premio.es_vacio
 
 type AnimType = 'a' | 'b' | 'c' | 'd' | 'e'
 type ShapeType = 'rect' | 'circle' | 'ribbon' | 'star'
@@ -317,7 +320,9 @@ async function enviarNotificacion() {
                      style="background: linear-gradient(135deg, #f3f4f6, #e5e7eb)">
                   <span class="text-3xl">🎯</span>
                 </div>
-                <p class="text-xl font-bold text-gray-900 dark:text-white text-center">¡Sigue intentando!</p>
+                <p class="text-xl font-bold text-gray-900 dark:text-white text-center">
+                  {{ resultado.premio.nombre || '¡Sigue intentando!' }}
+                </p>
                 <p class="text-sm text-gray-500 dark:text-gray-400 text-center whitespace-pre-wrap leading-relaxed mt-1">
                   {{ resultado.premio.descripcion || 'Esta vez no fue, pero puedes volver a intentarlo más adelante.' }}
                 </p>
