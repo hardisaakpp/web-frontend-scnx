@@ -26,6 +26,7 @@ deploy/env/active.docker.env
 deploy/env/local.env
 deploy/env/desa.env
 deploy/env/intranet.env
+deploy/env/*.bak*
 # Stubs deprecados (solo redirigen a deploy/env/)
 !.env.production.example
 !.env.docker.example
