@@ -46,6 +46,12 @@ export interface MiaRespuesta {
   cuota: MiaCuota
 }
 
+/** Un turno de la conversación previa; permite a mIA entender preguntas de seguimiento ("¿y si falla?"). */
+export interface MiaTurno {
+  rol: 'user' | 'bot'
+  texto: string
+}
+
 export interface MiaArea {
   codigo: string
   con_documentos: boolean
@@ -78,7 +84,7 @@ export class MiaApiError extends Error {
 
 /** No reintentar: el resultado no cambia hasta corregir algo o dejar pasar el tiempo. */
 const NO_REINTENTAR = new Set([
-  'peticion-invalida', 'area-no-permitida', 'sin-areas', 'cuota-agotada', 'sin-indice',
+  'peticion-invalida', 'area-no-permitida', 'sin-areas', 'cuota-agotada', 'sin-indice', 'no-autenticado', 'sin-acceso',
 ])
 
 const MENSAJES: Record<string, string> = {
@@ -86,6 +92,8 @@ const MENSAJES: Record<string, string> = {
   'sin-modelo': 'El motor de IA no está respondiendo en este momento. Intenta de nuevo en unos minutos.',
   'sin-indice': 'La base de conocimiento no está disponible. Ya se puede reportar al equipo de TI.',
   'sin-areas': 'No hay documentación publicada para consultar todavía.',
+  'no-autenticado': 'Tu sesión venció o no es válida. Vuelve a iniciar sesión.',
+  'sin-acceso': 'Tu usuario aún no tiene acceso a documentación del asistente. Solicítalo al administrador.',
   'error-interno': 'Ocurrió un error inesperado en el asistente.',
   timeout: 'La consulta tardó demasiado y se canceló. Intenta de nuevo.',
   'sin-conexion': 'No se pudo conectar con el asistente. Verifica tu red o inténtalo más tarde.',
@@ -95,6 +103,15 @@ const http = axios.create({
   baseURL: ENV.MIA_URL,
   timeout: 120_000,
   headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+})
+
+// Identidad: Xia valida el JWT de SCNexus Core y de él saca el usuario y sus permisos (qué documentación puede ver).
+// `usuario_ad` sigue viajando por compatibilidad con mIA, pero Xia lo ignora cuando hay token.
+http.interceptors.request.use(config => {
+  let token: string | null = null
+  try { token = localStorage.getItem('token') } catch { /* almacenamiento bloqueado: se envía sin token */ }
+  if (token) config.headers.set('Authorization', `Bearer ${token}`)
+  return config
 })
 
 const sleep = (ms: number) => new Promise<void>(resolve => setTimeout(resolve, ms))
@@ -132,15 +149,18 @@ function msDeEspera(err: AxiosError<MiaErrorBody>, esperaActual: number): number
  * Pregunta a mIA con reintentos responsables.
  * @param usuarioAd Login AD real del usuario (para cuota y auditoría).
  * @param areas Códigos de área; omitir = todas (correcto para preguntas generales).
+ * @param historial Conversación previa SIN la pregunta actual, de más antigua a más nueva; omitir = la pregunta se trata sola.
  */
 export async function preguntar(
   usuarioAd: string,
   pregunta: string,
   areas?: string[],
+  historial?: MiaTurno[],
   intentos = 3,
 ): Promise<MiaRespuesta> {
   const cuerpo: Record<string, unknown> = { usuario_ad: usuarioAd, pregunta }
   if (areas?.length) cuerpo.areas = areas
+  if (historial?.length) cuerpo.historial = historial
 
   let espera = 5_000
   for (let intento = 0; intento < intentos; intento++) {

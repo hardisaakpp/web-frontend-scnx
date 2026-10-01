@@ -188,7 +188,7 @@ import { useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useAssistantStore } from '@/stores/assistant'
 import CoolTurito from './CoolTurito.vue'
-import { consultarAreas, consultarCuota, preguntar, MiaApiError, type MiaArea, type MiaCuota, type MiaFuente } from '@/services/miaApi'
+import { consultarAreas, consultarCuota, preguntar, MiaApiError, type MiaArea, type MiaCuota, type MiaFuente, type MiaTurno } from '@/services/miaApi'
 
 interface Mensaje {
   rol: 'user' | 'bot'
@@ -913,11 +913,23 @@ async function abrir(): Promise<void> {
   if (!areas.value.length) consultarAreas().then(a => { areas.value = a.filter(x => x.con_documentos) }).catch(() => {})
 }
 
+const TURNOS_HISTORIAL = 6
+const MAX_CHARS_TURNO = 2000
+
+/** Conversación previa que acompaña a la pregunta, para que mIA entienda seguimientos. Sin el saludo inicial ni los errores. */
+function historialPrevio(): MiaTurno[] {
+  return mensajes.value
+    .filter((m, i) => !m.error && !(i === 0 && m.rol === 'bot'))
+    .slice(-TURNOS_HISTORIAL)
+    .map(m => ({ rol: m.rol, texto: m.texto.slice(0, MAX_CHARS_TURNO) }))
+}
+
 async function enviar(): Promise<void> {
   const pregunta = borrador.value.trim()
   if (!pregunta || cargando.value || !usuarioAd.value) return
   borrador.value = ''
   ultimoError.value = false
+  const historial = historialPrevio() // antes de agregar la pregunta actual
   mensajes.value.push({ rol: 'user', texto: pregunta })
   cargando.value = true
   try {
@@ -925,6 +937,7 @@ async function enviar(): Promise<void> {
       usuarioAd.value,
       pregunta,
       areaSeleccionada.value ? [areaSeleccionada.value] : undefined,
+      historial,
     )
     cuota.value = r.cuota
     // sin_contexto: true no es un error — la respuesta ya viene redactada; no reintentar.
