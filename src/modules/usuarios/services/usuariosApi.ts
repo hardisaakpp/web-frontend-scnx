@@ -264,7 +264,9 @@ export const rolesService = {
         normalizedName: r.normalizedName || r.normalized_name || '',
         createdAt: r.createdAt || '',
         permissions: [],
-        usersCount: r.usersCount || 0
+        usersCount: r.usersCount || 0,
+        permissionsCount: r.permissionsCount || 0,
+        isSystem: Boolean(r.isSystem)
       }))
     } catch (e: unknown) {
       if (isAxios404(e)) {

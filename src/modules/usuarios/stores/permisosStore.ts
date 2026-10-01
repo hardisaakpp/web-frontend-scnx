@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import type { Permiso, CreatePermisoDto, UpdatePermisoDto } from '../types'
 import { permisosService } from '../services/usuariosApi'
+import { mensajeDeError } from '../utils/roles'
 
 export const usePermisosStore = defineStore('permisos', () => {
   // State
@@ -41,7 +42,7 @@ export const usePermisosStore = defineStore('permisos', () => {
     try {
       permisos.value = await permisosService.getPermisos()
     } catch (e: any) {
-      error.value = e.message || 'Error al cargar permisos'
+      error.value = mensajeDeError(e, 'Error al cargar permisos')
       console.error('Error fetching permisos:', e)
     } finally {
       loading.value = false
@@ -55,7 +56,7 @@ export const usePermisosStore = defineStore('permisos', () => {
       const permiso = await permisosService.getPermiso(id)
       return permiso
     } catch (e: any) {
-      error.value = e.message || 'Error al cargar permiso'
+      error.value = mensajeDeError(e, 'Error al cargar permiso')
       console.error('Error fetching permiso:', e)
       throw e
     } finally {
@@ -70,7 +71,7 @@ export const usePermisosStore = defineStore('permisos', () => {
       const permisosModulo = await permisosService.getPermisosPorModulo(module)
       return permisosModulo
     } catch (e: any) {
-      error.value = e.message || 'Error al cargar permisos del módulo'
+      error.value = mensajeDeError(e, 'Error al cargar permisos del módulo')
       console.error('Error fetching permisos por modulo:', e)
       throw e
     } finally {
@@ -86,7 +87,7 @@ export const usePermisosStore = defineStore('permisos', () => {
       permisos.value.push(newPermiso)
       return newPermiso
     } catch (e: any) {
-      error.value = e.message || 'Error al crear permiso'
+      error.value = mensajeDeError(e, 'Error al crear permiso')
       console.error('Error creating permiso:', e)
       throw e
     } finally {
@@ -105,7 +106,7 @@ export const usePermisosStore = defineStore('permisos', () => {
       }
       return updated
     } catch (e: any) {
-      error.value = e.message || 'Error al actualizar permiso'
+      error.value = mensajeDeError(e, 'Error al actualizar permiso')
       console.error('Error updating permiso:', e)
       throw e
     } finally {
@@ -120,7 +121,7 @@ export const usePermisosStore = defineStore('permisos', () => {
       await permisosService.deletePermiso(id)
       permisos.value = permisos.value.filter(p => p.id !== id)
     } catch (e: any) {
-      error.value = e.message || 'Error al eliminar permiso'
+      error.value = mensajeDeError(e, 'Error al eliminar permiso')
       console.error('Error deleting permiso:', e)
       throw e
     } finally {

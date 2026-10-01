@@ -1,257 +1,409 @@
 <template>
-  <div class="space-y-6 pb-32 md:pb-36">
+  <div class="space-y-6">
     <VolverButton to="/admin" title="Volver al Panel de Administración" />
-    <div class="flex items-start justify-between gap-4">
+
+    <div class="flex flex-wrap items-start justify-between gap-4">
       <div>
-        <h1 class="text-3xl font-bold text-gray-900 dark:text-white">Gestión de Permisos</h1>
-        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Define permisos disponibles en el sistema</p>
+        <h1 class="text-3xl font-bold text-gray-900 dark:text-white">Permisos</h1>
+        <p class="mt-1 max-w-2xl text-sm text-gray-500 dark:text-gray-400">
+          Un permiso es una acción concreta que el sistema comprueba (por ejemplo, «ver» o «crear» en un módulo).
+          Se agrupan en <RouterLink to="/roles" class="font-medium text-indigo-600 hover:underline dark:text-indigo-400">roles</RouterLink>, que son los que se asignan a los usuarios.
+        </p>
       </div>
-    </div>
-
-    <div v-if="store.loading" class="text-center py-12">
-      <p class="text-gray-500 dark:text-gray-400">Cargando permisos...</p>
-    </div>
-
-    <div v-else-if="store.error" class="bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-lg p-6 text-center transition-colors">
-      <p class="text-red-600 dark:text-red-400 mb-2">{{ store.error }}</p>
-      <button @click="store.fetchPermisos" class="text-indigo-600 dark:text-indigo-400 hover:underline">Reintentar</button>
-    </div>
-
-    <div v-else-if="store.permisos.length === 0" class="bg-white dark:bg-gray-800 rounded-lg shadow p-12 text-center transition-colors duration-300">
-      <svg class="mx-auto h-12 w-12 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-      </svg>
-      <h3 class="mt-2 text-sm font-medium text-gray-900 dark:text-white">No hay permisos</h3>
-      <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Comienza creando un nuevo permiso</p>
       <button
-        @click="openCreateModal"
-        class="mt-4 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 text-white rounded-lg transition-colors"
+        type="button"
+        data-testid="nuevo-permiso"
+        class="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600"
+        @click="abrirCrear()"
       >
-        + Crear Primer Permiso
+        <PlusIcon class="h-5 w-5" aria-hidden="true" />
+        Nuevo permiso
       </button>
     </div>
 
-    <div v-else class="space-y-6">
-      <!-- Permisos agrupados por módulo -->
-      <div v-for="(permisos, modulo) in store.permisosPorModulo" :key="modulo" class="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden transition-colors duration-300 border border-transparent dark:border-gray-700">
-        <div class="px-6 py-4 bg-gray-50 dark:bg-gray-900/50 border-b border-gray-200 dark:border-gray-700">
-          <h2 class="text-lg font-semibold text-gray-900 dark:text-white capitalize">{{ modulo }}</h2>
-        </div>
-        <div class="overflow-x-auto">
-          <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-            <thead class="bg-gray-50 dark:bg-gray-900/50">
-              <tr>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Key</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Descripción</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Acciones</th>
-              </tr>
-            </thead>
-            <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-              <tr v-for="permiso in permisos" :key="permiso.id" class="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
-                <td class="px-6 py-4 whitespace-nowrap">
-                  <code class="text-sm font-mono bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-2 py-1 rounded">{{ permiso.key }}</code>
-                </td>
-                <td class="px-6 py-4 text-sm text-gray-900 dark:text-gray-100">{{ permiso.description }}</td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm">
-                  <div class="flex gap-2">
-                    <button @click="openEditModal(permiso)" class="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300" title="Editar">
-                      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                      </svg>
-                    </button>
-                    <button @click="handleDelete(permiso)" class="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300" title="Eliminar">
-                      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                      </svg>
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
+    <div
+      v-if="errorCarga"
+      role="alert"
+      class="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-200"
+    >
+      <span>{{ errorCarga }}</span>
+      <button type="button" class="font-semibold underline" @click="cargarTodo">Reintentar</button>
     </div>
 
-    <button
-      v-if="!showModal"
-      type="button"
-      class="fixed z-40 top-24 right-6 shrink-0 px-4 py-2.5 text-sm font-medium whitespace-nowrap rounded-lg bg-indigo-600 text-white shadow-lg ring-1 ring-black/5 transition hover:bg-indigo-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400 focus-visible:ring-offset-2 md:top-28 md:right-8 dark:bg-indigo-500 dark:hover:bg-indigo-600 dark:ring-white/10 dark:focus-visible:ring-offset-gray-900"
-      @click="openCreateModal"
-    >
-      + Nuevo Permiso
-    </button>
+    <!-- Carga inicial -->
+    <div v-if="cargandoLista" class="space-y-3" aria-busy="true" aria-label="Cargando permisos">
+      <div v-for="n in 3" :key="n" class="h-28 animate-pulse rounded-lg bg-white shadow dark:bg-gray-800" />
+    </div>
 
-    <button
-      v-if="!showModal"
-      type="button"
-      class="fixed z-40 bottom-6 right-6 flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-indigo-600 text-white shadow-lg ring-1 ring-black/5 transition hover:bg-indigo-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400 focus-visible:ring-offset-2 md:bottom-8 md:right-8 dark:bg-indigo-500 dark:hover:bg-indigo-600 dark:ring-white/10 dark:focus-visible:ring-offset-gray-900"
-      aria-label="Ir al final de la página"
-      title="Ir al final"
-      @click="scrollToBottom"
-    >
-      <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3" />
-      </svg>
-    </button>
+    <!-- Catálogo vacío -->
+    <div v-else-if="permisosStore.permisos.length === 0 && !errorCarga" class="rounded-lg bg-white p-12 text-center shadow dark:bg-gray-800">
+      <KeyIcon class="mx-auto h-12 w-12 text-gray-300 dark:text-gray-600" aria-hidden="true" />
+      <h3 class="mt-3 text-sm font-medium text-gray-900 dark:text-white">Aún no hay permisos</h3>
+      <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Crea el primero para poder asignarlo a un rol.</p>
+      <button type="button" class="mt-4 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700" @click="abrirCrear()">
+        Crear el primer permiso
+      </button>
+    </div>
 
-    <!-- Modal para crear/editar permiso -->
-    <TransitionRoot :show="showModal" as="template">
-      <Dialog as="div" class="relative z-50" @close="closeModal">
-        <div class="fixed inset-0 bg-black bg-opacity-30 dark:bg-black/60" />
-        <div class="fixed inset-0 overflow-y-auto">
-          <div class="flex min-h-full items-center justify-center p-4">
-            <DialogPanel class="w-full max-w-md transform overflow-hidden rounded-2xl bg-white dark:bg-gray-800 p-6 shadow-xl border border-transparent dark:border-gray-700 transition-colors">
-              <DialogTitle class="text-lg font-medium text-gray-900 dark:text-white mb-4">
-                {{ selectedPermiso ? 'Editar Permiso' : 'Crear Permiso' }}
-              </DialogTitle>
-
-              <form @submit.prevent="handleSubmit" class="space-y-4">
-                <div>
-                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Key (ej: depositos.view)</label>
-                  <input
-                    v-model="form.key"
-                    type="text"
-                    required
-                    placeholder="modulo.accion"
-                    class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent font-mono text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400"
-                  />
-                  <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Formato: modulo.accion (ej: users.create, depositos.view)</p>
-                </div>
-
-                <div>
-                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Descripción</label>
-                  <input
-                    v-model="form.description"
-                    type="text"
-                    required
-                    placeholder="Descripción del permiso"
-                    class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400"
-                  />
-                </div>
-
-                <div>
-                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Módulo</label>
-                  <select
-                    v-model="form.module"
-                    required
-                    class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                  >
-                    <option value="">Seleccionar módulo...</option>
-                    <option v-for="modulo in store.modulos" :key="modulo" :value="modulo">{{ modulo }}</option>
-                    <option value="__nuevo__">+ Crear nuevo módulo</option>
-                  </select>
-                </div>
-
-                <div v-if="form.module === '__nuevo__'">
-                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Nombre del nuevo módulo</label>
-                  <input
-                    v-model="nuevoModulo"
-                    type="text"
-                    required
-                    class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400"
-                  />
-                </div>
-
-                <div class="flex gap-3 mt-6">
-                  <button
-                    type="button"
-                    @click="closeModal"
-                    class="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-                  >
-                    Cancelar
-                  </button>
-                  <button
-                    type="submit"
-                    :disabled="store.loading"
-                    class="flex-1 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 text-white rounded-lg disabled:opacity-50 transition-colors"
-                  >
-                    {{ store.loading ? 'Guardando...' : selectedPermiso ? 'Actualizar' : 'Crear' }}
-                  </button>
-                </div>
-              </form>
-            </DialogPanel>
-          </div>
+    <template v-else-if="permisosStore.permisos.length > 0">
+      <!-- Barra de búsqueda y filtros -->
+      <div class="flex flex-wrap items-center gap-3 rounded-lg bg-white p-4 shadow dark:bg-gray-800">
+        <div class="relative min-w-[14rem] flex-1">
+          <MagnifyingGlassIcon class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" aria-hidden="true" />
+          <input
+            v-model="busqueda"
+            type="search"
+            autocomplete="off"
+            placeholder="Buscar por clave, descripción o módulo…"
+            aria-label="Buscar permisos"
+            class="w-full rounded-lg border border-gray-300 bg-white py-2 pl-9 pr-3 text-sm text-gray-900 placeholder-gray-400 focus:border-transparent focus:ring-2 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+          />
         </div>
-      </Dialog>
-    </TransitionRoot>
+        <select
+          v-model="moduloFiltro"
+          aria-label="Filtrar por módulo"
+          class="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-transparent focus:ring-2 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+        >
+          <option value="">Todos los módulos ({{ permisosStore.modulos.length }})</option>
+          <option v-for="m in permisosStore.modulos" :key="m" :value="m">{{ m }}</option>
+        </select>
+        <label
+          v-if="usoCargado"
+          class="inline-flex cursor-pointer items-center gap-2 text-sm text-gray-700 dark:text-gray-200"
+          title="Muestra los permisos que ningún rol tiene asignado"
+        >
+          <input v-model="soloSinRoles" type="checkbox" class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:border-gray-500 dark:bg-gray-700" />
+          Solo sin roles
+          <span class="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800 dark:bg-amber-900/40 dark:text-amber-300">{{ totalSinRoles }}</span>
+        </label>
+      </div>
+
+      <div class="flex flex-wrap items-center justify-between gap-2 text-sm text-gray-500 dark:text-gray-400">
+        <span>
+          {{ plural(permisosFiltrados.length, 'permiso') }} en {{ plural(grupos.length, 'módulo') }}
+          <template v-if="hayFiltros"> (de {{ permisosStore.permisos.length }} en total)</template>
+        </span>
+        <span v-if="grupos.length > 1 && !hayFiltros" class="flex gap-3">
+          <button type="button" class="font-medium text-indigo-600 hover:underline dark:text-indigo-400" @click="contraerTodos">Contraer módulos</button>
+          <button type="button" class="font-medium text-indigo-600 hover:underline dark:text-indigo-400" @click="colapsados = new Set()">Expandir módulos</button>
+        </span>
+      </div>
+
+      <p v-if="grupos.length === 0" class="rounded-lg bg-white p-8 text-center text-sm text-gray-500 shadow dark:bg-gray-800 dark:text-gray-400">
+        Ningún permiso coincide con los filtros.
+        <button type="button" class="ml-1 font-semibold text-indigo-600 hover:underline dark:text-indigo-400" @click="limpiarFiltros">Quitar filtros</button>
+      </p>
+
+      <!-- Módulos -->
+      <section
+        v-for="grupo in grupos"
+        :key="grupo.modulo"
+        class="overflow-hidden rounded-lg border border-transparent bg-white shadow transition-colors dark:border-gray-700 dark:bg-gray-800"
+        :aria-label="`Módulo ${grupo.modulo}`"
+      >
+        <header class="flex items-center justify-between gap-3 border-b border-gray-200 bg-gray-50 px-4 py-3 dark:border-gray-700 dark:bg-gray-900/50">
+          <button
+            type="button"
+            class="flex min-w-0 flex-1 items-center gap-2 text-left"
+            :aria-expanded="!estaColapsado(grupo.modulo)"
+            @click="alternarModulo(grupo.modulo)"
+          >
+            <ChevronDownIcon class="h-4 w-4 shrink-0 text-gray-400 transition-transform" :class="estaColapsado(grupo.modulo) ? '-rotate-90' : ''" aria-hidden="true" />
+            <span class="truncate text-base font-semibold capitalize text-gray-900 dark:text-white">{{ grupo.modulo }}</span>
+            <span class="shrink-0 rounded-full bg-gray-200 px-2 py-0.5 text-xs font-medium text-gray-600 dark:bg-gray-700 dark:text-gray-300">{{ grupo.permisos.length }}</span>
+          </button>
+          <button
+            type="button"
+            class="shrink-0 text-sm font-medium text-indigo-600 hover:underline dark:text-indigo-400"
+            :title="`Agregar un permiso al módulo ${grupo.modulo}`"
+            @click="abrirCrear(grupo.modulo)"
+          >
+            + Agregar
+          </button>
+        </header>
+
+        <ul v-show="!estaColapsado(grupo.modulo)" class="divide-y divide-gray-100 dark:divide-gray-700">
+          <li
+            v-for="permiso in grupo.permisos"
+            :key="permiso.id"
+            :data-testid="`permiso-${permiso.key}`"
+            class="grid gap-x-4 gap-y-1 px-4 py-3 transition-colors hover:bg-gray-50 sm:grid-cols-[minmax(0,18rem)_minmax(0,1fr)_auto] sm:items-start dark:hover:bg-gray-700/40"
+          >
+            <div class="flex min-w-0 items-center gap-1.5">
+              <code class="min-w-0 break-all rounded bg-gray-100 px-2 py-1 font-mono text-[13px] text-gray-900 dark:bg-gray-700 dark:text-gray-100">{{ permiso.key }}</code>
+              <button
+                type="button"
+                class="shrink-0 rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-gray-700 dark:hover:text-gray-200"
+                :aria-label="`Copiar la clave ${permiso.key}`"
+                title="Copiar clave"
+                @click="copiarClave(permiso.key)"
+              >
+                <ClipboardDocumentIcon class="h-4 w-4" aria-hidden="true" />
+              </button>
+            </div>
+
+            <div class="min-w-0">
+              <p class="text-sm text-gray-700 dark:text-gray-200">{{ permiso.description || 'Sin descripción' }}</p>
+              <div v-if="usoCargado" class="mt-1.5 flex flex-wrap items-center gap-1.5 text-xs">
+                <template v-if="rolesDe(permiso).length > 0">
+                  <span class="text-gray-400">Roles:</span>
+                  <span
+                    v-for="nombre in rolesDe(permiso).slice(0, 4)"
+                    :key="nombre"
+                    class="rounded-full bg-indigo-50 px-2 py-0.5 font-medium text-indigo-700 dark:bg-indigo-950/50 dark:text-indigo-300"
+                  >{{ nombre }}</span>
+                  <span
+                    v-if="rolesDe(permiso).length > 4"
+                    class="text-gray-500 dark:text-gray-400"
+                    :title="rolesDe(permiso).slice(4).join(', ')"
+                  >+{{ rolesDe(permiso).length - 4 }} más</span>
+                </template>
+                <span v-else class="rounded-full bg-amber-100 px-2 py-0.5 font-medium text-amber-800 dark:bg-amber-900/40 dark:text-amber-300">
+                  Sin roles asignados
+                </span>
+              </div>
+            </div>
+
+            <div class="flex shrink-0 gap-1 sm:justify-end">
+              <button
+                type="button"
+                class="inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700"
+                :aria-label="`Editar el permiso ${permiso.key}`"
+                @click="abrirEditar(permiso)"
+              >
+                <PencilSquareIcon class="h-4 w-4" aria-hidden="true" />
+                Editar
+              </button>
+              <button
+                type="button"
+                class="inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-sm font-medium text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/40"
+                :aria-label="`Eliminar el permiso ${permiso.key}`"
+                @click="pedirEliminar(permiso)"
+              >
+                <TrashIcon class="h-4 w-4" aria-hidden="true" />
+                Eliminar
+              </button>
+            </div>
+          </li>
+        </ul>
+      </section>
+    </template>
+
+    <PermisoFormModal
+      :open="formAbierto"
+      :permiso="permisoEnEdicion"
+      :permisos="permisosStore.permisos"
+      :roles="rolesStore.rolesOrdenados"
+      :roles-en-uso="permisoEnEdicion ? rolesDe(permisoEnEdicion) : []"
+      :modulo-inicial="moduloInicial"
+      :guardando="guardando"
+      :error="errorForm"
+      @cerrar="formAbierto = false"
+      @guardar="guardarPermiso"
+    />
+
+    <ConfirmModal
+      :open="permisoAEliminar !== null"
+      destructive
+      title="¿Eliminar este permiso?"
+      :message="mensajeEliminar"
+      confirm-label="Eliminar permiso"
+      @confirm="eliminarPermiso"
+      @cancel="permisoAEliminar = null"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
-import { Dialog, DialogPanel, DialogTitle, TransitionRoot } from '@headlessui/vue'
-import { usePermisosStore } from '../stores/permisosStore'
+import { computed, onMounted, ref } from 'vue'
+import { RouterLink } from 'vue-router'
+import {
+  ChevronDownIcon, ClipboardDocumentIcon, KeyIcon, MagnifyingGlassIcon, PencilSquareIcon, PlusIcon, TrashIcon,
+} from '@heroicons/vue/24/outline'
 import VolverButton from '@/components/navegacion/VolverButton.vue'
+import ConfirmModal from '@/components/modales/ConfirmModal.vue'
+import { useToast } from '@/composables/useToast'
+import { usePermisosStore } from '../stores/permisosStore'
+import { useRolesStore } from '../stores/rolesStore'
+import { permisosService } from '../services/usuariosApi'
+import PermisoFormModal, { type PermisoFormPayload } from '../components/PermisoFormModal.vue'
 import type { Permiso } from '../types'
+import { agruparPorModulo, filtrarPermisos, mensajeDeError } from '../utils/roles'
+import { usoPorPermiso } from '../utils/permisos'
 
-const store = usePermisosStore()
+const permisosStore = usePermisosStore()
+const rolesStore = useRolesStore()
+const toast = useToast()
 
-const showModal = ref(false)
-const selectedPermiso = ref<Permiso | null>(null)
-const form = ref({ key: '', description: '', module: '' })
-const nuevoModulo = ref('')
+const busqueda = ref('')
+const moduloFiltro = ref('')
+const soloSinRoles = ref(false)
+const colapsados = ref<Set<string>>(new Set())
+const errorCarga = ref('')
 
-onMounted(() => {
-  store.fetchPermisos()
+// Qué roles tiene cada permiso: el Core no lo ofrece en un solo endpoint, así que se arma con los permisos de cada rol.
+const usoMapa = ref<Map<number, string[]>>(new Map())
+const usoCargado = ref(false)
+
+const formAbierto = ref(false)
+const permisoEnEdicion = ref<Permiso | null>(null)
+const moduloInicial = ref('')
+const guardando = ref(false)
+const errorForm = ref('')
+const permisoAEliminar = ref<Permiso | null>(null)
+
+/** Solo la carga inicial: durante otras acciones el store también usa `loading` y la lista no debe parpadear. */
+const cargandoLista = computed(() => permisosStore.loading && permisosStore.permisos.length === 0)
+
+const rolesDe = (permiso: Permiso): string[] => usoMapa.value.get(permiso.id) ?? []
+const totalSinRoles = computed(() => permisosStore.permisos.filter(p => rolesDe(p).length === 0).length)
+
+const hayFiltros = computed(() => busqueda.value.trim() !== '' || moduloFiltro.value !== '' || soloSinRoles.value)
+
+const permisosFiltrados = computed(() => {
+  let lista = filtrarPermisos(permisosStore.permisos, busqueda.value)
+  if (moduloFiltro.value) lista = lista.filter(p => p.module === moduloFiltro.value)
+  if (soloSinRoles.value) lista = lista.filter(p => rolesDe(p).length === 0)
+  return lista
+})
+const grupos = computed(() => agruparPorModulo(permisosFiltrados.value))
+
+// Con filtros activos los módulos se muestran abiertos: contraídos esconderían justo lo que se busca.
+const estaColapsado = (modulo: string) => !hayFiltros.value && colapsados.value.has(modulo)
+
+function alternarModulo(modulo: string) {
+  const nuevo = new Set(colapsados.value)
+  if (nuevo.has(modulo)) nuevo.delete(modulo)
+  else nuevo.add(modulo)
+  colapsados.value = nuevo
+}
+const contraerTodos = () => { colapsados.value = new Set(grupos.value.map(g => g.modulo)) }
+
+function limpiarFiltros() {
+  busqueda.value = ''
+  moduloFiltro.value = ''
+  soloSinRoles.value = false
+}
+
+function plural(n: number, singular: string): string {
+  return `${n} ${singular}${n === 1 ? '' : 's'}`
+}
+
+async function cargarUso() {
+  try {
+    const roles = rolesStore.roles.filter(r => r.permissionsCount !== 0)
+    const porRol = await Promise.all(roles.map(async r => ({ nombre: r.name, permisos: await permisosService.getPermisosPorRol(r.name) })))
+    usoMapa.value = usoPorPermiso(porRol)
+    usoCargado.value = true
+  } catch {
+    // Sin esta información la pantalla sigue siendo útil: simplemente no se muestran los roles de cada permiso.
+    usoCargado.value = false
+  }
+}
+
+async function cargarTodo() {
+  errorCarga.value = ''
+  await Promise.all([permisosStore.fetchPermisos(), rolesStore.fetchRoles()])
+  if (permisosStore.error) {
+    errorCarga.value = `No se pudieron cargar los permisos: ${permisosStore.error}`
+    return
+  }
+  await cargarUso()
+}
+
+onMounted(cargarTodo)
+
+// ── Crear y editar ──
+function abrirCrear(modulo = '') {
+  permisoEnEdicion.value = null
+  moduloInicial.value = modulo
+  errorForm.value = ''
+  formAbierto.value = true
+}
+
+function abrirEditar(permiso: Permiso) {
+  permisoEnEdicion.value = permiso
+  errorForm.value = ''
+  formAbierto.value = true
+}
+
+async function guardarPermiso(datos: PermisoFormPayload) {
+  guardando.value = true
+  errorForm.value = ''
+  try {
+    if (permisoEnEdicion.value) {
+      const actualizado = await permisosStore.updatePermiso(permisoEnEdicion.value.id, {
+        key: datos.key, description: datos.description, module: datos.module,
+      })
+      formAbierto.value = false
+      toast.success('Permiso actualizado', `«${actualizado.key}» se guardó correctamente.`)
+      await cargarUso()
+      return
+    }
+
+    const nuevo = await permisosStore.createPermiso({ key: datos.key, description: datos.description, module: datos.module })
+    formAbierto.value = false
+
+    const fallidos: string[] = []
+    for (const roleName of datos.roleNames) {
+      try {
+        await permisosService.asignarPermiso({ roleName, permissionId: nuevo.id })
+      } catch {
+        fallidos.push(roleName)
+      }
+    }
+    if (datos.roleNames.length > 0) await rolesStore.fetchRoles()
+    await cargarUso()
+
+    if (fallidos.length > 0) {
+      toast.error('Permiso creado, pero no se pudo asignar', `No se asignó a: ${fallidos.join(', ')}. Hazlo desde la pantalla de Roles.`)
+    } else if (datos.roleNames.length > 0) {
+      toast.success('Permiso creado', `«${nuevo.key}» quedó asignado a ${datos.roleNames.join(', ')}.`)
+    } else {
+      toast.success('Permiso creado', `«${nuevo.key}» ya existe. Asígnalo a un rol para que tenga efecto.`)
+    }
+  } catch (e) {
+    // El store ya dejó el mensaje del servidor (p. ej. clave repetida); se muestra dentro del formulario.
+    errorForm.value = permisosStore.error ?? mensajeDeError(e, 'No se pudo guardar el permiso.')
+  } finally {
+    guardando.value = false
+  }
+}
+
+// ── Eliminar ──
+const mensajeEliminar = computed(() => {
+  const p = permisoAEliminar.value
+  if (!p) return ''
+  const roles = rolesDe(p)
+  const efecto = roles.length > 0
+    ? ` y se quitará de ${plural(roles.length, 'rol')} (${roles.join(', ')}): quienes lo tengan por esos roles perderán esa acción`
+    : ''
+  return `Se eliminará el permiso «${p.key}» del catálogo${efecto}. Esta acción no se puede deshacer.`
 })
 
-function scrollToBottom() {
-  const doc = document.documentElement
-  const height = Math.max(doc.scrollHeight, document.body.scrollHeight)
-  window.scrollTo({
-    top: height - window.innerHeight,
-    behavior: 'smooth'
-  })
+function pedirEliminar(permiso: Permiso) {
+  permisoAEliminar.value = permiso
 }
 
-const openCreateModal = () => {
-  selectedPermiso.value = null
-  form.value = { key: '', description: '', module: '' }
-  nuevoModulo.value = ''
-  showModal.value = true
-}
-
-const openEditModal = (permiso: Permiso) => {
-  selectedPermiso.value = permiso
-  form.value = {
-    key: permiso.key,
-    description: permiso.description,
-    module: permiso.module
-  }
-  showModal.value = true
-}
-
-const closeModal = () => {
-  showModal.value = false
-  selectedPermiso.value = null
-}
-
-const handleSubmit = async () => {
+async function eliminarPermiso() {
+  const p = permisoAEliminar.value
+  permisoAEliminar.value = null
+  if (!p) return
   try {
-    const data = { ...form.value }
-    if (data.module === '__nuevo__') {
-      data.module = nuevoModulo.value
-    }
-
-    if (selectedPermiso.value) {
-      await store.updatePermiso(selectedPermiso.value.id, data)
-    } else {
-      await store.createPermiso(data)
-    }
-    closeModal()
-  } catch (error) {
-    // Error ya manejado en el store
+    await permisosStore.deletePermiso(p.id)
+    toast.success('Permiso eliminado', `«${p.key}» ya no existe.`)
+    await Promise.all([rolesStore.fetchRoles(), cargarUso()])
+  } catch {
+    toast.error('No se pudo eliminar el permiso', permisosStore.error ?? 'Inténtalo de nuevo.')
   }
 }
 
-const handleDelete = async (permiso: Permiso) => {
-  if (confirm(`¿Eliminar permiso "${permiso.key}"?`)) {
-    try {
-      await store.deletePermiso(permiso.id)
-    } catch (error) {
-      // Error ya manejado en el store
-    }
+async function copiarClave(clave: string) {
+  try {
+    await navigator.clipboard.writeText(clave)
+    toast.success('Clave copiada', clave, 2500)
+  } catch {
+    toast.error('No se pudo copiar', 'Selecciona la clave y cópiala manualmente.')
   }
 }
 </script>

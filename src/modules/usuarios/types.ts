@@ -35,6 +35,8 @@ export interface Rol {
   createdAt?: string
   permissions: Permiso[]  // Permisos asociados al rol
   usersCount?: number  // Cantidad de usuarios con este rol
+  permissionsCount?: number  // Cantidad de permisos asignados (viene en el listado)
+  isSystem?: boolean  // Rol del sistema: no se renombra ni se elimina
 }
 
 export interface CreateRolDto {
