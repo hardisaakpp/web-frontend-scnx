@@ -32,9 +32,9 @@ jobs:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
         with:
-          args: >
-            -Dsonar.branch.name=${{ github.ref_name }}
-            -Dsonar.qualitygate.wait=true
+          # Community Build no soporta sonar.branch.name (requiere Developer Edition):
+          # todo análisis se guarda sobre la rama única del proyecto.
+          args: -Dsonar.qualitygate.wait=true
 
       - name: Fallar si los tests fallaron
         if: steps.tests.outcome == 'failure'
