@@ -20,9 +20,11 @@ jobs:
         run: npx vue-tsc --noEmit
 
       - name: Tests con cobertura
+        id: tests
+        continue-on-error: true   # Sonar debe correr aunque haya tests rojos; el fallo se reporta al final
         run: |
           npm i --no-save @vitest/coverage-v8@^4
-          npx vitest run --coverage --coverage.reporter=lcov --coverage.reporter=text-summary
+          npx vitest run --coverage --coverage.reportOnFailure=true --coverage.reporter=lcov --coverage.reporter=text-summary
 
       - name: Análisis SonarQube + quality gate
         uses: https://github.com/SonarSource/sonarqube-scan-action@v5
@@ -33,3 +35,9 @@ jobs:
           args: >
             -Dsonar.branch.name=${{ github.ref_name }}
             -Dsonar.qualitygate.wait=true
+
+      - name: Fallar si los tests fallaron
+        if: steps.tests.outcome == 'failure'
+        run: |
+          echo "Hay tests fallando (ver paso 'Tests con cobertura')"
+          exit 1
