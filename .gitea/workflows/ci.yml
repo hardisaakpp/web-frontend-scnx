@@ -1,0 +1,35 @@
+# Pipeline local (Gitea Actions): tipos -> tests+cobertura -> SonarQube -> quality gate
+# Equivale a la etapa CI_Validation de azure-pipeline/azure-pipeline.yaml + el análisis de Sonar.
+name: CI
+on:
+  push:
+    branches: [main, test, develop, 'ci/**', 'feature/**', 'fix/**']
+
+jobs:
+  calidad:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: https://github.com/actions/checkout@v4
+        with:
+          fetch-depth: 0   # Sonar necesita el historial para atribuir código nuevo
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      - name: Verificar tipado (vue-tsc)
+        run: npx vue-tsc --noEmit
+
+      - name: Tests con cobertura
+        run: |
+          npm i --no-save @vitest/coverage-v8@^4
+          npx vitest run --coverage --coverage.reporter=lcov --coverage.reporter=text-summary
+
+      - name: Análisis SonarQube + quality gate
+        uses: https://github.com/SonarSource/sonarqube-scan-action@v5
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+        with:
+          args: >
+            -Dsonar.branch.name=${{ github.ref_name }}
+            -Dsonar.qualitygate.wait=true
