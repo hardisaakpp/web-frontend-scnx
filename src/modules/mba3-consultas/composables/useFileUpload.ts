@@ -188,6 +188,9 @@ function procesarSeccionCodigosEstructurados(section: string, productos: string[
   clasificarCodigosPorTipo(tipo, codigos, productos, tiendas, bodegas)
 }
 
+/** Texto mostrado por cada tienda/bodega que SAP (tabla OWHS) no tiene registrada. */
+const MENSAJE_TIENDA_NO_REGISTRADA = 'La tienda/bodega no está registrada en SAP'
+
 /**
  * Extrae códigos del formato estructurado del backend:
  * "❌ Códigos NO ENCONTRADOS en SAP (N):\n   • CODIGO1\n   • CODIGO2\n..."
@@ -299,7 +302,7 @@ function extraerDesdeValidacion(errorData: any, errorErrors: ErrorEntry[]): Codi
   if (validacion.tiendas?.no_encontradas?.length > 0) {
     const noEncontradas = Array.isArray(validacion.tiendas.no_encontradas) ? validacion.tiendas.no_encontradas : []
     noEncontradas.forEach((codigo: string) => {
-      errorErrors.push({ tipo: 'ERROR', campo: 'Tienda/Bodega SAP', mensaje: `El código no existe en SAP OWHS`, producto: codigo })
+      errorErrors.push({ tipo: 'ERROR', campo: 'Tienda/Bodega SAP', mensaje: MENSAJE_TIENDA_NO_REGISTRADA, producto: codigo })
       if (!tiendas.includes(codigo)) tiendas.push(codigo)
     })
   }
@@ -307,7 +310,7 @@ function extraerDesdeValidacion(errorData: any, errorErrors: ErrorEntry[]): Codi
   if (validacion.bodegas?.no_encontradas?.length > 0) {
     const noEncontradas = Array.isArray(validacion.bodegas.no_encontradas) ? validacion.bodegas.no_encontradas : []
     noEncontradas.forEach((codigo: string) => {
-      errorErrors.push({ tipo: 'ERROR', campo: 'Bodega SAP', mensaje: `El código no existe en SAP OWHS`, producto: codigo })
+      errorErrors.push({ tipo: 'ERROR', campo: 'Bodega SAP', mensaje: MENSAJE_TIENDA_NO_REGISTRADA, producto: codigo })
       if (!bodegas.includes(codigo)) bodegas.push(codigo)
     })
   }
@@ -574,7 +577,7 @@ function agregarEntradasSAP(productos: string[], tiendas: string[], bodegas: str
     tiposErrores.push('tienda/bodega')
     tiendas.forEach(codigo => {
       const exists = errorErrors.some(err => (typeof err !== 'string') && err.producto === codigo)
-      if (!exists) errorErrors.push({ tipo: 'ERROR', campo: 'Tienda/Bodega SAP', mensaje: `El código no existe en SAP OWHS`, producto: codigo })
+      if (!exists) errorErrors.push({ tipo: 'ERROR', campo: 'Tienda/Bodega SAP', mensaje: MENSAJE_TIENDA_NO_REGISTRADA, producto: codigo })
     })
   }
 
@@ -582,7 +585,7 @@ function agregarEntradasSAP(productos: string[], tiendas: string[], bodegas: str
     if (!tiposErrores.includes('bodega')) tiposErrores.push('bodega')
     bodegas.forEach(codigo => {
       const exists = errorErrors.some(err => (typeof err !== 'string') && err.producto === codigo)
-      if (!exists) errorErrors.push({ tipo: 'ERROR', campo: 'Bodega SAP', mensaje: `El código no existe en SAP OWHS`, producto: codigo })
+      if (!exists) errorErrors.push({ tipo: 'ERROR', campo: 'Bodega SAP', mensaje: MENSAJE_TIENDA_NO_REGISTRADA, producto: codigo })
     })
   }
 
@@ -788,7 +791,8 @@ export function processUploadError(e: any, fileName: string): UploadErrorInfo {
   if (import.meta.env.DEV) console.log('🔍 [useFileUpload] Mensaje completo para búsqueda:', errorMessageStr)
 
   const estructurado = extraerCodigosFormatoEstructurado(errorMessageStr)
-  let productosNoEncontradosSAP = [...estructurado.productos, ...extraerCodigosPatronesLegacy(errorMessageStr, estructurado.productos)]
+  const productosPorTexto = extraerCodigosPatronesLegacy(errorMessageStr, estructurado.productos)
+  let productosNoEncontradosSAP = [...estructurado.productos, ...productosPorTexto]
   let tiendasNoEncontradasSAP = [...estructurado.tiendas]
   let bodegasNoEncontradasSAP = [...estructurado.bodegas]
 
@@ -798,6 +802,14 @@ export function processUploadError(e: any, fileName: string): UploadErrorInfo {
     productosNoEncontradosSAP.push(...desdeResponseData.productos)
     tiendasNoEncontradasSAP.push(...desdeResponseData.tiendas)
     bodegasNoEncontradasSAP.push(...desdeResponseData.bodegas)
+
+    // Los códigos que el backend informa de forma estructurada son la fuente de verdad. Los patrones sobre
+    // el texto del mensaje son solo un respaldo: si el error es de tiendas/bodegas, la frase del mensaje
+    // ("Existen códigos de tienda/bodega no válidos...") se leía como un código de producto ("Existen c").
+    const hayCodigosEstructurados = desdeResponseData.productos.length + desdeResponseData.tiendas.length + desdeResponseData.bodegas.length > 0
+    if (hayCodigosEstructurados) {
+      productosNoEncontradosSAP = [...estructurado.productos, ...desdeResponseData.productos]
+    }
   }
 
   if (e.errors && Array.isArray(e.errors)) {

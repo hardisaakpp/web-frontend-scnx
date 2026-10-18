@@ -72,6 +72,8 @@
             <p class="text-xs text-gray-600 dark:text-gray-400 mt-0.5">
               {{ esResolubleEnElModal
                 ? 'Elegí cómo resolver cada diferencia y continuá sin volver a subir el archivo'
+                : tieneTiendasNoEncontradas
+                  ? 'Hay tiendas o bodegas del Excel que no están registradas en SAP. Se corrigen fuera de esta pantalla: volvé a subir el archivo cuando estén listas.'
                 : tieneMismatchesPackPvp
                   ? 'Existen diferencias entre el Excel y SAP. Corrígelas en el origen y volvé a subir el archivo.'
                   : 'El archivo no pudo ser procesado' }}
@@ -418,6 +420,26 @@
             </ul>
           </div>
 
+          <!-- Tiendas/bodegas que no existen en SAP: no tienen sugerencias ni se corrigen desde este modal.
+               Se resumen acá para que no se confundan con los códigos de producto de la lista de abajo. -->
+          <div v-if="tieneTiendasNoEncontradas" class="border border-amber-200 dark:border-amber-800 rounded-lg overflow-hidden bg-amber-50 dark:bg-amber-900/20 transition-colors duration-300">
+            <div class="px-4 py-3">
+              <p class="text-sm font-semibold text-amber-900 dark:text-amber-200">
+                Tiendas/bodegas no registradas en SAP ({{ tiendasNoEncontradas.length }})
+              </p>
+              <p class="text-xs text-amber-800 dark:text-amber-300 mt-1">
+                Estos códigos no son productos y no se pueden corregir desde esta pantalla. Pedí al área de maestros que registre las tiendas en SAP, o corregí los códigos en el Excel, y volvé a subir el archivo.
+              </p>
+              <ul class="flex flex-wrap gap-1.5 mt-2">
+                <li
+                  v-for="tienda in tiendasNoEncontradas"
+                  :key="tienda"
+                  class="px-2 py-0.5 rounded bg-white dark:bg-gray-800 border border-amber-200 dark:border-amber-800 text-xs font-mono text-gray-800 dark:text-gray-200"
+                >{{ tienda }}</li>
+              </ul>
+            </div>
+          </div>
+
           <!-- Lista de errores detallados (si existen) -->
           <div v-if="uploadErrorInfo?.errors && uploadErrorInfo.errors.length > 0" class="border border-red-200 dark:border-red-800 rounded-lg overflow-hidden bg-red-50 dark:bg-red-900/30 transition-colors duration-300">
             <div class="bg-red-100 dark:bg-red-900/50 px-4 py-3 border-b border-red-200 dark:border-red-800">
@@ -426,7 +448,7 @@
                   Detalles del error ({{ uploadErrorInfo.errors.length }} problema{{ uploadErrorInfo.errors.length !== 1 ? 's' : '' }})
                 </p>
                 <!-- Progreso de correcciones de código: cuántos códigos inválidos ya tienen sugerencia elegida -->
-                <div v-if="tieneErroresCodigo" class="flex items-center gap-2">
+                <div v-if="esResolubleEnElModal" class="flex items-center gap-2">
                   <div class="w-24 h-1.5 rounded-full bg-red-200 dark:bg-red-900 overflow-hidden">
                     <div
                       class="h-full bg-purple-600 dark:bg-purple-500 transition-all duration-300"
@@ -587,20 +609,23 @@
                           <p v-if="tieneMismatchesPackPvp" class="text-xs text-amber-700 dark:text-amber-400 mb-2">
                             Estas sugerencias son solo informativas: no se pueden aplicar porque también hay discrepancias de Pack/PVP que requieren corregir el Excel y volver a subirlo.
                           </p>
+                          <p v-else-if="tieneTiendasNoEncontradas" class="text-xs text-amber-700 dark:text-amber-400 mb-2">
+                            Estas sugerencias son solo informativas: no se pueden aplicar porque también hay tiendas/bodegas que no existen en SAP y requieren corregir el Excel y volver a subirlo.
+                          </p>
                           <div class="space-y-2">
                             <label
                               v-for="sugerencia in getSugerenciasLimitadas(error.producto)"
                               :key="sugerencia.codigo"
                               :class="[
                                 'flex items-start gap-2 rounded-lg border-l-4 p-3 text-xs transition-colors',
-                                tieneMismatchesPackPvp
+                                sugerenciasBloqueadas
                                   ? 'bg-gray-50 dark:bg-gray-900/40 cursor-default'
                                   : 'cursor-pointer bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700',
                                 {
                                   'border-green-500': sugerencia.score_porcentaje >= 80,
                                   'border-yellow-500': sugerencia.score_porcentaje >= 50 && sugerencia.score_porcentaje < 80,
                                   'border-red-500': sugerencia.score_porcentaje < 50,
-                                  'ring-2 ring-purple-500': !tieneMismatchesPackPvp && correccionesSeleccionadas[error.producto] === sugerencia.codigo
+                                  'ring-2 ring-purple-500': !sugerenciasBloqueadas && correccionesSeleccionadas[error.producto] === sugerencia.codigo
                                 }
                               ]"
                             >
@@ -608,7 +633,7 @@
                                 type="radio"
                                 :name="`correccion-${error.producto}`"
                                 :value="sugerencia.codigo"
-                                :disabled="tieneMismatchesPackPvp"
+                                :disabled="sugerenciasBloqueadas"
                                 v-model="correccionesSeleccionadas[error.producto]"
                                 class="mt-0.5 w-3 h-3 text-purple-600 border-gray-300 dark:border-gray-600 focus:ring-purple-500 dark:focus:ring-purple-600 disabled:opacity-50 disabled:cursor-not-allowed"
                               />
@@ -782,7 +807,7 @@
       <div class="flex-shrink-0 flex items-center justify-between gap-3 px-6 py-4 border-t border-gray-200 dark:border-gray-700 flex-wrap">
         <div class="flex flex-col gap-1">
           <!-- Mensaje de validación de correcciones (códigos de producto no encontrados en SAP) -->
-          <div v-if="tieneErroresCodigo && !tieneMismatchesPackPvp" class="flex items-center gap-2 text-sm flex-wrap">
+          <div v-if="esResolubleEnElModal" class="flex items-center gap-2 text-sm flex-wrap">
             <span
               v-if="!todosCodigosTienenCorreccion"
               class="text-amber-600 dark:text-amber-400 font-medium"
@@ -812,6 +837,12 @@
             </svg>
             <span class="font-medium">Verificando Pack/PVP en SAP para la corrección elegida...</span>
           </div>
+          <!-- Tiendas/bodegas inexistentes en SAP: bloqueante, sin corrección aplicable aquí -->
+          <div v-if="tieneTiendasNoEncontradas" class="flex items-center gap-2 text-sm">
+            <span class="text-amber-600 dark:text-amber-400 font-medium">
+              ⚠️ {{ tiendasNoEncontradas.length }} tienda{{ tiendasNoEncontradas.length !== 1 ? 's' : '' }}/bodega{{ tiendasNoEncontradas.length !== 1 ? 's' : '' }} no registrada{{ tiendasNoEncontradas.length !== 1 ? 's' : '' }} en SAP. Regístralas en SAP o corrige el Excel y vuelve a subirlo.
+            </span>
+          </div>
           <!-- Mensaje informativo de discrepancias de Pack/PVP (RN-02): siempre bloqueante, sin corrección aplicable aquí -->
           <div v-if="tieneMismatchesPackPvp" class="flex items-center gap-2 text-sm">
             <span class="text-amber-600 dark:text-amber-400 font-medium">
@@ -824,7 +855,7 @@
                de por medio (aunque también haya códigos inválidos): esa discrepancia siempre bloquea
                el avance sin excepción (req. 1.3) -->
           <button
-            v-if="tieneErroresCodigo && !tieneMismatchesPackPvp"
+            v-if="esResolubleEnElModal"
             @click="handleApplyCorrections"
             :disabled="!todasLasCorreccionesListas || aplicandoCorrecciones"
             class="px-4 py-2.5 bg-purple-600 dark:bg-purple-700 text-white rounded-lg hover:bg-purple-700 dark:hover:bg-purple-600 transition-colors font-medium shadow-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
@@ -925,7 +956,15 @@ const sapInfoEstado = ref<Record<string, 'buscando' | 'completado' | 'error'>>({
  * haya códigos inválidos, el modal completo pasa a ser informativo — no hay forma de continuar.
  * Cambia el tono del modal: de "rechazo" a "decisión pendiente".
  */
-const esResolubleEnElModal = computed(() => tieneErroresCodigo.value && !tieneMismatchesPackPvp.value)
+const esResolubleEnElModal = computed(() =>
+  tieneErroresCodigo.value && !tieneMismatchesPackPvp.value && !tieneTiendasNoEncontradas.value
+)
+
+/**
+ * Computed: las sugerencias de código se muestran, pero no se pueden elegir mientras exista algo que el
+ * usuario no puede resolver acá (Pack/PVP o tiendas/bodegas inexistentes en SAP).
+ */
+const sugerenciasBloqueadas = computed(() => tieneMismatchesPackPvp.value || tieneTiendasNoEncontradas.value)
 
 /**
  * Computed: ancho del modal. Se ensancha cuando hay comparaciones SAP/Excel lado a lado,
@@ -1306,6 +1345,23 @@ function limpiarSugerencias(): void {
 const tieneErroresCodigo = computed(() => extraerCodigosProductoNoEncontrados().length > 0)
 
 /**
+ * Computed: códigos de tienda/bodega que no existen en SAP. A diferencia de los productos no tienen
+ * sugerencias: se registran en SAP o se corrigen en el Excel, así que nunca se resuelven en este modal.
+ */
+const tiendasNoEncontradas = computed<string[]>(() => {
+  const codigos: string[] = []
+  for (const error of props.uploadErrorInfo?.errors ?? []) {
+    if (typeof error === 'string' || !error.producto) continue
+    if (error.campo !== 'Tienda/Bodega SAP' && error.campo !== 'Bodega SAP') continue
+    const codigo = error.producto.trim()
+    if (codigo && !codigos.includes(codigo)) codigos.push(codigo)
+  }
+  return codigos
+})
+
+const tieneTiendasNoEncontradas = computed(() => tiendasNoEncontradas.value.length > 0)
+
+/**
  * Computed: Verifica si todos los códigos inválidos tienen una corrección seleccionada
  */
 const todosCodigosTienenCorreccion = computed(() => {
@@ -1438,7 +1494,7 @@ const consultandoInfoSapPendiente = computed(() =>
  * siquiera se muestra (ver esResolubleEnElModal), sin importar el estado de esta selección.
  */
 const todasLasCorreccionesListas = computed(() => {
-  if (!tieneErroresCodigo.value || tieneMismatchesPackPvp.value) {
+  if (!tieneErroresCodigo.value || tieneMismatchesPackPvp.value || tieneTiendasNoEncontradas.value) {
     return false
   }
   if (consultandoInfoSapPendiente.value) {

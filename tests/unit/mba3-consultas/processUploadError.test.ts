@@ -141,7 +141,7 @@ describe('processUploadError', () => {
       const info = processUploadError(e, 'x.xlsx')
       expect(info.title).toBe('Códigos de tienda/bodega no encontrados en SAP')
       expect(info.errors).toEqual([
-        { tipo: 'ERROR', campo: 'Tienda/Bodega SAP', mensaje: 'El código no existe en SAP OWHS', producto: 'T001' }
+        { tipo: 'ERROR', campo: 'Tienda/Bodega SAP', mensaje: 'La tienda/bodega no está registrada en SAP', producto: 'T001' }
       ])
     })
 
@@ -155,6 +155,33 @@ describe('processUploadError', () => {
       }
       const info = processUploadError(e, 'x.xlsx')
       expect(info.title).toBe('Códigos de bodega no encontrados en SAP')
+    })
+
+    describe('error solo de tiendas: la frase del mensaje no es un código de producto', () => {
+      const tiendas = ['TRL-MPA', 'TRL-RCE', 'TRL-BMB']
+      const frase = 'Existen códigos de tienda/bodega no válidos en SAP'
+
+      // Distintas formas en que el backend/axios arman el texto del error; ninguna debe producir "productos".
+      it.each([
+        ['mensaje sin dos puntos', { message: frase }],
+        ['mensaje con prefijo y dos puntos', { message: `Validación SAP: ${frase}` }],
+        ['mensaje que repite la frase tras dos puntos', { message: `${frase}: ${frase}` }],
+        ['error + message con dos puntos', { error: 'Error de validación', message: `Detalle no válidos en SAP: ${frase}` }]
+      ])('%s', (_nombre, datos) => {
+        const e = {
+          response: { data: { ...datos, errores: [frase], validacion: { tiendas: { no_encontradas: tiendas } } } }
+        }
+        const info = processUploadError(e, 'x.xlsx')
+        const campos = (info.errors ?? []).filter(err => typeof err !== 'string').map(err => (err as { campo?: string }).campo)
+
+        expect(campos).not.toContain('Producto SAP')
+        expect(info.message).not.toContain('PRODUCTO')
+        expect(info.message).not.toContain('Existen c\n')
+        for (const tienda of tiendas) expect(info.message).toContain(tienda)
+        expect(info.errors).toEqual(expect.arrayContaining(tiendas.map(codigo => (
+          { tipo: 'ERROR', campo: 'Tienda/Bodega SAP', mensaje: 'La tienda/bodega no está registrada en SAP', producto: codigo }
+        ))))
+      })
     })
 
     it('productos + tiendas combinados producen título genérico "no válidos en SAP"', () => {
